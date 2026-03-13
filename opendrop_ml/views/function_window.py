@@ -24,6 +24,7 @@ from tkinter import messagebox, PhotoImage
 from typing import List, Callable
 from datetime import datetime
 import os
+import traceback
 
 
 def call_user_input(
@@ -69,6 +70,7 @@ class FunctionWindow(CTkToplevel):
 
         # after callback
         self.after_ids = []
+        self._is_closing = False
         if get_appearance_mode() == LIGHT_MODE:
             self.FG_COLOR: str = get_color("background")
         else:
@@ -362,30 +364,27 @@ class FunctionWindow(CTkToplevel):
             error_msg = str(e)
             print(error_msg)
             if "cannot unpack non-iterable NoneType object" in error_msg:
-                messagebox.showerror(
+                self._show_error(
                     "Invalid Image",
                     "This image is not suitable for Interfacial Tension analysis.\nPlease go back and select another image.",
-                    parent=self
                 )
                 self.on_closing()
-            messagebox.showerror(
+                return
+            self._show_error(
                 "Error",
                 f"Unexpected Error:\n{e}",
-                parent=self
             )
             self.on_closing()
 
     def _handle_preparation_stage(self, function_type, user_input_data, experimental_drop):
         if not self.check_import(user_input_data):
             self.update_stage(Move.Back.value)
-            messagebox.showinfo(
-                "No Selection", "Please select at least one file.", parent=self)
+            self._show_info("No Selection", "Please select at least one file.")
             return
 
         if not validate_frame_interval(user_input_data):
             self.update_stage(Move.Back.value)
-            messagebox.showinfo(
-                "Missing", "Frame Interval is required.", parent=self)
+            self._show_info("Missing", "Frame Interval is required.")
             return
 
         self.back_button.pack(side="left", padx=10, pady=10)
@@ -411,7 +410,7 @@ class FunctionWindow(CTkToplevel):
 
         if messages:
             self.update_stage(Move.Back.value)
-            messagebox.showinfo("Missing", "\n".join(messages), parent=self)
+            self._show_info("Missing", "\n".join(messages))
             return
 
         if function_type == FunctionType.INTERFACIAL_TENSION:
@@ -432,22 +431,30 @@ class FunctionWindow(CTkToplevel):
         except Exception as e:
             error_msg = str(e)
             print(f"[Error] IFT processing failed: {error_msg}")
+            log_path = self._log_analysis_exception(
+                "IFT",
+                e,
+                user_input_data,
+                {"n_frames": user_input_data.number_of_frames},
+            )
 
             if "Parameter estimation failed" in error_msg or "ERKStepEvolve()" in error_msg:
                 self.update_stage(Move.Back.value)
                 self.ift_analysis_frame.pack_forget()
                 self.ift_preparation_frame.pack(fill="both", expand=True)
-                messagebox.showerror(
+                self._show_error(
                     "Invalid Region",
-                    "No usable droplet was detected or the boundary is incomplete.",
-                    parent=self
+                    "No usable droplet was detected or the boundary is incomplete.\n"
+                    f"Debug log saved to:\n{log_path}",
                 )
             else:
-                messagebox.showerror(
-                    "Error", f"Error: \n{e}\n\nPlease try again.", parent=self)
+                self._show_error(
+                    "Error",
+                    f"Error: \n{e}\n\nDebug log saved to:\n{log_path}",
+                )
                 self.on_closing()
         finally:
-            self.deiconify()
+            self._safe_deiconify()
 
     def _run_ca_analysis(self, user_input_data, fitted_drop_data):
         self.ca_preparation_frame.pack_forget()
@@ -465,30 +472,45 @@ class FunctionWindow(CTkToplevel):
         except Exception as e:
             error_msg = str(e)
             print(error_msg)
+            log_path = self._log_analysis_exception(
+                "CONTACT_ANGLE",
+                e,
+                user_input_data,
+                {"n_frames": user_input_data.number_of_frames},
+            )
             if any(keyword in error_msg for keyword in [
                "array must not contain infs or NaNs",
-                "float division by zero",
                ]):
-                messagebox.showerror(
-                    "Invalid Image", f"This image is not for Cotanct Angle analysis.\nPlease go back and select another image or application.", parent=self)
+                self._show_error(
+                    "Invalid Image",
+                    "This image is not for Contact Angle analysis.\n"
+                    "Please go back and select another image or application.\n"
+                    f"Debug log saved to:\n{log_path}",
+                )
                 self.on_closing()
             elif any(keyword in error_msg for keyword in [
                 "list index out of range",
                 "'NoneType' object is not iterable",
                 "float division by zero",
                 "too many indices",
+                "do not appear to intersect",
             ]):
-                messagebox.showerror(
-                    "Invalid Region", "No usable droplet detected or the boundary is incomplete.", parent=self)
+                self._show_error(
+                    "Invalid Region",
+                    "No usable droplet detected or the boundary is incomplete.\n"
+                    f"Debug log saved to:\n{log_path}",
+                )
                 self.update_stage(Move.Back.value)
                 self.ca_analysis_frame.pack_forget()
                 self.ca_preparation_frame.pack(fill="both", expand=True)
             else:
-                messagebox.showerror(
-                    "Error", f"Error: \n{e}\n\nPlease try again.", parent=self)
+                self._show_error(
+                    "Error",
+                    f"Error: \n{e}\n\nDebug log saved to:\n{log_path}",
+                )
                 self.on_closing()
         finally:
-            self.deiconify()
+            self._safe_deiconify()
 
     def _handle_output_stage(self, function_type, user_input_data):
         if function_type == FunctionType.INTERFACIAL_TENSION:
@@ -541,10 +563,9 @@ class FunctionWindow(CTkToplevel):
         else:
             self.ca_processor.save_result(user_input_data, output_file)
 
-        messagebox.showinfo(
+        self._show_info(
             "Save Successful",
             f"Results have been saved to:\n{output_file}",
-            parent=self,
         )
         self.on_closing()
 
@@ -571,8 +592,79 @@ class FunctionWindow(CTkToplevel):
         self.after_ids.append(after_id)
         return after_id
 
-    def on_closing(self):
+    def _window_exists(self) -> bool:
         try:
+            return bool(self.winfo_exists())
+        except Exception:
+            return False
+
+    def _safe_deiconify(self):
+        if not self._window_exists() or getattr(self, "_is_closing", False):
+            return
+        try:
+            self.deiconify()
+        except Exception as e:
+            print("[Warning] deiconify() failed:", e)
+
+    def _show_info(self, title: str, message: str):
+        kwargs = {"parent": self} if self._window_exists() else {}
+        try:
+            messagebox.showinfo(title, message, **kwargs)
+        except Exception as e:
+            print("[Warning] showinfo() failed:", e)
+
+    def _show_error(self, title: str, message: str):
+        kwargs = {"parent": self} if self._window_exists() else {}
+        try:
+            messagebox.showerror(title, message, **kwargs)
+        except Exception as e:
+            print("[Warning] showerror() failed:", e)
+
+    def _log_analysis_exception(
+        self,
+        analysis_type: str,
+        error: Exception,
+        user_input_data: ExperimentalSetup,
+        extra_context: dict = None,
+    ) -> str:
+        logs_dir = os.path.join(os.path.expanduser("~"), "OpenDrop", "logs")
+        os.makedirs(logs_dir, exist_ok=True)
+        log_path = os.path.join(
+            logs_dir, f"analysis_debug_{datetime.now().strftime('%Y%m%d')}.log"
+        )
+        context = {
+            "analysis_type": analysis_type,
+            "frame_count": getattr(user_input_data, "number_of_frames", None),
+            "input_files": getattr(user_input_data, "import_files", None),
+            "baseline_method": str(getattr(user_input_data, "baseline_method", None)),
+            "analysis_methods_ca": str(
+                getattr(user_input_data, "analysis_methods_ca", None)
+            ),
+            "timestamp": datetime.now().isoformat(),
+        }
+        if extra_context:
+            context.update(extra_context)
+
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write("\n" + "=" * 90 + "\n")
+            f.write(f"Error: {type(error).__name__}: {error}\n")
+            for key, value in context.items():
+                f.write(f"{key}: {value}\n")
+            f.write("Traceback:\n")
+            f.write(traceback.format_exc())
+            f.write("\n")
+
+        return log_path
+
+    def on_closing(self):
+        if getattr(self, "_is_closing", False):
+            return
+        self._is_closing = True
+
+        try:
+            if not self._window_exists():
+                return
+
             # Step 1: cancel all  after()
             if hasattr(self, 'after_ids'):
                 for after_id in self.after_ids:
@@ -589,7 +681,8 @@ class FunctionWindow(CTkToplevel):
                     print("[Warning] widget destroy failed:", e)
 
             # Step 3: hide current window
-            self.withdraw()
+            if self._window_exists():
+                self.withdraw()
 
             # Step 4: exit the loop and destory the window
             try:

@@ -1159,7 +1159,21 @@ def circular_fit(drop, display=False):
         print("radius: ", R_2)
         print("contact points: ", CPs)
 
-    a, b = intersection(center_2, R_2, CPs[0], CPs[1])
+    outputs = intersection(center_2, R_2, CPs[0], CPs[1])
+    if outputs is None:
+        mid_x = (CPs[0][0] + CPs[1][0]) / 2
+        mid_y = (CPs[0][1] + CPs[1][1]) / 2
+        CPs_midpoint = np.array([mid_x, mid_y])
+        gap, closest = circle_closest_point(
+            CPs_midpoint[0], CPs_midpoint[1], center_2[0], center_2[1], R_2, display=False
+        )
+        print("gap between CPs_midpoint and closest point of circle: ", gap)
+        if gap < 2:  # in case circle fit just misses intercept
+            print("just missed")
+            left = closest
+            right = closest
+            outputs = [[left[0], left[1]], [right[0], right[1]]]
+    a, b = outputs
     intercepts = [a, b]
     intercepts = sorted(list(intercepts), key=lambda x: x[0])
 

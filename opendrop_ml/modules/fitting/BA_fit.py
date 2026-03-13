@@ -26,6 +26,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 import time
+import os
+from datetime import datetime
 
 
 def cluster_optics(
@@ -994,6 +996,35 @@ def calculate_angle(v1, v2):
     return np.arccos(np.dot(v1_u, v2_u)) * 360 / 2 / np.pi
 
 
+def fit_circle_leastsq(drop):
+    """Fit a circle using least-squares (matching reference algorithm).
+
+    Uses scipy.optimize.leastsq and rounds results to integer pixel coordinates,
+    which is required for reliable intersection with a pixelated baseline.
+
+    :param drop: array of (x,y) points on the drop contour
+    :return: numpy array [cx, cy, r] with integer-rounded values
+    """
+    x, y = drop[:, 0], drop[:, 1]
+    x_m = min(x) + (max(x) - min(x)) / 2
+    y_m = min(y) + (max(y) - min(y)) / 2
+
+    def calc_R(xc, yc):
+        return np.sqrt((x - xc) ** 2 + (y - yc) ** 2)
+
+    def f_2(c):
+        Ri = calc_R(*c)
+        return Ri - Ri.mean()
+
+    center_2, _ = opt.leastsq(f_2, (x_m, y_m))
+    xc_2, yc_2 = center_2
+    Ri_2 = np.sqrt((x - xc_2) ** 2 + (y - yc_2) ** 2)
+    R_2 = Ri_2.mean()
+
+    # Round to integer pixel coordinates for pixelated images
+    return np.array([round(xc_2), round(yc_2), round(R_2)])
+
+
 def fit_circle(points, width=None, start=False):
     """
     Compute the best-fit circle to ``points`` by minimizing ``dist`` from
@@ -1107,6 +1138,48 @@ def find_intersection(baseline_coeffs, circ_params):
     return x_t, y_t
 
 
+def save_circle_baseline_debug_plot(profile, baseline_coeffs, circ_params):
+    """
+    Save an overlay of contour points, fitted circle, and fitted baseline.
+    Returns the output path.
+    """
+    logs_dir = os.path.join(os.path.expanduser("~"), "OpenDrop", "logs")
+    os.makedirs(logs_dir, exist_ok=True)
+    out_path = os.path.join(
+        logs_dir,
+        f"yl_intersection_debug_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}.png",
+    )
+
+    b, m = baseline_coeffs[0:2]
+    cx, cy, r = circ_params
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    ax.plot(profile[:, 0], profile[:, 1], ".", color="tab:blue", alpha=0.7, label="Contour")
+
+    theta = np.linspace(0, 2 * np.pi, num=400)
+    x_circle = cx + r * np.cos(theta)
+    y_circle = cy + r * np.sin(theta)
+    ax.plot(x_circle, y_circle, "-", color="tab:green", linewidth=1.5, label="Fitted circle")
+
+    x_min = float(np.min(profile[:, 0]))
+    x_max = float(np.max(profile[:, 0]))
+    x_line = np.linspace(x_min, x_max, 200)
+    y_line = m * x_line + b
+    ax.plot(x_line, y_line, "-", color="tab:red", linewidth=1.5, label="Baseline fit")
+
+    ax.set_title("YL Debug: Contour vs Baseline and Circle")
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_aspect("equal", adjustable="box")
+    ax.invert_yaxis()
+    ax.grid(alpha=0.2)
+    ax.legend(loc="best")
+
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    return out_path
+
+
 def yl_closest_point(xp, yp, yl_points, display=False):
     """
     xp (float): The x-coordinate of the reference point
@@ -1210,8 +1283,12 @@ def analyze_frame(img, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
 
     profile, CPs = prepare_hydrophobic(edges_pts, display)
 
-    # of form [first y value of baseline, gradient]
-    a = [CPs[0][1], (CPs[1][1] - CPs[0][1]) / (CPs[1][0] - CPs[0][0])]
+    # of form [y-intercept of baseline, gradient]
+    # Use the true y-intercept (c = y0 - m*x0), not just y0, so that
+    # find_intersection computes the correct perpendicular distance B.
+    _m = (CPs[1][1] - CPs[0][1]) / (CPs[1][0] - CPs[0][0])
+    _c = CPs[0][1] - _m * CPs[0][0]
+    a = [_c, _m]
 
     # if display:
     #    plt.imshow(img)
@@ -1238,8 +1315,8 @@ def analyze_frame(img, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
     if fit_type in FitType:
         width = max(profile[:, 0])
 
-        res = fit_circle(circle, width, start=True)
-        *z, r = res["x"]
+        res = fit_circle_leastsq(circle)
+        *z, r = res
 
         theta = np.linspace(0, 2 * np.pi, num=500)
         x = z[0] + r * np.cos(theta)
@@ -1249,31 +1326,38 @@ def analyze_frame(img, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
 
         # Keep retrying the fitting while the function value is
         # large, as this indicates that we probably have 2 circles
-        # (e.g. there's something light in the middle of the image)
-        while res["fun"] >= circle.shape[0] and iters < lim:
+        # (e.g. there's something light in the middle of the image).
+        # fit_circle_leastsq returns a numpy array (no "fun" key), so this
+        # while loop is guarded by try/except matching the reference behaviour.
+        try:
+            while res["fun"] >= circle.shape[0] and iters < lim:
 
-            # Extract and fit only those points outside
-            if 0:  # the previously fit circle
-                points = np.array(
-                    [
-                        (x, y)
-                        for x, y in circle
-                        if (x - z[0]) ** 2 + (y - z[1]) ** 2 >= r**2
-                    ]
-                )
+                # Extract and fit only those points outside
+                if 0:  # the previously fit circle
+                    points = np.array(
+                        [
+                            (x, y)
+                            for x, y in circle
+                            if (x - z[0]) ** 2 + (y - z[1]) ** 2 >= r**2
+                        ]
+                    )
+                else:
+                    points = circle
+                res = fit_circle(points, width)
+                *z, r = res["x"]
+                iters += 1
             else:
                 points = circle
-            res = fit_circle(points, width)
-            *z, r = res["x"]
-            iters += 1
-        else:
+        except Exception:
             points = circle
 
-        # round values up to account for pixelated image
-        res["x"] = [round(value) for value in res["x"]]
-        res["x"][2] += 1  # to account for if the line is the next pixel over
+        res[2] += 1  # to account for if the line is the next pixel over
 
-        x_t, y_t = find_intersection(a, res["x"])
+        try:
+            x_t, y_t = find_intersection(a, res)
+        except ValueError as e:
+            debug_plot_path = save_circle_baseline_debug_plot(profile, a, res)
+            raise ValueError(f"{e}. Debug plot saved to: {debug_plot_path}") from e
         # print('x_t is: ',x_t)
         # print('y_t is: ',y_t)
 
@@ -1321,11 +1405,9 @@ def analyze_frame(img, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
                     plt.close()
                     # print(points)
 
-            points[:, 1] = -np.array(
-                [y - np.dot(a, np.power(y, range(len(a))))
-                 for y in points[:, 1]]
-            )
-            center = (np.max(points[:, 0]) + np.min(points[:, 0])) / 2
+            b = min(points[:, 1])
+            points[:, 1] = -points[:, 1] + max(points[:, 1])
+            center = res[0]  # circle center x-coordinate (matches reference)
             points[:, 0] = points[:, 0] - center
             h = np.max(points[:, 1])
             points = np.vstack([points[:, 0], h - points[:, 1]]).T
@@ -1335,9 +1417,8 @@ def analyze_frame(img, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
             cap_length, curv = fit_bashforth_adams(points).x
             thetas, pred, Bo = sim_bashforth_adams(
                 h, cap_length, curv, profile.shape[0])
-            phi["left"] = -np.min(thetas)
-            phi["right"] = np.max(thetas)
 
+            # theta uses circle-based angle average (matches reference)
             theta = (phi["left"] + phi["right"]) / 2
 
             R0 = pred[np.argmax(thetas), 0] - pred[np.argmin(thetas), 0]
@@ -1346,17 +1427,27 @@ def analyze_frame(img, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
             P = 2 * cap_length / curv
             volume = np.pi * R0 * (R0 * h + R0 * P - 2 * np.sin(theta))
             x = pred[:, 0] + center
-            y = np.array(
-                [np.dot(a, np.power(y, range(len(a)))) +
-                 y for y in (pred[:, 1] - h)]
-            )
+            y = pred[:, 1] + b  # simple y-offset (matches reference)
             fit = np.array([x, y]).T
+
+            # Find fit point closest to each contact point, then read the
+            # angle at that index — this is what allows L≠R (matches reference)
+            dist = np.sqrt(
+                (fit[:, 0] - CPs[0][0]) ** 2 + (fit[:, 1] - CPs[0][1]) ** 2
+            )
+            idx_left = list(dist).index(min(dist))
+            dist = np.sqrt(
+                (fit[:, 0] - CPs[1][0]) ** 2 + (fit[:, 1] - CPs[1][1]) ** 2
+            )
+            idx_right = list(dist).index(min(dist))
+
+            phi["left"] = -thetas[idx_left]
+            phi["right"] = thetas[idx_right]
 
             fit_time = time.time() - fit_start_time
 
             # calculate r squared value of fit
-
-            errors = yl_fit_errors(profile, fit, False)
+            errors = yl_fit_errors(profile, fit[idx_left:idx_right], False)
 
     else:
         raise ValueError("Unknown fit type! Try another.")
@@ -1392,7 +1483,7 @@ def analyze_frame(img, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
 
     if display:
         plt.imshow(img)
-        plt.plot(fit[:, 0], fit[:, 1], ",", color="cyan")
+        plt.plot(fit[idx_left:idx_right, 0], fit[idx_left:idx_right, 1], ",", color="cyan")
         # plt.plot(fit[:,0],fit[:,1],'-', color='black', linewidth=2.5)
         # plt.plot(fit[:,0],fit[:,1],'-', color='white', linewidth=1)
         plt.title(
@@ -1420,7 +1511,7 @@ def analyze_frame(img, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
         Bo,
         baseline_width,
         volume,
-        fit,
+        fit[idx_left:idx_right],
         baseline,
         errors,
         sym_errors,
@@ -1436,8 +1527,12 @@ def yl_fit(profile, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
     start_time = time.time()
     CPs = [profile[0], profile[-1]]
 
-    # of form [first y value of baseline, gradient]
-    a = [CPs[0][1], (CPs[1][1] - CPs[0][1]) / (CPs[1][0] - CPs[0][0])]
+    # of form [y-intercept of baseline, gradient]
+    # Use the true y-intercept (c = y0 - m*x0), not just y0, so that
+    # find_intersection computes the correct perpendicular distance B.
+    _m = (CPs[1][1] - CPs[0][1]) / (CPs[1][0] - CPs[0][0])
+    _c = CPs[0][1] - _m * CPs[0][0]
+    a = [_c, _m]
 
     # if display:
     #    plt.imshow(img)
@@ -1461,8 +1556,8 @@ def yl_fit(profile, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
     if fit_type in FitType:
         width = max(profile[:, 0])
 
-        res = fit_circle(circle, width, start=True)
-        *z, r = res["x"]
+        res = fit_circle_leastsq(circle)
+        *z, r = res
 
         theta = np.linspace(0, 2 * np.pi, num=500)
         x = z[0] + r * np.cos(theta)
@@ -1472,31 +1567,38 @@ def yl_fit(profile, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
 
         # Keep retrying the fitting while the function value is
         # large, as this indicates that we probably have 2 circles
-        # (e.g. there's something light in the middle of the image)
-        while res["fun"] >= circle.shape[0] and iters < lim:
+        # (e.g. there's something light in the middle of the image).
+        # fit_circle_leastsq returns a numpy array (no "fun" key), so this
+        # while loop is guarded by try/except matching the reference behaviour.
+        try:
+            while res["fun"] >= circle.shape[0] and iters < lim:
 
-            # Extract and fit only those points outside
-            if 0:  # the previously fit circle
-                points = np.array(
-                    [
-                        (x, y)
-                        for x, y in circle
-                        if (x - z[0]) ** 2 + (y - z[1]) ** 2 >= r**2
-                    ]
-                )
+                # Extract and fit only those points outside
+                if 0:  # the previously fit circle
+                    points = np.array(
+                        [
+                            (x, y)
+                            for x, y in circle
+                            if (x - z[0]) ** 2 + (y - z[1]) ** 2 >= r**2
+                        ]
+                    )
+                else:
+                    points = circle
+                res = fit_circle(points, width)
+                *z, r = res["x"]
+                iters += 1
             else:
                 points = circle
-            res = fit_circle(points, width)
-            *z, r = res["x"]
-            iters += 1
-        else:
+        except Exception:
             points = circle
 
-        # round values up to account for pixelated image
-        res["x"] = [round(value) for value in res["x"]]
-        res["x"][2] += 1  # to account for if the line is the next pixel over
+        res[2] += 1  # to account for if the line is the next pixel over
 
-        x_t, y_t = find_intersection(a, res["x"])
+        try:
+            x_t, y_t = find_intersection(a, res)
+        except ValueError as e:
+            debug_plot_path = save_circle_baseline_debug_plot(profile, a, res)
+            raise ValueError(f"{e}. Debug plot saved to: {debug_plot_path}") from e
         # print('x_t is: ',x_t)
         # print('y_t is: ',y_t)
 
@@ -1544,11 +1646,9 @@ def yl_fit(profile, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
                     plt.close()
                     # print(points)
 
-            points[:, 1] = -np.array(
-                [y - np.dot(a, np.power(y, range(len(a))))
-                 for y in points[:, 1]]
-            )
-            center = (np.max(points[:, 0]) + np.min(points[:, 0])) / 2
+            b = min(points[:, 1])
+            points[:, 1] = -points[:, 1] + max(points[:, 1])
+            center = res[0]  # circle center x-coordinate (matches reference)
             points[:, 0] = points[:, 0] - center
             h = np.max(points[:, 1])
             points = np.vstack([points[:, 0], h - points[:, 1]]).T
@@ -1558,9 +1658,8 @@ def yl_fit(profile, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
             cap_length, curv = fit_bashforth_adams(points).x
             thetas, pred, Bo = sim_bashforth_adams(
                 h, cap_length, curv, profile.shape[0])
-            phi["left"] = -np.min(thetas)
-            phi["right"] = np.max(thetas)
 
+            # theta uses circle-based angle average (matches reference)
             theta = (phi["left"] + phi["right"]) / 2
 
             R0 = pred[np.argmax(thetas), 0] - pred[np.argmin(thetas), 0]
@@ -1569,17 +1668,27 @@ def yl_fit(profile, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
             P = 2 * cap_length / curv
             volume = np.pi * R0 * (R0 * h + R0 * P - 2 * np.sin(theta))
             x = pred[:, 0] + center
-            y = np.array(
-                [np.dot(a, np.power(y, range(len(a)))) +
-                 y for y in (pred[:, 1] - h)]
-            )
+            y = pred[:, 1] + b  # simple y-offset (matches reference)
             fit = np.array([x, y]).T
+
+            # Find fit point closest to each contact point, then read the
+            # angle at that index — this is what allows L≠R (matches reference)
+            dist = np.sqrt(
+                (fit[:, 0] - CPs[0][0]) ** 2 + (fit[:, 1] - CPs[0][1]) ** 2
+            )
+            idx_left = list(dist).index(min(dist))
+            dist = np.sqrt(
+                (fit[:, 0] - CPs[1][0]) ** 2 + (fit[:, 1] - CPs[1][1]) ** 2
+            )
+            idx_right = list(dist).index(min(dist))
+
+            phi["left"] = -thetas[idx_left]
+            phi["right"] = thetas[idx_right]
 
             fit_time = time.time() - start_time
 
             # calculate r squared value of fit
-
-            errors = yl_fit_errors(profile, fit, False)
+            errors = yl_fit_errors(profile, fit[idx_left:idx_right], False)
 
     else:
         raise ValueError("Unknown fit type! Try another.")
@@ -1639,7 +1748,7 @@ def yl_fit(profile, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
         Bo,
         baseline_width,
         volume,
-        fit,
+        fit[idx_left:idx_right],
         baseline,
         errors,
         sym_errors,

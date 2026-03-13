@@ -383,6 +383,39 @@ If you encounter errors, verify:
 -   Cython is installed: `pip install cython`
 -   C++ compiler is correctly installed
 
+### 4. Blank/Invisible UI on macOS
+
+**Symptoms:**
+- Application window opens but appears blank or dark
+- No buttons or text visible (though clicking may change window size)
+
+**Cause:** Using macOS system Tcl/Tk 8.5, which has rendering issues with CustomTkinter.
+
+**Fix:**
+
+1. Verify Tk version:
+   ```bash
+   conda activate opendrop_env
+   python -c "import tkinter; print('Tk version:', tkinter.TkVersion)"
+   ```
+
+2. If showing `8.5`, ensure you're using conda's Python (not system Python):
+   ```bash
+   which python
+   # Should show: /Users/[username]/miniconda3/envs/opendrop_env/bin/python
+   ```
+
+3. If using wrong Python, recreate environment with explicit Tk version:
+   ```bash
+   conda deactivate
+   conda env remove -n opendrop_env -y
+   conda create -n opendrop_env -c conda-forge python=3.10 tk=8.6 -y
+   conda activate opendrop_env
+   pip install -r requirements.txt
+   python setup.py build_ext --inplace
+   python -m opendrop_ml.main
+   ```
+
 # User Configuration Guide
 
 [user_config.yaml](./opendrop_ml/user_config.yaml) is a YAML-based configuration file that lets you **predefine all key parameters** for your experiment, including:

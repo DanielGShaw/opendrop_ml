@@ -868,6 +868,30 @@ def polynomial_closest_point(xp, yp, poly_points, display=False):
     return dist[idx], [x[idx], y[idx]]
 
 
+def points_to_angle(x1, y1, x2, y2):
+    """Calculate the angle in degrees between two points in a 2D plane."""
+    dx = x2 - x1
+    dy = y2 - y1
+    if dx == 0:
+        return 90.0 if dy > 0 else -90.0
+    return np.degrees(np.arctan2(dy, dx))
+
+
+def gradient_to_contact_angles(gradient):
+    """Convert a local tangent gradient to (left, right) contact angles."""
+    if np.isinf(gradient):
+        return 90.0, 90.0
+
+    gradient = -gradient
+    base_angle_deg = np.degrees(np.arctan(gradient))
+    if base_angle_deg < 0:
+        base_angle_deg += 180
+
+    left_angle = base_angle_deg % 180
+    right_angle = (180 - left_angle) % 180
+    return left_angle, right_angle
+
+
 def polynomial_fit_errors(pts1, pts2, fit_left, fit_right, display=False):
     """
     Calculates the minimum distance between a point and a point of the polynomial fit.
@@ -1044,24 +1068,21 @@ def polynomial_fit_img(img, num_points=15, polynomial_degree=2, display=False):
         plt.show()
         plt.close()
 
-    m_surf = float(CPs[1][1] - CPs[0][1]) / float(CPs[1][0] - CPs[0][0])
+    surf_angle = points_to_angle(CPs[0][0], CPs[0][1], CPs[1][0], CPs[1][1])
+    contact_angle1, _ = gradient_to_contact_angles(m1)
+    _, contact_angle2 = gradient_to_contact_angles(m2)
 
-    if m1 > 0:
-        contact_angle1 = np.pi - np.arctan((m1 - m_surf) / (1 + m1 * m_surf))
-    elif m1 < 0:
-        contact_angle1 = -np.arctan((m1 - m_surf) / (1 + m1 * m_surf))
-    else:
-        contact_angle1 = np.pi / 2
+    contact_angle1 += surf_angle
+    contact_angle2 -= surf_angle
 
-    if m2 < 0:
-        contact_angle2 = np.pi + np.arctan((m2 - m_surf) / (1 + m2 * m_surf))
-    elif m2 > 0:
-        contact_angle2 = np.arctan((m2 - m_surf) / (1 + m2 * m_surf))
-    else:
-        contact_angle2 = np.pi / 2
-
-    contact_angle1 = contact_angle1 * 180 / np.pi
-    contact_angle2 = contact_angle2 * 180 / np.pi
+    if contact_angle1 < 1:
+        widest = min(tangent_drop[:, 0])
+        if widest < CPs[0][0]:
+            contact_angle1 = abs(180 - contact_angle1)
+    if contact_angle2 < 1:
+        widest = max(tangent_drop[:, 0])
+        if widest > CPs[1][0]:
+            contact_angle2 = abs(180 - contact_angle2)
 
     fit_time = time.time() - fit_start_time
 
@@ -1077,7 +1098,7 @@ def polynomial_fit_img(img, num_points=15, polynomial_degree=2, display=False):
     return [contact_angle1, contact_angle2], intercepts, errors, timings
 
 
-def polynomial_fit(profile, num_points=15, polynomial_degree=2, display=False):
+def polynomial_fit(profile, num_points=None, polynomial_degree=2, display=False):
     """Takes in input contact angle experimental image, and outputs the fitted
     angles and intercept coordinates. For best results, preprocessing should be
     performed before calling this function.
@@ -1091,6 +1112,11 @@ def polynomial_fit(profile, num_points=15, polynomial_degree=2, display=False):
     num_points is the number of points included in the polynomial fit. The default number
         of points used is 10.
     display can be set to "True" to output figures."""
+
+    if num_points is None:
+        num_points = int(len(profile) * 0.05)
+        if num_points < 10:
+            num_points = 10
 
     start_time = time.time()
     CPs = [profile[0], profile[-1]]
@@ -1177,24 +1203,21 @@ def polynomial_fit(profile, num_points=15, polynomial_degree=2, display=False):
         plt.show()
         plt.close()
 
-    m_surf = float(CPs[1][1] - CPs[0][1]) / float(CPs[1][0] - CPs[0][0])
+    surf_angle = points_to_angle(CPs[0][0], CPs[0][1], CPs[1][0], CPs[1][1])
+    contact_angle1, _ = gradient_to_contact_angles(m1)
+    _, contact_angle2 = gradient_to_contact_angles(m2)
 
-    if m1 > 0:
-        contact_angle1 = np.pi - np.arctan((m1 - m_surf) / (1 + m1 * m_surf))
-    elif m1 < 0:
-        contact_angle1 = -np.arctan((m1 - m_surf) / (1 + m1 * m_surf))
-    else:
-        contact_angle1 = np.pi / 2
+    contact_angle1 += surf_angle
+    contact_angle2 -= surf_angle
 
-    if m2 < 0:
-        contact_angle2 = np.pi + np.arctan((m2 - m_surf) / (1 + m2 * m_surf))
-    elif m2 > 0:
-        contact_angle2 = np.arctan((m2 - m_surf) / (1 + m2 * m_surf))
-    else:
-        contact_angle2 = np.pi / 2
-
-    contact_angle1 = contact_angle1 * 180 / np.pi
-    contact_angle2 = contact_angle2 * 180 / np.pi
+    if contact_angle1 < 1:
+        widest = min(profile[:, 0])
+        if widest < CPs[0][0]:
+            contact_angle1 = abs(180 - contact_angle1)
+    if contact_angle2 < 1:
+        widest = max(profile[:, 0])
+        if widest > CPs[1][0]:
+            contact_angle2 = abs(180 - contact_angle2)
 
     fit_time = time.time() - start_time
 

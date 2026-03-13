@@ -89,7 +89,7 @@ class OutputPage(ctk.CTkFrame):
             "This naming convention ensures unique filenames for each run.\n"
             f"If no output location is specified, files will be saved to the '{user_input_data.output_directory}' folder by default."
         )
-        create_tooltip(help_label, tooltip_text)
+        create_tooltip(help_label, tooltip_text, position="below-left-cursor")
 
         # -----------------------
         # Figure Section (hidden)

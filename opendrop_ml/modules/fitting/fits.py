@@ -19,7 +19,7 @@ def perform_fits(
         from opendrop_ml.modules.fitting.polynomial_fit import polynomial_fit
 
         tangent_angles, tangent_CPs, tangent_lines, tangent_errors, tangent_timings = (
-            polynomial_fit(experimental_drop.drop_contour, polynomial_degree=1)
+            polynomial_fit(experimental_drop.drop_contour, polynomial_degree=1, num_points=10)
         )
         experimental_drop.contact_angles[FittingMethod.TANGENT_FIT] = {}
         experimental_drop.contact_angles[FittingMethod.TANGENT_FIT][LEFT_ANGLE] = (
@@ -50,7 +50,7 @@ def perform_fits(
             polynomial_lines,
             polynomial_errors,
             polynomial_timings,
-        ) = polynomial_fit(experimental_drop.drop_contour, polynomial_degree=2)
+        ) = polynomial_fit(experimental_drop.drop_contour, polynomial_degree=2, num_points=10)
         experimental_drop.contact_angles[FittingMethod.POLYNOMIAL_FIT] = {}
         experimental_drop.contact_angles[FittingMethod.POLYNOMIAL_FIT][LEFT_ANGLE] = (
             polynomial_angles[0]
@@ -152,33 +152,36 @@ def perform_fits(
     if yl:
         from opendrop_ml.modules.fitting.BA_fit import yl_fit
 
-        (
-            yl_angles,
-            yl_bo,
-            yl_baselinewidth,
-            yl_volume,
-            yl_shape,
-            yl_baseline,
-            yl_errors,
-            sym_errors,
-            yl_timings,
-        ) = yl_fit(experimental_drop.drop_contour)
-        experimental_drop.contact_angles[FittingMethod.YL_FIT] = {}
-        experimental_drop.contact_angles[FittingMethod.YL_FIT][LEFT_ANGLE] = yl_angles[
-            0
-        ]
-        experimental_drop.contact_angles[FittingMethod.YL_FIT][RIGHT_ANGLE] = yl_angles[
-            1
-        ]
-        experimental_drop.contact_angles[FittingMethod.YL_FIT]["bond number"] = yl_bo
-        experimental_drop.contact_angles[FittingMethod.YL_FIT][
-            "baseline width"
-        ] = yl_baselinewidth
-        experimental_drop.contact_angles[FittingMethod.YL_FIT]["volume"] = yl_volume
-        experimental_drop.contact_angles[FittingMethod.YL_FIT]["fit shape"] = yl_shape
-        experimental_drop.contact_angles[FittingMethod.YL_FIT]["baseline"] = yl_baseline
-        experimental_drop.contact_angles[FittingMethod.YL_FIT]["errors"] = yl_errors
-        experimental_drop.contact_angles[FittingMethod.YL_FIT][
-            "symmetry errors"
-        ] = sym_errors
-        experimental_drop.contact_angles[FittingMethod.YL_FIT]["timings"] = yl_timings
+        try:
+            (
+                yl_angles,
+                yl_bo,
+                yl_baselinewidth,
+                yl_volume,
+                yl_shape,
+                yl_baseline,
+                yl_errors,
+                sym_errors,
+                yl_timings,
+            ) = yl_fit(experimental_drop.drop_contour, lim=20)
+            experimental_drop.contact_angles[FittingMethod.YL_FIT] = {}
+            experimental_drop.contact_angles[FittingMethod.YL_FIT][LEFT_ANGLE] = yl_angles[
+                0
+            ]
+            experimental_drop.contact_angles[FittingMethod.YL_FIT][RIGHT_ANGLE] = yl_angles[
+                1
+            ]
+            experimental_drop.contact_angles[FittingMethod.YL_FIT]["bond number"] = yl_bo
+            experimental_drop.contact_angles[FittingMethod.YL_FIT][
+                "baseline width"
+            ] = yl_baselinewidth
+            experimental_drop.contact_angles[FittingMethod.YL_FIT]["volume"] = yl_volume
+            experimental_drop.contact_angles[FittingMethod.YL_FIT]["fit shape"] = yl_shape
+            experimental_drop.contact_angles[FittingMethod.YL_FIT]["baseline"] = yl_baseline
+            experimental_drop.contact_angles[FittingMethod.YL_FIT]["errors"] = yl_errors
+            experimental_drop.contact_angles[FittingMethod.YL_FIT][
+                "symmetry errors"
+            ] = sym_errors
+            experimental_drop.contact_angles[FittingMethod.YL_FIT]["timings"] = yl_timings
+        except (ValueError, Exception) as e:
+            print(f"Warning: YL fit failed and will be skipped: {e}")

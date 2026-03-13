@@ -830,11 +830,55 @@ def rot(a):
     return np.array([[+np.cos(a), -np.sin(a)], [+np.sin(a), +np.cos(a)]])
 
 
+def normalize_data(x, y):
+    """
+    Normalize coordinate data into approximately [-1, 1] range for stable ellipse fitting.
+    """
+    x = np.asarray(x)
+    y = np.asarray(y)
+
+    x_center, y_center = np.mean(x), np.mean(y)
+    x_scale = max(abs(x.min() - x_center), abs(x.max() - x_center))
+    y_scale = max(abs(y.min() - y_center), abs(y.max() - y_center))
+
+    x_norm = (x - x_center) / x_scale
+    y_norm = (y - y_center) / y_scale
+
+    return x_norm, y_norm, x_center, y_center, x_scale, y_scale
+
+
+def denormalize_ellipse(a, x_center, y_center, x_scale, y_scale):
+    """
+    Convert normalized conic coefficients back to original coordinate space.
+    """
+    A, B, C, D, E, F = a
+
+    A_prime = A / x_scale**2
+    B_prime = B / (x_scale * y_scale)
+    C_prime = C / y_scale**2
+    D_prime = (-2 * A * x_center / x_scale**2 - B * y_center /
+               (x_scale * y_scale) + D / x_scale)
+    E_prime = (-B * x_center / (x_scale * y_scale) -
+               2 * C * y_center / y_scale**2 + E / y_scale)
+    F_prime = (
+        A * x_center**2 / x_scale**2
+        + B * x_center * y_center / (x_scale * y_scale)
+        + C * y_center**2 / y_scale**2
+        - D * x_center / x_scale
+        - E * y_center / y_scale
+        + F
+    )
+
+    return np.array([A_prime, B_prime, C_prime, D_prime, E_prime, F_prime])
+
+
 def fit_ellipse(x, y):
     """
     main fit from the original publication:
     http://nicky.vanforeest.com/misc/fitEllipse/fitEllipse.html
     """
+    # Fit in normalized space for numerical stability, then map coefficients back.
+    x, y, x_center, y_center, x_scale, y_scale = normalize_data(x, y)
     x = x[:, np.newaxis]
     y = y[:, np.newaxis]
     D = np.hstack((x * x, x * y, y * y, x, y, np.ones_like(x)))
@@ -844,10 +888,9 @@ def fit_ellipse(x, y):
     C[2, 0] = +2
     C[1, 1] = -1
     E, V = np.linalg.eig(np.dot(np.linalg.inv(S), C))
-    n = np.argmax(np.abs(E))
-    # n = np.argmax( E )
-    a = V[:, n]
-    return a
+    n = np.argmax(E)
+    avec = V[:, n]
+    return denormalize_ellipse(avec, x_center, y_center, x_scale, y_scale)
 
 
 def ell_parameters(a):
@@ -1206,6 +1249,21 @@ def ellipse_fit_img(img, display=False):
     # fit
     avec = fit_ellipse(x, y)
     (a, b), phi_deg, t = ell_parameters(avec)
+    ellipse_params = np.array([a, b, phi_deg, t[0], t[1]], dtype=float)
+    if (not np.all(np.isfinite(ellipse_params))) or a <= 0 or b <= 0:
+        fit_time = time.time() - fit_start_time
+        analysis_time = time.time() - start_time
+        timings = {}
+        timings["method specific preprocessing time"] = fit_preprocessing_time
+        timings["fit time"] = fit_time
+        timings["analysis time"] = analysis_time
+        errors = (
+            f"ellipse_fit: invalid ellipse parameters "
+            f"(a={a}, b={b}, phi={phi_deg}, center={t})"
+        )
+        if display:
+            print(errors)
+        return [], [], t, (a, b), phi_deg, errors, timings
 
     ell = Ellipse(
         t, 2 * a, 2 * b, phi_deg, facecolor=(1, 0, 0, 0), edgecolor=(1, 0, 0, 1)
@@ -1241,8 +1299,33 @@ def ellipse_fit_img(img, display=False):
         CPs[0][1],
         CPs[1][0],
         CPs[1][1],
+        display=display,
     )
-    left, right = list(sorted(outputs, key=lambda x: x[0]))
+    if outputs is None:
+        mid_x = (CPs[0][0] + CPs[1][0]) / 2
+        mid_y = (CPs[0][1] + CPs[1][1]) / 2
+        CPs_midpoint = np.array([mid_x, mid_y])
+
+        gap, closest = ellipse_closest_point(
+            CPs_midpoint[0], CPs_midpoint[1], t[0], t[1], a, b, phi_deg, n=1000, display=False
+        )
+        print("gap between CPs_midpoint and closest point of ellipse: ", gap)
+        if gap < 2:  # in case ellipse fit misses intercept
+            left = closest
+            right = closest
+            outputs = [[left[0], left[1], 0], [right[0], right[1], 0]]
+        else:
+            fit_time = time.time() - fit_start_time
+            analysis_time = time.time() - start_time
+            timings = {}
+            timings["method specific preprocessing time"] = fit_preprocessing_time
+            timings["fit time"] = fit_time
+            timings["analysis time"] = analysis_time
+            errors = "ellipse_fit: no line-ellipse intersection and fallback gap too large"
+            return [], [], t, (a, b), phi_deg, errors, timings
+    else:
+        left, right = list(sorted(outputs, key=lambda x: x[0]))
+
     m_left, m_right = left[2], right[2]
     intercepts = [[left[0], left[1]], [right[0], right[1]]]
 
@@ -1257,9 +1340,9 @@ def ellipse_fit_img(img, display=False):
         elif output[1] > t[1] and first == False:  # high CA angle right
             CA.append(abs(math.degrees(np.arctan(m))))
         elif output[1] < t[1] and first == True:  # low CA angle left
-            CA.append(math.degrees(np.arctan(m)))
+            CA.append(abs(np.rad2deg(np.arctan(m))))
         elif output[1] < t[1] and first == False:  # low CA angle right
-            CA.append(math.degrees(np.pi + np.arctan(m)))
+            CA.append(abs(np.rad2deg(np.pi + np.arctan(m))))
 
         first = False
 
@@ -1312,6 +1395,20 @@ def ellipse_fit(drop, display=False):
     # fit
     avec = fit_ellipse(x, y)
     (a, b), phi_deg, t = ell_parameters(avec)
+    ellipse_params = np.array([a, b, phi_deg, t[0], t[1]], dtype=float)
+    if (not np.all(np.isfinite(ellipse_params))) or a <= 0 or b <= 0:
+        fit_time = time.time() - start_time
+        analysis_time = time.time() - start_time
+        timings = {}
+        timings["fit time"] = fit_time
+        timings["analysis time"] = analysis_time
+        errors = (
+            f"ellipse_fit: invalid ellipse parameters "
+            f"(a={a}, b={b}, phi={phi_deg}, center={t})"
+        )
+        if display:
+            print(errors)
+        return [], [], t, (a, b), phi_deg, errors, timings
 
     ell = Ellipse(
         t,
@@ -1355,8 +1452,32 @@ def ellipse_fit(drop, display=False):
         CPs[0][1],
         CPs[1][0],
         CPs[1][1],
+        display=display,
     )
-    left, right = list(sorted(outputs, key=lambda x: x[0]))
+    if outputs is None:
+        mid_x = (CPs[0][0] + CPs[1][0]) / 2
+        mid_y = (CPs[0][1] + CPs[1][1]) / 2
+        CPs_midpoint = np.array([mid_x, mid_y])
+
+        gap, closest = ellipse_closest_point(
+            CPs_midpoint[0], CPs_midpoint[1], t[0], t[1], a, b, phi_deg, n=1000, display=False
+        )
+        print("gap between CPs_midpoint and closest point of ellipse: ", gap)
+        if gap < 2:  # in case ellipse fit misses intercept
+            left = closest
+            right = closest
+            outputs = [[left[0], left[1], 0], [right[0], right[1], 0]]
+        else:
+            fit_time = time.time() - start_time
+            analysis_time = time.time() - start_time
+            timings = {}
+            timings["fit time"] = fit_time
+            timings["analysis time"] = analysis_time
+            errors = "ellipse_fit: no line-ellipse intersection and fallback gap too large"
+            return [], [], t, (a, b), phi_deg, errors, timings
+    else:
+        left, right = list(sorted(outputs, key=lambda x: x[0]))
+
     m_left, m_right = left[2], right[2]
     intercepts = [[left[0], left[1]], [right[0], right[1]]]
 
@@ -1371,9 +1492,9 @@ def ellipse_fit(drop, display=False):
         elif output[1] > t[1] and first == False:  # high CA angle right
             CA.append(abs(math.degrees(np.arctan(m))))
         elif output[1] < t[1] and first == True:  # low CA angle left
-            CA.append(math.degrees(np.arctan(m)))
+            CA.append(abs(np.rad2deg(np.arctan(m))))
         elif output[1] < t[1] and first == False:  # low CA angle right
-            CA.append(math.degrees(np.pi + np.arctan(m)))
+            CA.append(abs(np.rad2deg(np.pi + np.arctan(m))))
 
         first = False
 

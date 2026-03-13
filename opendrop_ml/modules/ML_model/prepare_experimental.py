@@ -2447,6 +2447,148 @@ def experimental_prediction(
         return predictions, timings
 
 
+def normalize_ds(ds):
+    """Normalize contour windows so the drop apex is at z=1.
+
+    For each contour window: flip y (image coords → Cartesian), divide by
+    the apex height, then translate so the minimum x value is 0.
+    This matches the normalization used during model training.
+    """
+    output = []
+    for contour in ds:
+        contour = contour.astype(float)
+        contour[:, 1] = -contour[:, 1] + max(contour[:, 1])
+        maxz = abs(max(contour[:, 1]))
+        normalised = contour / maxz
+        if normalised[0, 0] != 0:
+            minx = min(normalised[:, 0])
+            new = normalised.copy()
+            new[:, 0] -= minx
+            output.append(new)
+        else:
+            output.append(normalised)
+    return np.array(output)
+
+
+def resize_image(image: np.ndarray, scale: float = 0.5) -> np.ndarray:
+    """Downsample *image* by *scale* using INTER_AREA interpolation."""
+    if scale <= 0:
+        raise ValueError("Scale factor must be positive.")
+    height, width = image.shape[:2]
+    new_width = int(width * scale)
+    new_height = int(height * scale)
+    resized = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
+    return np.clip(resized, 0, 255).astype(np.uint8)
+
+
+def prepare_for_model(img, input_len=50, n_surface=10, display=False):
+    """Prepare experimental image for the all-angle ML model.
+
+    Uses the new all-angle preprocessing pipeline (CPID contact point
+    identification) to extract a 50-point window around each CP from the
+    actual contour: 10 real surface contour points on the substrate side of
+    the CP, and 40 drop contour points on the drop side. Left and right sides
+    are extracted independently (not by mirroring), matching the format the
+    model was trained on. Normalisation is applied via normalize_ds().
+
+    A resolution check is applied before window extraction: if the drop
+    profile is above the resolution plateau threshold (>974 points), or falls
+    in the angle-dependent range (565–974) and fails the m*angle+c test, the
+    image is downsampled by 0.5x and preprocessing is re-run. This matches
+    the resolution check used in the original evaluation pipeline.
+
+    :param img: BGR image as a numpy array (from cv2.imread)
+    :param input_len: Total window size fed to the model (default 50)
+    :param n_surface: Surface-side points in the window (default 10)
+    :param display: If True, show intermediate plots
+    :return: pred_ds of shape (2, input_len, 2) float32 — [left, right]
+    :raises ValueError: If contact point identification fails or profile too short
+    """
+    from opendrop_ml.modules.preprocessing.preprocessing import preprocess
+    from opendrop_ml.modules.fitting.circular_fit import circular_fit
+
+    n_drop = input_len - n_surface  # 40 drop points nearest the CP
+
+    def _run_preprocessing(image):
+        img_proc, cps, contour = preprocess(image, display=display)
+        if cps is None or len(cps) < 2:
+            raise ValueError(
+                "All-angle preprocessing failed to identify contact points. "
+                "Check image quality or consider manual preprocessing."
+            )
+        contour = contour.copy()
+        idx_l = np.where((contour == cps[0]).all(axis=1))[0][0]
+        idx_r = np.where((contour == cps[1]).all(axis=1))[0][0]
+        if idx_l > idx_r:
+            idx_l, idx_r = idx_r, idx_l
+        profile = contour[idx_l : idx_r + 1]
+        return img_proc, cps, contour, profile, idx_l, idx_r
+
+    # --- First preprocessing pass ---
+    img_processed, CPs_chosen, longest_contour, profile, idx_leftCP, idx_rightCP = (
+        _run_preprocessing(img)
+    )
+
+    # --- Resolution check (matches evaluate experimental_executable.py) ---
+    _RESOLUTION_SLOPE = 6.383333333333334
+    _RESOLUTION_INTERCEPT = 208.0
+    _PROFILE_HIGH = 974
+    _PROFILE_MID_LOW = 565
+    _PROFILE_WARNING = 234
+
+    profile_len = len(profile)
+    needs_resize = False
+
+    if profile_len > _PROFILE_HIGH:
+        needs_resize = True
+    elif _PROFILE_MID_LOW < profile_len < _PROFILE_HIGH:
+        try:
+            circ_angles, _, _, _, _, _ = circular_fit(profile)
+            threshold = _RESOLUTION_SLOPE * min(circ_angles) + _RESOLUTION_INTERCEPT
+            if profile_len > threshold:
+                needs_resize = True
+        except Exception:
+            pass  # circular_fit failed — skip the angle-dependent check
+    elif profile_len < _PROFILE_WARNING:
+        print(
+            f"WARNING: Profile length ({profile_len}) is low. "
+            "Predictions may be unreliable."
+        )
+
+    if needs_resize:
+        img_small = resize_image(img, scale=0.5)
+        img_processed, CPs_chosen, longest_contour, profile, idx_leftCP, idx_rightCP = (
+            _run_preprocessing(img_small)
+        )
+
+    # --- Extract independent left and right windows from the actual contour ---
+    # Left side: n_surface points before leftCP (surface) + n_drop points after (drop)
+    if idx_leftCP < n_surface:
+        left_side = longest_contour[:input_len]
+    else:
+        left_side = longest_contour[idx_leftCP - n_surface : idx_leftCP + n_drop]
+
+    # Right side: n_drop points before rightCP (drop) + n_surface points after (surface)
+    if idx_rightCP > len(longest_contour) - n_surface:
+        right_side = longest_contour[-input_len:]
+    else:
+        right_side = longest_contour[idx_rightCP - n_drop : idx_rightCP + n_surface]
+
+    if len(left_side) < 4 or len(right_side) < 4:
+        raise ValueError(
+            "Contour window extraction failed — profile too short near contact points."
+        )
+
+    # Reverse left side (start from drop contour) and reflect x (training convention)
+    left_side = left_side[::-1].copy()
+    left_side[:, 0] = -left_side[:, 0]
+
+    pred_ds = np.array([left_side, right_side])
+    pred_ds = normalize_ds(pred_ds)
+
+    return pred_ds.astype(np.float32)
+
+
 if 0:
     from opendrop_ml.utils.os import resource_path
 

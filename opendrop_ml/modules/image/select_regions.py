@@ -5,6 +5,7 @@ from opendrop_ml.modules.core.classes import ExperimentalDrop, ExperimentalSetup
 from opendrop_ml.modules.preprocessing.preprocessing import (
     prepare_hydrophobic,
     tilt_correction,
+    preprocess,
 )
 from opendrop_ml.utils.geometry import Rect2
 from opendrop_ml.utils.enums import FittingMethod, RegionSelect, ThresholdSelect
@@ -288,11 +289,12 @@ def set_drop_region(
     screen_position = set_screen_position(screen_size)
 
     if experimental_setup.drop_id_method == RegionSelect.AUTOMATED:
-        from opendrop_ml.modules.preprocessing.preprocessing import auto_crop
+        from opendrop_ml.modules.preprocessing.preprocessing import isolate_contour
 
-        experimental_drop.cropped_image, (left, right, top, bottom) = auto_crop(
+        experimental_drop.cropped_image, _, _, _info = isolate_contour(
             experimental_drop.image
         )
+        top, bottom, left, right = _info["bounds"]
         # print("experimental_drop.cropped_image",experimental_drop.cropped_image is None)
         if experimental_setup.original_boole == 1:  # show found drop
 
@@ -610,9 +612,20 @@ def set_surface_line(
     # extract_drop_profile(experimental_drop, experimental_setup)
 
     if experimental_setup.baseline_method == ThresholdSelect.AUTOMATED:
-        experimental_drop.drop_contour, experimental_drop.contact_points = (
-            prepare_hydrophobic(experimental_drop.contour)
+        img_processed, CPs_chosen, longest_contour = preprocess(
+            experimental_drop.image, display=False
         )
+        if CPs_chosen is None or len(CPs_chosen) < 2:
+            raise ValueError("CPID failed to identify contact points")
+        idx_leftCP = np.where((longest_contour == CPs_chosen[0]).all(axis=1))[0][0]
+        idx_rightCP = np.where((longest_contour == CPs_chosen[1]).all(axis=1))[0][0]
+        if idx_leftCP > idx_rightCP:
+            # The raw contour traverses right-to-left between the CPs; reverse the
+            # slice so profile[0] is always the left CP and profile[-1] is the right CP.
+            experimental_drop.drop_contour = longest_contour[idx_rightCP:idx_leftCP + 1][::-1]
+        else:
+            experimental_drop.drop_contour = longest_contour[idx_leftCP:idx_rightCP + 1]
+        experimental_drop.contact_points = CPs_chosen
     elif experimental_setup.baseline_method == ThresholdSelect.USER_SELECTED:
         user_line(experimental_drop, experimental_setup)
 
