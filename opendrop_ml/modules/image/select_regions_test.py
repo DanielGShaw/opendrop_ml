@@ -7,10 +7,8 @@ from opendrop_ml.modules.image.select_regions import (
     draw_line,
     optimized_path,
     intersection,
-    ML_prepare_hydrophobic,
 )
 from opendrop_ml.modules.core.classes import ExperimentalSetup, ExperimentalDrop
-from opendrop_ml.modules.preprocessing.preprocessing import prepare_hydrophobic
 from opendrop_ml.modules.fitting.fits import perform_fits
 from opendrop_ml.utils.enums import RegionSelect, ThresholdSelect
 

@@ -169,13 +169,42 @@ OpenDrop_OP/
 
 -   **Contact Angle**: `modules/contact_angle/` handles CA-specific processing
 -   **Interfacial Tension**: `modules/ift/` handles IFT-specific processing with C++/Cython extensions
--   **Machine Learning**: `modules/ML_model/` contains TensorFlow models for Conan-ML
+-   **Machine Learning**: `modules/ML_model/` contains the Conan-ML TensorFlow model and inference pipeline
 
 #### Data Flow
 
 ```
 Image Acquisition → Preprocessing → Contour Extraction → Fitting → Results
 ```
+
+#### CA Preprocessing Pipeline
+
+The contact angle preprocessing pipeline uses an all-angle approach (20°–180°) based on OPTICS clustering and contact-point identification. The main entry point is `preprocess()` in `modules/preprocessing/preprocessing.py`.
+
+**Key functions:**
+
+| Function | Location | Purpose |
+|----------|----------|---------|
+| `preprocess(img)` | `preprocessing/preprocessing.py` | Main orchestrator — calls `isolate_contour` then `CPID`. Returns `(img_processed, CPs_chosen, longest_contour)` |
+| `isolate_contour(img)` | `preprocessing/preprocessing.py` | Image cropping, thresholding, and contour extraction |
+| `CPID(contour)` | `preprocessing/preprocessing.py` | Contact point identification using OPTICS clustering — works for all angle ranges |
+| `extract_edges_CV(img)` | `preprocessing/preprocessing.py` | Alternative contour extraction using Canny edge detection (used in video analysis workflows) |
+
+**ML model prediction flow:**
+
+```
+preprocess(img) → prepare_for_model(img) → experimental_pred(pred_ds, model)
+```
+
+`prepare_for_model` (in `modules/ML_model/prepare_experimental.py`) runs `preprocess()` internally, extracts a 50-point window around each contact point (40 drop + 10 surface points), applies normalisation via `normalize_ds()`, and returns `pred_ds` of shape `(2, 50, 2)`. A resolution check downsamples the image if the profile is too long for the model's training domain.
+
+**Classical fitting flow:**
+
+```
+preprocess(img) → profile extraction → fitting algorithm (tangent/polynomial/circle/ellipse/YL)
+```
+
+For classical fitting methods, the profile (contour between the two contact points) is extracted from the `longest_contour` and `CPs_chosen` returned by `preprocess()`.
 
 ### 3.4. Frontend Architecture (`views/`)
 
@@ -586,13 +615,23 @@ dependencies/
 | **cx_Freeze**   | Cross-platform freezing | Alternative to PyInstaller   |
 | **Nuitka**      | Python compiler         | Performance-optimized builds |
 
+#### Build-Time Dependencies
+
+The packaging script (`install.py`) requires additional packages not in `requirements.txt`:
+
+```bash
+pip install pyinstaller toml twine build
+```
+
+These are only needed for creating distributable builds, not for running the application.
+
 #### Example PyInstaller Command
 
 ```bash
 pyinstaller --onefile --windowed --add-data "assets;assets" --add-data "modules/ML_model;modules/ML_model" main.py
 ```
 
-Eensure the `/` is the correct one for your platform. A platform independant pyinstaller command is used in `install.py` as part of the main.exe creation process in Windows.
+Ensure the `/` is the correct one for your platform. A platform-independent pyinstaller command is used in `install.py` as part of the main.exe creation process in Windows.
 
 ### 7.4. Testing Packaged Applications
 

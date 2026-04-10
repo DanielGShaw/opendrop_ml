@@ -3,7 +3,6 @@
 
 from opendrop_ml.modules.core.classes import ExperimentalDrop, ExperimentalSetup
 from opendrop_ml.modules.preprocessing.preprocessing import (
-    prepare_hydrophobic,
     tilt_correction,
     preprocess,
 )
@@ -296,7 +295,7 @@ def set_drop_region(
         )
         top, bottom, left, right = _info["bounds"]
         # print("experimental_drop.cropped_image",experimental_drop.cropped_image is None)
-        if experimental_setup.original_boole == 1:  # show found drop
+        if experimental_setup.original_boole:  # show found drop
 
             # Clear all existing figures to avoid conflicts with residual plots
             plt.close("all")
@@ -306,7 +305,7 @@ def set_drop_region(
             plt.show()  # Block execution until the window is manually closed by the user
             plt.close(fig)  # clean up and close the figure after it's shown
 
-        if experimental_setup.cropped_boole == 1:
+        if experimental_setup.cropped_boole:
             # Clear all existing figures to avoid conflicts with residual plots
             plt.close("all")
             fig = plt.figure()  # Explicitly create a new figure window
@@ -936,7 +935,7 @@ def user_line(
                     2,
                 )
             if (
-                methods_boole[FittingMethod.POLYNOMIAL_FIT] == True
+                methods_boole[FittingMethod.POLYNOMIAL_FIT]
                 and not methods_boole[FittingMethod.TANGENT_FIT]
             ):
                 tangent_lines = tuple(
@@ -1208,126 +1207,3 @@ def intersection(center, radius, p1, p2):
     return (dx * t1 + p1[0], dy * t1 + p1[1]), (dx * t2 + p1[0], dy * t2 + p1[1])
 
 
-def ML_prepare_hydrophobic(coords_in):
-    coords = coords_in
-    coords[:, 1] = -coords[:, 1]  # flip
-    # print('length of coords: ',len(coords))
-
-    # isolate the top of the contour so excess surface can be deleted
-    percent = 0.1
-    bottom = []
-    top = []  # will need this later
-    div_line_value = (
-        min(coords[:, [1]]) + (max(coords[:, [1]]) -
-                               min(coords[:, [1]])) * percent
-    )
-    for n in coords:
-        if n[1] < div_line_value:
-            bottom.append(n)
-        else:
-            top.append(n)
-
-    bottom = np.array(bottom)
-    top = np.array(top)
-
-    del_indexes = []
-    for index, coord in enumerate(coords):
-        if coord[0] > max(top[:, 0]) or coord[0] < min(top[:, 0]):
-            del_indexes.append(index)
-    # halfdrop = np.delete(halfdrop,del_indexes)
-    coords = np.delete(coords, del_indexes, axis=0)
-
-    if 0:
-        plt.title("isolated coords, length: " + str(len(coords)))
-        plt.plot(coords[:, 0], coords[:, 1])
-        plt.show()
-        plt.close()
-
-    # find the apex of the drop and split the contour into left and right sides
-
-    xtop, ytop = top[:, 0], top[:, 1]  # isolate top 90% of drop
-
-    xapex = (max(xtop) + min(xtop)) / 2
-    # yapex = max(ytop)
-    # coords[:,1] = -coords[:,1]
-
-    l_drop = []
-    r_drop = []
-    for n in coords:
-        if n[0] < xapex:
-            l_drop.append(n)
-        if n[0] > xapex:
-            r_drop.append(n)
-    l_drop = np.array(l_drop)
-    r_drop = np.array(r_drop)
-
-    # print('length of left drop is: ',len(l_drop))
-    # print('length of right drop is: ', len(r_drop))
-
-    # transpose both half drops so that they both face right and the apex of both is at 0,0
-    # r_drop[:,[0]] = r_drop[:,[0]] - min(r_drop[:,[0]])
-    # l_drop[:,[0]] = -l_drop[:,[0]] + max(l_drop[:,[0]])
-    r_drop[:, [0]] = r_drop[:, [0]] - xapex
-    l_drop[:, [0]] = -l_drop[:, [0]] + xapex
-
-    counter = 0
-    CV_contours = {}
-
-    for halfdrop in [l_drop, r_drop]:
-        if halfdrop[0, 1] < halfdrop[-1, 1]:
-            halfdrop = halfdrop[::-1]
-
-        X = halfdrop[:, 0]
-        Z = halfdrop[:, 1]
-
-        lowest = min(Z)
-        Z = Z + abs(lowest)
-
-        X = X / max(Z)
-        Z = Z / max(Z)
-
-        # zero padd contours to
-        coordinates = []
-        input_len = 1100
-        len_cont = len(X)
-
-        # if len(X) > global_max_len:
-        #    global_max_len = len(X)
-
-        if len(X) > input_len:
-            print(len(X))
-            raise Exception(
-                "Contour of length "
-                + str(len(X))
-                + " is too long for the designated output dimensionality of ("
-                + str(input_len)
-                + ",2)"
-            )
-
-        for i in range(input_len):
-            if i < len(X):
-                a = X[i]
-                b = Z[i]
-                coord = [a, b]
-                coordinates.append(coord)
-            else:
-                coordinates.append([0, 0])
-        if 0:
-            jet = plt.get_cmap("jet")
-            colors = iter(jet(np.linspace(0, 1, len(coordinates))))
-            for k in coordinates:
-                plt.plot(k[0], k[1], "o", color=next(colors))
-            plt.title("Halfdrop")
-            plt.show()
-            plt.close()
-        # key = image.split('/')[-1].split('_')[-1][:-4]
-        key = counter
-        CV_contours[key] = np.array(coordinates)
-
-        counter += 1
-
-    pred_ds = np.zeros((2, input_len, 2))
-    for counter in [0, 1]:
-        pred_ds[counter] = CV_contours[counter]
-
-    return pred_ds

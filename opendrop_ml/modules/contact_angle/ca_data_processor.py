@@ -43,7 +43,7 @@ class CaDataProcessor:
                 time_start = timeit.default_timer()
                 raw_experiment = ExperimentalDrop()
 
-                # save image in here...
+                # Load image into the experimental drop object
                 get_image(raw_experiment, user_input_data, i)
                 set_drop_region(raw_experiment, user_input_data, i + 1)
                 extract_drop_profile(raw_experiment, user_input_data)

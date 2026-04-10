@@ -672,11 +672,20 @@ def create_analysis_checklist_cm(self, parent, user_input_data):
     self.ML_boole = CheckButton(
         self,
         input_fields_frame,
-        "ML model",
+        "ML model (Conan-ML)",
         update_ML_boole,
         rw=2,
         cl=1,
         default_value=user_input_data.analysis_methods_ca[FittingMethod.ML_MODEL],
+    )
+    create_tooltip(
+        self.ML_boole.check_button,
+        "Conan-ML: Conv1D neural network for contact angle prediction.\n"
+        "Supports contact angles from 20° to 180°.\n\n"
+        "Angles below 20° are outside the training domain and are\n"
+        "not supported.\n\n"
+        "Training domain: Bond numbers ≤ 1. Angles from high-Bond-\n"
+        "number drops should be independently verified.",
     )
 
     return analysis_clist_frame

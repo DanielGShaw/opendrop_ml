@@ -1,15 +1,10 @@
 from opendrop_ml.modules.fitting.polynomial_fit import (
-    cluster_optics,
-    distance1,
-    optimized_path,
-    prepare_hydrophobic,
-    extract_edges_CV,
     polynomial_closest_point,
     polynomial_fit_errors,
     polynomial_fit_img,
     polynomial_fit,
 )
-from opendrop_ml.modules.preprocessing.preprocessing import preprocess
+from opendrop_ml.modules.preprocessing.preprocessing import preprocess, extract_edges_cv
 
 from unittest.mock import patch
 import numpy as np
@@ -29,8 +24,8 @@ def _profile_from_image(img_path):
     """Run the full preprocessing pipeline on an image and return an ordered
     drop contour suitable for passing directly to polynomial_fit.
 
-    Replicates the set_surface_line slicing logic (including the left-to-right
-    reversal fix) so that profile[0] is always the left contact point.
+    Replicates the set_surface_line slicing logic (including left-to-right
+    ordering) so that profile[0] is always the left contact point.
     """
     img = cv2.imread(img_path)
     _, CPs_chosen, longest_contour = preprocess(img)
@@ -62,59 +57,16 @@ def sample_profile():
     return np.array([[0, 0], [1, 1], [2, 2], [3, 1], [4, 0]])
 
 
-def test_cluster_optics(sample_data):
-    result1 = cluster_optics(sample_data, xi=0.05)
-    assert isinstance(result1, dict)
-    assert len(result1) > 0
-
-    result2 = cluster_optics(sample_data, eps=0.5)
-    assert isinstance(result2, dict)
-    assert len(result2) > 0
-
-    result3 = cluster_optics(sample_data, out_style="xy", eps=0.5)
-    assert isinstance(result3, dict)
-    assert any("x" in key for key in result3.keys())
-
-
-def test_distance1():
-    assert distance1([0, 0], [3, 4]) == pytest.approx(5.0)
-    assert distance1([1, 1], [4, 5]) == pytest.approx(5.0)
-    assert distance1([0, 0], [0, 0]) == 0.0
-
-
-def test_optimized_path(sample_data):
-    path = optimized_path(sample_data)
-    assert len(path) <= len(sample_data)
-    for i in range(1, len(path)):
-        assert distance1(path[i - 1], path[i]) < 5
-
-
-@patch("opendrop_ml.modules.fitting.polynomial_fit.plt.show")
-def test_prepare_hydrophobic(mock_show, sample_profile):
-    profile, CPs = prepare_hydrophobic(sample_profile, display=True)
-    assert isinstance(profile, np.ndarray)
-    assert isinstance(CPs, dict)
-    assert len(CPs) == 2
-
-
-# def test_find_contours():
-#     test_image = np.zeros((10, 10), dtype=np.uint8)
-#     test_image[2:8, 2:8] = 255
-#     contours = find_contours(test_image)
-#     assert isinstance(contours, list)
-#     assert len(contours) > 0
-
-
-@patch("opendrop_ml.modules.fitting.polynomial_fit.cv2.cvtColor")
-@patch("opendrop_ml.modules.fitting.polynomial_fit.cv2.threshold")
-@patch("opendrop_ml.modules.fitting.polynomial_fit.cv2.findContours")
-def test_extract_edges_CV(mock_findContours, mock_threshold, mock_cvtColor):
+@patch("opendrop_ml.modules.preprocessing.preprocessing.cv2.cvtColor")
+@patch("opendrop_ml.modules.preprocessing.preprocessing.cv2.threshold")
+@patch("opendrop_ml.modules.preprocessing.preprocessing.cv2.findContours")
+def test_extract_edges_cv(mock_findContours, mock_threshold, mock_cvtColor):
     mock_cvtColor.return_value = np.zeros((10, 10))
     mock_threshold.return_value = (None, np.zeros((10, 10)))
     mock_findContours.return_value = ([np.array([[[0, 0]], [[1, 1]]])], None)
 
     test_img = np.zeros((10, 10, 3))
-    result = extract_edges_CV(test_img)
+    result = extract_edges_cv(test_img)
     assert isinstance(result, np.ndarray)
     assert result.ndim in [1, 2]
 
@@ -139,11 +91,14 @@ def test_polynomial_fit_errors():
     assert "RMSE" in errors
 
 
-@patch("opendrop_ml.modules.fitting.polynomial_fit.extract_edges_CV")
-@patch("opendrop_ml.modules.fitting.polynomial_fit.prepare_hydrophobic")
-def test_polynomial_fit_img(mock_prepare, mock_extract, sample_data, sample_profile):
-    mock_extract.return_value = sample_data
-    mock_prepare.return_value = (sample_profile, {0: [0, 0], 1: [4, 0]})
+@patch("opendrop_ml.modules.fitting.polynomial_fit.preprocess")
+def test_polynomial_fit_img(mock_preprocess, sample_data, sample_profile):
+    CPs_chosen = np.array([sample_profile[0], sample_profile[-1]])
+    mock_preprocess.return_value = (
+        np.zeros((10, 10, 3)),
+        CPs_chosen,
+        sample_profile,
+    )
 
     img = np.zeros((10, 10, 3))
     angles, intercepts, errors, timings = polynomial_fit_img(img)
@@ -175,8 +130,8 @@ def test_polynomial_fit_known_angle(fname, expected_ca):
     """Regression: polynomial_fit returns the correct contact angle for synthetic
     drop images with known ground-truth angles.
 
-    The 20° case specifically guards against Bug D (supplement error), where
-    low-angle drops previously returned ~180°-theta (~160°) instead of ~20°.
+    The 20 deg case guards against a supplement error where low-angle drops
+    could return ~180 deg - theta (~160 deg) instead of ~20 deg.
     """
     img_path = os.path.join(SYNTH_IMG_DIR, fname)
     if not os.path.exists(img_path):

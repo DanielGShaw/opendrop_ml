@@ -15,7 +15,7 @@ def perform_fits(
     ellipse=False,
     yl=False,
 ):
-    if tangent == True:
+    if tangent:
         from opendrop_ml.modules.fitting.polynomial_fit import polynomial_fit
 
         tangent_angles, tangent_CPs, tangent_lines, tangent_errors, tangent_timings = (
@@ -41,7 +41,7 @@ def perform_fits(
             "timings"
         ] = tangent_timings
 
-    if polynomial == True:
+    if polynomial:
         from opendrop_ml.modules.fitting.polynomial_fit import polynomial_fit
 
         (
@@ -71,7 +71,7 @@ def perform_fits(
             "timings"
         ] = polynomial_timings
 
-    if circle == True:
+    if circle:
         from opendrop_ml.modules.fitting.circular_fit import circular_fit
 
         (
@@ -82,30 +82,36 @@ def perform_fits(
             circle_errors,
             circle_timings,
         ) = circular_fit(experimental_drop.drop_contour)
-        experimental_drop.contact_angles[FittingMethod.CIRCLE_FIT] = {}
-        experimental_drop.contact_angles[FittingMethod.CIRCLE_FIT][LEFT_ANGLE] = (
-            circle_angles[0]
-        )
-        experimental_drop.contact_angles[FittingMethod.CIRCLE_FIT][RIGHT_ANGLE] = (
-            circle_angles[1]
-        )
-        experimental_drop.contact_angles[FittingMethod.CIRCLE_FIT][
-            "baseline intercepts"
-        ] = circle_intercepts
-        experimental_drop.contact_angles[FittingMethod.CIRCLE_FIT][
-            "circle center"
-        ] = circle_center
-        experimental_drop.contact_angles[FittingMethod.CIRCLE_FIT][
-            "circle radius"
-        ] = circle_radius
-        experimental_drop.contact_angles[FittingMethod.CIRCLE_FIT][
-            "errors"
-        ] = circle_errors
-        experimental_drop.contact_angles[FittingMethod.CIRCLE_FIT][
-            "timings"
-        ] = circle_timings
 
-    if ellipse == True:
+        if circle_angles and len(circle_angles) == 2:
+            experimental_drop.contact_angles[FittingMethod.CIRCLE_FIT] = {}
+            experimental_drop.contact_angles[FittingMethod.CIRCLE_FIT][LEFT_ANGLE] = (
+                circle_angles[0]
+            )
+            experimental_drop.contact_angles[FittingMethod.CIRCLE_FIT][RIGHT_ANGLE] = (
+                circle_angles[1]
+            )
+            experimental_drop.contact_angles[FittingMethod.CIRCLE_FIT][
+                "baseline intercepts"
+            ] = circle_intercepts
+            experimental_drop.contact_angles[FittingMethod.CIRCLE_FIT][
+                "circle center"
+            ] = circle_center
+            experimental_drop.contact_angles[FittingMethod.CIRCLE_FIT][
+                "circle radius"
+            ] = circle_radius
+            experimental_drop.contact_angles[FittingMethod.CIRCLE_FIT][
+                "errors"
+            ] = circle_errors
+            experimental_drop.contact_angles[FittingMethod.CIRCLE_FIT][
+                "timings"
+            ] = circle_timings
+        else:
+            print(
+                "Warning: circular_fit failed or returned incomplete results. Skipping CIRCLE_FIT."
+            )
+
+    if ellipse:
         from opendrop_ml.modules.fitting.ellipse_fit import ellipse_fit
 
         (
@@ -183,5 +189,9 @@ def perform_fits(
                 "symmetry errors"
             ] = sym_errors
             experimental_drop.contact_angles[FittingMethod.YL_FIT]["timings"] = yl_timings
-        except (ValueError, Exception) as e:
+        except Exception as e:
             print(f"Warning: YL fit failed and will be skipped: {e}")
+            experimental_drop.contact_angles[FittingMethod.YL_FIT] = {}
+            experimental_drop.contact_angles[FittingMethod.YL_FIT][LEFT_ANGLE] = None
+            experimental_drop.contact_angles[FittingMethod.YL_FIT][RIGHT_ANGLE] = None
+            experimental_drop.contact_angles[FittingMethod.YL_FIT]["timings"] = {}

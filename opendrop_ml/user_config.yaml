@@ -15,9 +15,9 @@ needle_diameter_mm: 0.7176 # Diameter of the needle in mm
 pixel_mm: null # Calibration factor: mm per pixel
 
 # --- Processing control flags ---
-original_boole: 0 # To show original image during analysing (1 for true and 0 for false)
-cropped_boole: 0 # To show cropped image during analysing (1 for true and 0 for false)
-threshold_boole: 0 # To show threshold image during analysing (1 for true and 0 for false)
+original_boole: false # To show original image during analysing
+cropped_boole: false # To show cropped image during analysing
+threshold_boole: false # To show threshold image during analysing
 image_source: Local images # Source of images (only have Local images option for now)
 
 # --- Image acquisition ---
@@ -28,10 +28,10 @@ frame_interval: 1 # Time between frames/images (float number)
 analysis_methods_ca: # Contact angle fitting methods
   TANGENT_FIT: true
   POLYNOMIAL_FIT: true
-  CIRCLE_FIT: false
+  CIRCLE_FIT: true
   ELLIPSE_FIT: false
   YL_FIT: false
-  ML_MODEL: false
+  ML_MODEL: false # Conan-ML prediction (supports contact angles 20°-180°)
 analysis_methods_pd: # IFT fitting methods
   INTERFACIAL_TENSION: true
 

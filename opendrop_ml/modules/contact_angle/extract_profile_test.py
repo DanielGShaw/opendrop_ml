@@ -1,7 +1,6 @@
 from opendrop_ml.modules.contact_angle.extract_profile import (
     extract_drop_profile,
     detect_edges,
-    prepare_hydrophobic,
 )
 from unittest.mock import patch
 from opendrop_ml.utils.enums import ThresholdSelect
@@ -168,11 +167,6 @@ def test_invalid_threshold_handling(mock_findContours, mock_raw_experiment):
         np.zeros((100, 100), dtype=np.uint8), mock_raw_experiment, None, 1, 300
     )
     assert contour is not None and len(contour) > 0
-
-
-def test_empty_input_handling():
-    with pytest.raises(IndexError):
-        prepare_hydrophobic(np.empty((0, 2)))
 
 
 # Edge Case Tests ---------------------------------------------------------

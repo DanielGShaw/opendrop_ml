@@ -413,12 +413,35 @@ class FunctionWindow(CTkToplevel):
             self._show_info("Missing", "\n".join(messages))
             return
 
+        if function_type == FunctionType.CONTACT_ANGLE:
+            user_input_data.save_analysis_methods(resource_path("user_config.yaml"))
+
         if function_type == FunctionType.INTERFACIAL_TENSION:
             self._run_ift_analysis(user_input_data)
         else:
             self._run_ca_analysis(user_input_data, fitted_drop_data)
 
+    def _resize_for_analysis(self, function_type, user_input_data):
+        """Resize window width to fit the analysis results table."""
+        if function_type == FunctionType.CONTACT_ANGLE:
+            n_methods = sum(
+                1 for v in user_input_data.analysis_methods_ca.values() if v
+            )
+            # Index column (~80px) + method columns (~110px each) + viz panel (~450px)
+            needed_width = 530 + n_methods * 110
+        else:
+            # IFT has 6 fixed columns; 1100px accommodates them comfortably
+            needed_width = 1100
+
+        screen_w = self.winfo_screenwidth()
+        width = max(1000, min(needed_width, screen_w - 50))
+        height = self.winfo_height()
+
+        self.minsize(width, 750)
+        self.geometry(f"{width}x{height}")
+
     def _run_ift_analysis(self, user_input_data):
+        self._resize_for_analysis(FunctionType.INTERFACIAL_TENSION, user_input_data)
         self.ift_preparation_frame.pack_forget()
         self.ift_analysis_frame = IftAnalysis(
             self, user_input_data, self.ift_processor, fg_color=self.FG_COLOR
@@ -457,6 +480,7 @@ class FunctionWindow(CTkToplevel):
             self._safe_deiconify()
 
     def _run_ca_analysis(self, user_input_data, fitted_drop_data):
+        self._resize_for_analysis(FunctionType.CONTACT_ANGLE, user_input_data)
         self.ca_preparation_frame.pack_forget()
         self.ca_analysis_frame = CaAnalysis(
             self, user_input_data, fg_color=self.FG_COLOR)
