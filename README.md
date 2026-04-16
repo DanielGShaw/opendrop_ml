@@ -1,6 +1,6 @@
 # opendrop_ml
 
-opendrop_ml is an open-source, cross-platform tool for analyzing liquid droplets in surface science using contact angle and pendant drop methods. It integrates classical geometric fitting with machine learning models (via Conan-ML), providing flexible, automated, and high-throughput image processing for researchers, technicians, and developers.
+opendrop_ml is an open-source, cross-platform tool for analyzing fluid droplets in surface science using contact angle and pendant drop methods. It integrates classical geometric fitting with machine learning models, providing flexible, automated, and high-throughput image processing for researchers, technicians, and developers.
 
 The ML implementation (Conan-ML) supports contact angles from 20° to 180° using a preprocessing pipeline with OPTICS clustering and CPID contact-point identification. For drops with Bond numbers > 1 or unusual surface roughness, verification of results is advised.
 

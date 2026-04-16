@@ -25,6 +25,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
+.ipynb_checkpoints/
 
 # Build and distribution
 build/
@@ -88,3 +89,11 @@ opendrop_ml/modules/ift/younglaplace/*.so
 *OpenDrop.wixpdb
 *main.spec
 *.bat
+
+# External reference material (cloned for comparison, not part of repo)
+paper_results/conan_model/
+paper_results/conan_model_repo/
+
+# Video analysis data — excluded due to size (SC69_1.avi > GitHub 100MB limit).
+# Hosting decision pending.
+paper_results/data/video_analysis/

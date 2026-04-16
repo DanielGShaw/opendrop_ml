@@ -29,9 +29,9 @@ analysis_methods_ca: # Contact angle fitting methods
   TANGENT_FIT: true
   POLYNOMIAL_FIT: true
   CIRCLE_FIT: true
-  ELLIPSE_FIT: false
-  YL_FIT: false
-  ML_MODEL: false # Conan-ML prediction (supports contact angles 20°-180°)
+  ELLIPSE_FIT: 1
+  YL_FIT: 1
+  ML_MODEL: 1 # Conan-ML prediction (supports contact angles 20°-180°)
 analysis_methods_pd: # IFT fitting methods
   INTERFACIAL_TENSION: true
 
