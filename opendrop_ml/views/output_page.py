@@ -92,8 +92,58 @@ class OutputPage(ctk.CTkFrame):
         create_tooltip(help_label, tooltip_text, position="below-left-cursor")
 
         # -----------------------
-        # Figure Section (hidden)
+        # Video Analysis Info
         # -----------------------
+        if user_input_data.is_video:
+            self._add_video_info_section()
+
+    def _add_video_info_section(self):
+        info_frame = ctk.CTkFrame(self)
+        set_light_only_color(info_frame, "outerframe")
+        info_frame.grid(row=2, column=0, padx=20, pady=10, sticky="ew")
+        info_frame.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(
+            info_frame,
+            text="Video Analysis Results",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            anchor="w",
+        ).grid(row=0, column=0, padx=10, pady=(10, 5), sticky="w")
+
+        status = getattr(self.user_input_data, "_video_status", "unknown")
+        if status == "completed":
+            status_text = "Analysis completed successfully."
+        elif status == "cancelled":
+            status_text = "Analysis was cancelled. Partial CSV may be available."
+        else:
+            status_text = "Analysis status: {}".format(status)
+
+        ctk.CTkLabel(info_frame, text=status_text, anchor="w").grid(
+            row=1, column=0, padx=10, pady=2, sticky="w"
+        )
+
+        tmp_dir = getattr(self.user_input_data, "_video_tmp_dir", None)
+        if tmp_dir and os.path.isdir(tmp_dir):
+            files = sorted(
+                f for f in os.listdir(tmp_dir)
+                if os.path.isfile(os.path.join(tmp_dir, f))
+            )
+            if files:
+                files_text = "Files to save:\n  " + "\n  ".join(files)
+            else:
+                files_text = "No files generated."
+            ctk.CTkLabel(
+                info_frame, text=files_text, anchor="w", justify="left"
+            ).grid(row=2, column=0, padx=10, pady=2, sticky="w")
+
+        hint = (
+            "Tip: Inspect the *_cp_scatter.png file to verify\n"
+            "preprocessing before trusting the CSV results."
+        )
+        ctk.CTkLabel(
+            info_frame, text=hint, anchor="w", justify="left",
+            text_color="gray",
+        ).grid(row=3, column=0, padx=10, pady=(5, 10), sticky="w")
 
     def browse_location(self):
         default_dir = self.user_input_data.output_directory or os.getcwd()

@@ -12,12 +12,96 @@ from opendrop_ml.utils.enums import FittingMethod, ThresholdSelect
 from opendrop_ml.utils.config import LEFT_ANGLE, RIGHT_ANGLE
 from opendrop_ml.utils.os import resource_path
 
-from typing import Callable, Dict
+from typing import Callable, Dict, Optional
+import csv
+import math
+import os
 import numpy as np
 import timeit
 import copy
 
-# import os
+
+class UnifiedCsvWriter:
+    """Streams per-frame CA results to a CSV with a fixed schema.
+
+    Columns are a strict superset of the static-CA CSV: four video columns
+    (frame_number, timestamp_s, filepath, error_status) followed by left/
+    right angle columns for every enabled fitting method. Missing values
+    serialise as NaN so downstream tooling sees a stable schema regardless
+    of which pipeline produced the row.
+    """
+
+    _VIDEO_COLUMNS = ("frame_number", "timestamp_s", "filepath", "error_status")
+
+    def __init__(self, path: str, user_input_data: ExperimentalSetup):
+        self.path = path
+        self._methods = [
+            m
+            for m, enabled in user_input_data.analysis_methods_ca.items()
+            if enabled
+        ]
+        method_columns = []
+        for method in self._methods:
+            method_columns.append(f"{method.value} left angle")
+            method_columns.append(f"{method.value} right angle")
+        self.columns = list(self._VIDEO_COLUMNS) + method_columns
+
+        header_needed = not (
+            os.path.exists(self.path) and os.path.getsize(self.path) > 0
+        )
+        if header_needed:
+            with open(self.path, "a", newline="") as f:
+                csv.writer(f).writerow(self.columns)
+
+    def write_row(
+        self,
+        frame_number: int,
+        timestamp_s: float,
+        filepath: str,
+        error_status: str,
+        contact_angles: Optional[Dict] = None,
+    ) -> None:
+        contact_angles = contact_angles or {}
+        row = [frame_number, timestamp_s, filepath, error_status]
+        for method in self._methods:
+            method_data = contact_angles.get(method) or {}
+            left = method_data.get(LEFT_ANGLE)
+            right = method_data.get(RIGHT_ANGLE)
+            row.append(math.nan if left is None else left)
+            row.append(math.nan if right is None else right)
+
+        with open(self.path, "a", newline="") as f:
+            csv.writer(f).writerow(row)
+            f.flush()
+
+
+def run_video_analysis(
+    user_input_data: ExperimentalSetup,
+    writer: UnifiedCsvWriter,
+    progress: Callable[[int, int, str], None],
+    cancel: Callable[[], bool],
+):
+    """Dispatch video-mode CA analysis.
+
+    Currently a single branch: the two-pass auto pipeline used for
+    standard sessile (needle-outside, horizontal surface) video input.
+    """
+    return _auto_two_pass(user_input_data, writer, progress, cancel)
+
+
+def _auto_two_pass(
+    user_input_data: ExperimentalSetup,
+    writer: UnifiedCsvWriter,
+    progress: Callable[[int, int, str], None],
+    cancel: Callable[[], bool],
+):
+    # Lazy import to keep this module import-time cheap and avoid pulling
+    # the full two-pass pipeline (and its heavy dependencies) into callers
+    # that only need UnifiedCsvWriter.
+    from opendrop_ml.modules.contact_angle.video_two_pass import (
+        _auto_two_pass as _impl,
+    )
+    return _impl(user_input_data, writer, progress, cancel)
 
 
 class CaDataProcessor:

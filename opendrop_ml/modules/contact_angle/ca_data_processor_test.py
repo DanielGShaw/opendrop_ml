@@ -1,0 +1,194 @@
+import csv
+import math
+import os
+import sys
+
+import pytest
+
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
+)
+
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
+
+from opendrop_ml.modules.contact_angle import ca_data_processor
+from opendrop_ml.modules.contact_angle.ca_data_processor import (
+    UnifiedCsvWriter,
+    run_video_analysis,
+)
+from opendrop_ml.modules.core.classes import ExperimentalSetup
+from opendrop_ml.utils.config import LEFT_ANGLE, RIGHT_ANGLE
+from opendrop_ml.utils.enums import FittingMethod
+
+
+@pytest.fixture
+def setup_with_two_methods():
+    setup = ExperimentalSetup()
+    for method in setup.analysis_methods_ca:
+        setup.analysis_methods_ca[method] = False
+    setup.analysis_methods_ca[FittingMethod.TANGENT_FIT] = True
+    setup.analysis_methods_ca[FittingMethod.ML_MODEL] = True
+    return setup
+
+
+def _read_csv(path):
+    with open(path, "r", newline="") as f:
+        return list(csv.reader(f))
+
+
+def test_experimental_setup_has_new_fields():
+    """All six video-mode flags default correctly on a fresh setup."""
+    setup = ExperimentalSetup()
+    assert setup.is_video is False
+    assert setup.needle_in_drop is False
+    assert setup.surface_tilted is False
+    assert setup.tilt_angle_deg == 0.0
+    assert setup.manual_preprocessing is False
+    assert setup.video_skip_interval == 10
+    assert isinstance(setup.tilt_angle_deg, float)
+    assert isinstance(setup.video_skip_interval, int)
+
+
+def test_writer_header_is_unified(tmp_path, setup_with_two_methods):
+    """Header = 4 video columns + 2 enabled methods * (left, right)."""
+    path = str(tmp_path / "out.csv")
+    UnifiedCsvWriter(path, setup_with_two_methods)
+
+    rows = _read_csv(path)
+    assert len(rows) == 1
+    header = rows[0]
+    assert header[:4] == ["frame_number", "timestamp_s", "filepath", "error_status"]
+    assert header[4:] == [
+        "tangent fit left angle",
+        "tangent fit right angle",
+        "ML model left angle",
+        "ML model right angle",
+    ]
+
+
+def test_writer_all_columns_every_row(tmp_path, setup_with_two_methods):
+    """Every row has the same column count; missing values serialise as nan."""
+    path = str(tmp_path / "out.csv")
+    writer = UnifiedCsvWriter(path, setup_with_two_methods)
+
+    # Full population
+    writer.write_row(
+        frame_number=0,
+        timestamp_s=0.0,
+        filepath="f0.png",
+        error_status="",
+        contact_angles={
+            FittingMethod.TANGENT_FIT: {LEFT_ANGLE: 45.0, RIGHT_ANGLE: 46.0},
+            FittingMethod.ML_MODEL: {LEFT_ANGLE: 44.5, RIGHT_ANGLE: 45.5},
+        },
+    )
+    # Partial — only one method populated
+    writer.write_row(
+        frame_number=1,
+        timestamp_s=0.1,
+        filepath="f1.png",
+        error_status="",
+        contact_angles={
+            FittingMethod.TANGENT_FIT: {LEFT_ANGLE: 47.0, RIGHT_ANGLE: None},
+        },
+    )
+    # Empty — fit failure
+    writer.write_row(
+        frame_number=2,
+        timestamp_s=0.2,
+        filepath="f2.png",
+        error_status="contour_short",
+        contact_angles=None,
+    )
+
+    rows = _read_csv(path)
+    header = rows[0]
+    data_rows = rows[1:]
+
+    assert len(data_rows) == 3
+    for row in data_rows:
+        assert len(row) == len(header)
+
+    # Full row: all numeric
+    assert data_rows[0][4:] == ["45.0", "46.0", "44.5", "45.5"]
+    # Partial row: ML_MODEL NaNs, TANGENT right NaN
+    assert data_rows[1][4] == "47.0"
+    assert data_rows[1][5] == "nan"
+    assert data_rows[1][6] == "nan"
+    assert data_rows[1][7] == "nan"
+    # Empty row: all NaNs; error_status populated
+    assert data_rows[2][3] == "contour_short"
+    assert data_rows[2][4:] == ["nan", "nan", "nan", "nan"]
+
+
+def test_writer_append_mode_preserves_header(tmp_path, setup_with_two_methods):
+    """A second writer against the same path does not re-emit the header."""
+    path = str(tmp_path / "out.csv")
+
+    w1 = UnifiedCsvWriter(path, setup_with_two_methods)
+    w1.write_row(0, 0.0, "f0.png", "", {})
+
+    w2 = UnifiedCsvWriter(path, setup_with_two_methods)
+    w2.write_row(1, 0.1, "f1.png", "", {})
+
+    rows = _read_csv(path)
+    # One header + two data rows (no duplicate header from w2).
+    assert len(rows) == 3
+    assert rows[0][0] == "frame_number"
+    assert rows[1][0] == "0"
+    assert rows[2][0] == "1"
+
+
+def test_run_video_analysis_routes_to_two_pass(monkeypatch):
+    """Router stub forwards all four args to _auto_two_pass."""
+    calls = []
+
+    def spy(user_input_data, writer, progress, cancel):
+        calls.append((user_input_data, writer, progress, cancel))
+        return "spy-return"
+
+    monkeypatch.setattr(ca_data_processor, "_auto_two_pass", spy)
+
+    sentinel_user = object()
+    sentinel_writer = object()
+
+    def progress(*args):
+        return None
+
+    def cancel():
+        return False
+
+    result = run_video_analysis(sentinel_user, sentinel_writer, progress, cancel)
+
+    assert result == "spy-return"
+    assert len(calls) == 1
+    assert calls[0] == (sentinel_user, sentinel_writer, progress, cancel)
+
+
+def test_auto_two_pass_delegates_to_video_two_pass(monkeypatch):
+    """ca_data_processor._auto_two_pass forwards to video_two_pass._auto_two_pass."""
+    from opendrop_ml.modules.contact_angle import video_two_pass
+
+    calls = []
+
+    def spy(user_input_data, writer, progress, cancel):
+        calls.append((user_input_data, writer, progress, cancel))
+        return "delegate-return"
+
+    monkeypatch.setattr(video_two_pass, "_auto_two_pass", spy)
+
+    sentinel_user = object()
+    sentinel_writer = object()
+    progress = lambda *a: None
+    cancel = lambda: False
+
+    result = ca_data_processor._auto_two_pass(
+        sentinel_user, sentinel_writer, progress, cancel
+    )
+    assert result == "delegate-return"
+    assert calls == [(sentinel_user, sentinel_writer, progress, cancel)]
+
+
+if __name__ == "__main__":
+    pytest.main(["-v", __file__])

@@ -13,7 +13,7 @@ from opendrop_ml.utils.config import (
     BASELINE_OPTIONS,
     INTERFACIAL_TENSION,
 )
-from opendrop_ml.utils.enums import FittingMethod
+from opendrop_ml.utils.enums import FittingMethod, RegionSelect, ThresholdSelect
 from opendrop_ml.utils.tooltip_util import create_tooltip
 import re
 import os
@@ -398,15 +398,22 @@ def create_user_inputs_cm(self, parent, user_input_data):
         # user_input_data.threshold_val = None
         # self.image_app.update_button_visibility()
 
+    # In video mode, drop ID and baseline must be Automated (per-frame
+    # manual selection is not supported).  Threshold can still be manual
+    # since it's just a number applied uniformly to all frames.
+    is_video = user_input_data.is_video
+    auto_only = [RegionSelect.AUTOMATED]
+    auto_only_thresh = [ThresholdSelect.AUTOMATED]
+
     # Create input fields with the associated update methods
     self.drop_id_method = OptionMenu(
         self,
         input_fields_frame,
         "Drop ID method:",
-        DROP_ID_OPTIONS,
+        auto_only if is_video else DROP_ID_OPTIONS,
         lambda *args: update_drop_id_method(*args),
         rw=0,
-        default_value=user_input_data.drop_id_method,
+        default_value=RegionSelect.AUTOMATED if is_video else user_input_data.drop_id_method,
     )
     self.drop_id_method.optionmenu.grid_configure(sticky="ew")
 
@@ -435,10 +442,10 @@ def create_user_inputs_cm(self, parent, user_input_data):
         self,
         input_fields_frame,
         "Baseline selection method:",
-        BASELINE_OPTIONS,
+        auto_only_thresh if is_video else BASELINE_OPTIONS,
         lambda *args: update_baseline_method(*args),
         rw=3,
-        default_value=user_input_data.baseline_method,
+        default_value=ThresholdSelect.AUTOMATED if is_video else user_input_data.baseline_method,
     )
     self.baseline_method.optionmenu.grid_configure(sticky="ew")
 

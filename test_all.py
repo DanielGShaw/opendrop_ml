@@ -15,6 +15,8 @@ def run_all_pytest():
         "--tb=short",
         "--maxfail=3",
         "--disable-warnings",
+        "-m",
+        "not slow",
     ]
 
     args += test_dirs

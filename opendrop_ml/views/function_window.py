@@ -24,6 +24,9 @@ from tkinter import messagebox, PhotoImage
 from typing import List, Callable
 from datetime import datetime
 import os
+import queue
+import shutil
+import threading
 import traceback
 
 
@@ -418,6 +421,8 @@ class FunctionWindow(CTkToplevel):
 
         if function_type == FunctionType.INTERFACIAL_TENSION:
             self._run_ift_analysis(user_input_data)
+        elif user_input_data.is_video:
+            self._run_video_analysis(user_input_data)
         else:
             self._run_ca_analysis(user_input_data, fitted_drop_data)
 
@@ -536,6 +541,232 @@ class FunctionWindow(CTkToplevel):
         finally:
             self._safe_deiconify()
 
+    # ------------------------------------------------------------------
+    # Video-mode CA analysis
+    # ------------------------------------------------------------------
+
+    def _run_video_analysis(self, user_input_data):
+        self.ca_preparation_frame.pack_forget()
+        self.ca_analysis_frame = CaAnalysis(
+            self, user_input_data, fg_color=self.FG_COLOR
+        )
+        self.ca_analysis_frame.pack(fill="both", expand=True)
+
+        source_path = user_input_data.import_files[0]
+        if os.path.isdir(source_path):
+            source_stem = os.path.basename(source_path.rstrip(os.sep))
+        else:
+            source_stem = os.path.splitext(os.path.basename(source_path))[0]
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self._video_tmp_dir = os.path.join(
+            os.path.expanduser("~"), "OpenDrop", "tmp",
+            "{}_{}".format(timestamp, source_stem),
+        )
+        os.makedirs(self._video_tmp_dir, exist_ok=True)
+
+        csv_path = os.path.join(
+            self._video_tmp_dir, "{}_results.csv".format(source_stem)
+        )
+
+        from opendrop_ml.modules.contact_angle.ca_data_processor import (
+            UnifiedCsvWriter,
+            run_video_analysis,
+        )
+
+        writer = UnifiedCsvWriter(csv_path, user_input_data)
+
+        self._video_queue = queue.Queue()
+        self._video_cancel = threading.Event()
+        self._video_source_stem = source_stem
+
+        self.ca_analysis_frame.set_cancel_event(self._video_cancel)
+
+        self.back_button.configure(state="disabled")
+        self.next_button.configure(state="disabled")
+
+        def worker():
+            try:
+                result = run_video_analysis(
+                    user_input_data,
+                    writer,
+                    lambda cur, tot, lbl: self._video_queue.put(
+                        ("progress", cur, tot, lbl)
+                    ),
+                    lambda: self._video_cancel.is_set(),
+                )
+                self._video_queue.put(("done", result))
+            except Exception as e:
+                self._video_queue.put(("error", str(e)))
+
+        self._video_thread = threading.Thread(target=worker, daemon=True)
+        self._video_thread.start()
+
+        self._poll_video_progress(user_input_data)
+
+    def _poll_video_progress(self, user_input_data):
+        if self._is_closing:
+            return
+
+        try:
+            while True:
+                try:
+                    msg = self._video_queue.get_nowait()
+                except queue.Empty:
+                    break
+
+                if msg[0] == "progress":
+                    _, current, total, label = msg
+                    if self._window_exists():
+                        self.ca_analysis_frame.update_video_progress(
+                            current, total, label
+                        )
+
+                elif msg[0] == "done":
+                    self._on_video_complete(user_input_data, msg[1])
+                    return
+
+                elif msg[0] == "error":
+                    self._on_video_error(msg[1], user_input_data)
+                    return
+        except Exception as e:
+            print("[Warning] video poll error: {}".format(e))
+
+        self._video_poll_id = self.register_after(
+            100,
+            lambda: self._poll_video_progress(user_input_data),
+        )
+
+    def _on_video_complete(self, user_input_data, result):
+        status = result.get("status", "unknown")
+
+        if self._window_exists():
+            self.ca_analysis_frame.on_video_complete(status)
+
+        if status == "completed":
+            self._generate_video_figures(user_input_data, result)
+            if self._window_exists():
+                self.ca_analysis_frame.on_figures_complete()
+
+        user_input_data._video_tmp_dir = self._video_tmp_dir
+        user_input_data._video_status = status
+
+        self.back_button.configure(state="normal")
+        self.next_button.configure(state="normal")
+
+    def _generate_video_figures(self, user_input_data, result):
+        from opendrop_ml.modules.contact_angle.video_figures import (
+            generate_timeseries_figure,
+            generate_cp_scatter_figure,
+        )
+
+        stem = self._video_source_stem
+        csv_path = os.path.join(
+            self._video_tmp_dir, "{}_results.csv".format(stem)
+        )
+
+        try:
+            ts_path = os.path.join(
+                self._video_tmp_dir, "{}_timeseries.png".format(stem)
+            )
+            generate_timeseries_figure(csv_path, ts_path)
+        except Exception as e:
+            print("[Warning] Timeseries figure generation failed: {}".format(e))
+
+        try:
+            scatter_path = os.path.join(
+                self._video_tmp_dir, "{}_cp_scatter.png".format(stem)
+            )
+            source_path = user_input_data.import_files[0]
+            generate_cp_scatter_figure(
+                source_path=source_path,
+                pass1_cps=result.get("pass1_cps"),
+                contact_lines={
+                    "left": result.get("left_contact_line"),
+                    "right": result.get("right_contact_line"),
+                },
+                output_path=scatter_path,
+            )
+        except Exception as e:
+            print("[Warning] CP scatter figure generation failed: {}".format(e))
+
+    def _on_video_error(self, error_msg, user_input_data):
+        log_path = self._log_analysis_exception(
+            "VIDEO_CA",
+            RuntimeError(error_msg),
+            user_input_data,
+            {"tmp_dir": getattr(self, "_video_tmp_dir", None)},
+        )
+        if self._window_exists():
+            self.ca_analysis_frame.on_video_complete(
+                "error: {}".format(error_msg)
+            )
+        self.back_button.configure(state="normal")
+        self.next_button.configure(state="normal")
+        self._show_error(
+            "Video Analysis Error",
+            "Video analysis failed:\n{}\n\nDebug log saved to:\n{}".format(
+                error_msg, log_path
+            ),
+        )
+
+    def _save_video_output(self, user_input_data):
+        # Sync location from the entry widget (user may have typed directly)
+        if hasattr(self, "output_frame") and hasattr(self.output_frame, "location_entry"):
+            entered_dir = self.output_frame.location_entry.get()
+            if entered_dir:
+                user_input_data.output_directory = entered_dir
+
+        if not user_input_data.output_directory:
+            user_input_data.output_directory = os.path.join(
+                os.path.expanduser("~"), "OpenDrop", "outputs"
+            )
+        if user_input_data.output_directory.startswith("~"):
+            user_input_data.output_directory = os.path.expanduser(
+                user_input_data.output_directory
+            )
+
+        os.makedirs(user_input_data.output_directory, exist_ok=True)
+
+        tmp_dir = getattr(user_input_data, "_video_tmp_dir", None)
+        if not tmp_dir or not os.path.isdir(tmp_dir):
+            self._show_error("Save Error", "No video analysis results to save.")
+            return
+
+        custom_name = user_input_data.filename
+        source_stem = getattr(self, "_video_source_stem", "")
+
+        moved_files = []
+        for filename in os.listdir(tmp_dir):
+            src = os.path.join(tmp_dir, filename)
+            if not os.path.isfile(src):
+                continue
+
+            if custom_name:
+                dst_name = filename.replace(source_stem, custom_name, 1)
+            else:
+                dst_name = filename
+
+            dst = os.path.join(user_input_data.output_directory, dst_name)
+            shutil.move(src, dst)
+            moved_files.append(dst)
+
+        try:
+            os.rmdir(tmp_dir)
+        except OSError:
+            pass
+
+        files_str = "\n".join(
+            "  {}".format(os.path.basename(f)) for f in moved_files
+        )
+        self._show_info(
+            "Save Successful",
+            "Results saved to:\n{}\n\nFiles:\n{}".format(
+                user_input_data.output_directory, files_str
+            ),
+        )
+        self.on_closing()
+
     def _handle_output_stage(self, function_type, user_input_data):
         if function_type == FunctionType.INTERFACIAL_TENSION:
             self.ift_analysis_frame.pack_forget()
@@ -552,6 +783,10 @@ class FunctionWindow(CTkToplevel):
     def save_output(
         self, function_type: FunctionType, user_input_data: ExperimentalSetup
     ):
+        if user_input_data.is_video:
+            self._save_video_output(user_input_data)
+            return
+
         if not user_input_data.output_directory:
             user_input_data.output_directory = os.path.join(
                 os.path.join(os.path.expanduser("~")), "OpenDrop", "outputs"
@@ -603,13 +838,15 @@ class FunctionWindow(CTkToplevel):
             self.prev_stage()
 
     def check_import(self, user_input_data: ExperimentalSetup) -> bool:
-        return (
-            user_input_data.number_of_frames is not None
-            and user_input_data.number_of_frames > 0
-            and user_input_data.import_files is not None
-            and len(user_input_data.import_files) > 0
-            and len(user_input_data.import_files) == user_input_data.number_of_frames
-        )
+        if user_input_data.number_of_frames is None or user_input_data.number_of_frames <= 0:
+            return False
+        if user_input_data.import_files is None or len(user_input_data.import_files) == 0:
+            return False
+
+        if user_input_data.is_video:
+            return len(user_input_data.import_files) == 1
+        else:
+            return len(user_input_data.import_files) == user_input_data.number_of_frames
 
     def register_after(self, delay_ms, callback: Callable):
         after_id = self.after(delay_ms, callback)
@@ -688,6 +925,10 @@ class FunctionWindow(CTkToplevel):
         try:
             if not self._window_exists():
                 return
+
+            # Cancel video analysis thread if running
+            if getattr(self, "_video_cancel", None) is not None:
+                self._video_cancel.set()
 
             # Step 1: cancel all  after()
             if hasattr(self, 'after_ids'):

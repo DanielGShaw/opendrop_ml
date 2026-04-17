@@ -6,7 +6,12 @@ from opendrop_ml.modules.ift.ift_data_processor import IftDataProcessor
 
 
 def validate_frame_interval(user_input_data: ExperimentalSetup):
-    print(user_input_data.import_files)
+    if getattr(user_input_data, "is_video", False):
+        return True
+
+    if user_input_data.import_files is None:
+        return True
+
     if len(user_input_data.import_files) > 1:
         if user_input_data.frame_interval == 0:
             return False

@@ -6,7 +6,7 @@ from opendrop_ml.views.component.preparation import (
 from opendrop_ml.views.component.imageProcessing import ImageApp
 from opendrop_ml.views.helper.style import set_light_only_color
 
-from customtkinter import CTkFrame
+from customtkinter import CTkFrame, CTkLabel
 
 
 class CaPreparation(CTkFrame):
@@ -41,15 +41,25 @@ class CaPreparation(CTkFrame):
             row=0, column=1, sticky="nsew", padx=15, pady=(10, 0)
         )  # Right side for ImageApp
 
-        # Instantiate the ImageApp on the right
-        self.image_app = ImageApp(
-            self.image_app_frame,
-            self.user_input_data,
-            self.experimental_drop,
-            self.application,
-        )
-        # Pack the image app to fill the frame
-        self.image_app.pack(fill="both", expand=True)
+        if user_input_data.is_video:
+            CTkLabel(
+                self.image_app_frame,
+                text="Video mode: auto-preprocessing enabled.\n"
+                     "Select analysis methods on the left,\n"
+                     "then click Next to begin.",
+                font=("Roboto", 13),
+                justify="center",
+            ).pack(expand=True)
+        else:
+            # Instantiate the ImageApp on the right
+            self.image_app = ImageApp(
+                self.image_app_frame,
+                self.user_input_data,
+                self.experimental_drop,
+                self.application,
+            )
+            # Pack the image app to fill the frame
+            self.image_app.pack(fill="both", expand=True)
 
         # Create user input fields and analysis fields on the left
         self.create_user_input_fields(self.input_fields_frame)

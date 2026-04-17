@@ -54,6 +54,17 @@ class ExperimentalSetup(object):
         self.image_source = "Local images"
         self.number_of_frames: int = 0
 
+        # Video-mode flags. Only is_video and video_skip_interval are
+        # currently read by the pipeline; the remaining flags are reserved
+        # for planned needle-in, tilt-correction, and manual-preprocessing
+        # paths.
+        self.is_video: bool = False
+        self.needle_in_drop: bool = False
+        self.surface_tilted: bool = False
+        self.tilt_angle_deg: float = 0.0
+        self.manual_preprocessing: bool = False
+        self.video_skip_interval: int = 10
+
         self.drop_region: Optional[List[Tuple[int, int]]] = None
         self.needle_region = None
         self.import_files: Optional[List[str]] = None

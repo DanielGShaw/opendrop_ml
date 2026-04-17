@@ -24,11 +24,19 @@ image_source: Local images # Source of images (only have Local images option for
 import_files: null # Optional import file list
 frame_interval: 1 # Time between frames/images (float number)
 
+# --- Video mode ---
+is_video: false # Treat input as a single system over time (video file or image folder)
+needle_in_drop: false # Needle visible inside the drop (reserved; not yet read by the pipeline)
+surface_tilted: false # Substrate is tilted (reserved; not yet read by the pipeline)
+tilt_angle_deg: 0.0 # Manual tilt angle (reserved; not yet read by the pipeline)
+manual_preprocessing: false # Any preprocessing step picked manually (reserved; not yet read by the pipeline)
+video_skip_interval: 10 # Pass 1 sampling rate for the two-pass pipeline
+
 # --- Analysis methods ---
 analysis_methods_ca: # Contact angle fitting methods
-  TANGENT_FIT: true
-  POLYNOMIAL_FIT: true
-  CIRCLE_FIT: true
+  TANGENT_FIT: 1
+  POLYNOMIAL_FIT: 1
+  CIRCLE_FIT: 1
   ELLIPSE_FIT: 1
   YL_FIT: 1
   ML_MODEL: 1 # Conan-ML prediction (supports contact angles 20°-180°)

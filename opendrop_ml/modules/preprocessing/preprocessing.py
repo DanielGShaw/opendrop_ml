@@ -741,13 +741,15 @@ def isolate_contour(img_orig, crop=True, DISPLAY=False, blur=True):
                 plt.close()
         except:
             img = img_orig
-            print('No surface line could be found')
+            if DISPLAY:
+                print('No surface line could be found')
 
         ### Try find a roughly circular drop
         try:
             CIRCLE = hough_circle(canny_input, False)
         except:
-            print('Hough circle failed to identify a drop')
+            if DISPLAY:
+                print('Hough circle failed to identify a drop')
 
         if DISPLAY:
             plt.title('Identified shapes of interest')
@@ -807,7 +809,8 @@ def isolate_contour(img_orig, crop=True, DISPLAY=False, blur=True):
             intersections = line_circle_intersection(BASELINE[0], BASELINE[1], center, radius)
             if len(intersections)==0:
                 # if no intersect, ignore the baseline
-                print('intersects not found')
+                if DISPLAY:
+                    print('intersects not found')
                 BASELINE = np.array([[None, None],[None,None]])
 
         if BASELINE.any() != None:
@@ -1841,8 +1844,9 @@ def check_for_high_angle(contour, display=False):
             start = _find_point_index(right, apex, "check_for_high_angle: right contour apex")
             right = right[start:]
     else:
-        print(f'Number of contours is not correct for check_for_high_angle, contour.shape[0] == {contour.shape[0]}')
-        print('Taking first 2 contours')
+        if display:
+            print(f'Number of contours is not correct for check_for_high_angle, contour.shape[0] == {contour.shape[0]}')
+            print('Taking first 2 contours')
     CP_guesses = []
     widest_points = []
 
@@ -2006,8 +2010,9 @@ def CPID(contour, display=False):
         percentage = 2.5
         Lfit_n_pts = int(dist_between_widest*percentage/100)
     else:
-        print(f'Number of contours is not correct for CPID, contour.shape[0] == {contour.shape[0]}')
-        print('Taking first 2 contours')
+        if display:
+            print(f'Number of contours is not correct for CPID, contour.shape[0] == {contour.shape[0]}')
+            print('Taking first 2 contours')
 
     n_pts = 10
 
@@ -2062,24 +2067,27 @@ def CPID(contour, display=False):
         if widest1_top_angle > 90 - error_margin or widest2_top_angle > 90 - error_margin:
             # if the angle under the widest point is big enough then it should be reflective
             if widest1_bottom_angle > 100 or widest2_bottom_angle > 100:
-                print('large angles under widest points - low angle reflective')
-                print(f'angles preceding widest point are {widest1_top_angle}, {widest2_top_angle}')
-                print(f'angles proceeding widest point are {widest1_bottom_angle}, {widest2_bottom_angle}')
+                if display:
+                    print('large angles under widest points - low angle reflective')
+                    print(f'angles preceding widest point are {widest1_top_angle}, {widest2_top_angle}')
+                    print(f'angles proceeding widest point are {widest1_bottom_angle}, {widest2_bottom_angle}')
                 final_CPs = widest_points
 
             # check if the angles over and under the widest point are close to each other, and the bottom angle is harsh enough - then reflective
             elif (180 - widest1_top_angle - widest1_bottom_angle < 8 and widest1_bottom_angle > 99) or (180 - widest2_top_angle - widest2_bottom_angle < 8 and widest1_bottom_angle > 99):
-                print('angles on either side of widest points are similar - reflective')
-                print(f'angles preceding widest point are {widest1_top_angle}, {widest2_top_angle}')
-                print(f'angles proceeding widest point are {widest1_bottom_angle}, {widest2_bottom_angle}')
+                if display:
+                    print('angles on either side of widest points are similar - reflective')
+                    print(f'angles preceding widest point are {widest1_top_angle}, {widest2_top_angle}')
+                    print(f'angles proceeding widest point are {widest1_bottom_angle}, {widest2_bottom_angle}')
                 final_CPs = widest_points
 
             # if not reflective, then is the angle under the widest point high enough for it to a high angle system?
             elif 180 - widest1_bottom_angle > 79 or 180 - widest2_bottom_angle > 79:
                 # high angle systems that may appear to the code as reflective
-                print('looks reflective but is high angle')
-                print(f'angles preceding widest point are {widest1_top_angle}, {widest2_top_angle}')
-                print(f'angles proceeding widest point are {widest1_bottom_angle}, {widest2_bottom_angle}')
+                if display:
+                    print('looks reflective but is high angle')
+                    print(f'angles preceding widest point are {widest1_top_angle}, {widest2_top_angle}')
+                    print(f'angles proceeding widest point are {widest1_bottom_angle}, {widest2_bottom_angle}')
                 final_CPs = CP_guesses
 
             # otherwise use Lfit if unsure
@@ -2092,15 +2100,18 @@ def CPID(contour, display=False):
                 left_CP, right_CP = final[0][0], final[1][0]
                 final_CPs = np.array([left_CP,right_CP])
 
-                print(f'assumed low angle reflective')
-                print(f'angles preceding widest point are {widest1_top_angle}, {widest2_top_angle}')
-                print(f'angles proceeding widest point are {widest1_bottom_angle}, {widest2_bottom_angle}')
+                if display:
+                    print(f'assumed low angle reflective')
+                    print(f'angles preceding widest point are {widest1_top_angle}, {widest2_top_angle}')
+                    print(f'angles proceeding widest point are {widest1_bottom_angle}, {widest2_bottom_angle}')
         elif widest1_top_angle < 65 or widest2_top_angle < 65:
-            print(f'low angle - angles preceding widest point are {widest1_top_angle}, {widest2_top_angle}')
+            if display:
+                print(f'low angle - angles preceding widest point are {widest1_top_angle}, {widest2_top_angle}')
             final_CPs = widest_points
         elif 65 < widest1_top_angle < 90 - error_margin or 65 < widest2_top_angle < 90 - error_margin:
-            print(f'maybe high angle, Lfit - angles preceding widest point are {widest1_top_angle}, {widest2_top_angle}')
-            print(f'angles proceeding widest point are {widest1_bottom_angle}, {widest2_bottom_angle}')
+            if display:
+                print(f'maybe high angle, Lfit - angles preceding widest point are {widest1_top_angle}, {widest2_top_angle}')
+                print(f'angles proceeding widest point are {widest1_bottom_angle}, {widest2_bottom_angle}')
 
             # restrict contour to just past CP_guesses
             CP_guess_index1 = _find_point_index(contour, CP_guesses[0], "CPID: CP_guesses[0] for maybe-high-angle Lfit")
@@ -2112,8 +2123,9 @@ def CPID(contour, display=False):
 
         else:  # should do the full Lfit approach here
             final_CPs = CP_guesses
-            print(f'assumed hydrophobic - angles preceding widest point are {widest1_top_angle}, {widest2_top_angle}')
-            print(f'angles proceeding widest point are {widest1_bottom_angle}, {widest2_bottom_angle}')
+            if display:
+                print(f'assumed hydrophobic - angles preceding widest point are {widest1_top_angle}, {widest2_top_angle}')
+                print(f'angles proceeding widest point are {widest1_bottom_angle}, {widest2_bottom_angle}')
     return final_CPs
 
 def preprocess(img, display=False, blur=True):

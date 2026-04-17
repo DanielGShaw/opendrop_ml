@@ -22,9 +22,11 @@ from customtkinter import (
     CTkComboBox,
     CTkImage,
     CTkEntry,
+    CTkProgressBar,
     IntVar,
     StringVar,
 )
+import threading
 from PIL import Image, ImageDraw, ImageFont
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 import numpy as np
@@ -41,6 +43,89 @@ class CaAnalysis(CTkFrame):
         super().__init__(parent, **kwargs)
         self.user_input_data = user_input_data
 
+        if user_input_data.is_video:
+            self._init_video_mode()
+        else:
+            self._init_static_mode()
+
+    # ------------------------------------------------------------------
+    # Video-mode UI
+    # ------------------------------------------------------------------
+
+    def _init_video_mode(self):
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+
+        center_frame = CTkFrame(self, fg_color="transparent")
+        center_frame.grid(row=0, column=0)
+
+        self.pass_label = CTkLabel(
+            center_frame, text="Preparing...", font=("Roboto", 16)
+        )
+        self.pass_label.pack(pady=(40, 10))
+
+        self.progress_bar = CTkProgressBar(center_frame, width=400)
+        self.progress_bar.pack(pady=10)
+        self.progress_bar.set(0)
+
+        self.frame_counter_label = CTkLabel(
+            center_frame, text="", font=("Roboto", 12)
+        )
+        self.frame_counter_label.pack(pady=(0, 15))
+
+        self.cancel_button = CTkButton(
+            center_frame, text="Cancel", command=self.on_video_cancel
+        )
+        self.cancel_button.pack(pady=10)
+
+        self.status_label = CTkLabel(
+            center_frame, text="", font=("Roboto", 12)
+        )
+        self.status_label.pack(pady=10)
+
+        self._cancel_event = None
+
+    def set_cancel_event(self, event):
+        self._cancel_event = event
+
+    def update_video_progress(self, current, total, label):
+        if total > 0:
+            self.progress_bar.set(current / total)
+        pass_number = "1/2" if "1" in label else "2/2"
+        self.pass_label.configure(
+            text="Pass {} \u2014 frame {} of {}".format(pass_number, current, total)
+        )
+        self.frame_counter_label.configure(
+            text="Frame {} / {}".format(current, total)
+        )
+
+    def on_video_cancel(self):
+        if self._cancel_event is not None:
+            self._cancel_event.set()
+        self.cancel_button.configure(state="disabled", text="Cancelling...")
+        self.status_label.configure(text="Cancelling after current frame...")
+
+    def on_video_complete(self, status):
+        self.cancel_button.configure(state="disabled")
+        if status == "completed":
+            self.status_label.configure(
+                text="Analysis complete. Generating figures..."
+            )
+        elif status == "cancelled":
+            self.status_label.configure(text="Analysis cancelled.")
+        else:
+            self.status_label.configure(
+                text="Analysis failed: {}".format(status)
+            )
+
+    def on_figures_complete(self):
+        self.status_label.configure(text="Analysis complete. Figures saved.")
+
+    # ------------------------------------------------------------------
+    # Static-mode UI (existing behaviour, unchanged)
+    # ------------------------------------------------------------------
+
+    def _init_static_mode(self):
         self.grid_columnconfigure(0, weight=1)  # Let table expand
         # Prevent images_frame from expanding
         self.grid_columnconfigure(1, weight=0)
@@ -62,14 +147,14 @@ class CaAnalysis(CTkFrame):
 
         self.preformed_methods = {
             key: value
-            for key, value in user_input_data.analysis_methods_ca.items()
+            for key, value in self.user_input_data.analysis_methods_ca.items()
             if value
         }
 
         self.table_data = []
         self.create_table(
             parent=self,
-            rows=user_input_data.number_of_frames,
+            rows=self.user_input_data.number_of_frames,
             columns=len(self.preformed_methods) + 1,
             headers=["Index"] + list(self.preformed_methods.keys()),
         )
