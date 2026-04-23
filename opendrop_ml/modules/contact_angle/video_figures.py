@@ -80,7 +80,10 @@ def generate_timeseries_figure(csv_path, output_path):
     plt.close(fig)
 
 
-def generate_cp_scatter_figure(source_path, pass1_cps, contact_lines, output_path):
+def generate_cp_scatter_figure(
+    source_path, pass1_cps, contact_lines, output_path,
+    left_needle_x=None, right_needle_x=None,
+):
     """Overlay Pass 1 contact points on the first frame with fitted lines.
 
     Produces a 4-quadrant figure: main scatter panel with the first frame
@@ -93,6 +96,11 @@ def generate_cp_scatter_figure(source_path, pass1_cps, contact_lines, output_pat
         pass1_cps: Dict ``{"left": [[x,y],...], "right": [[x,y],...]}``.
         contact_lines: Dict ``{"left": [[x1,y1],[x2,y2]], "right": ...}``.
         output_path: Where to save the PNG.
+        left_needle_x: Optional x-coordinate of the median left needle
+            intercept. Rendered as a full-height vertical line on the
+            scatter panel when provided. Emitted by ``_needle_in_two_pass``;
+            ``_auto_two_pass`` passes ``None`` and the line is omitted.
+        right_needle_x: As ``left_needle_x`` but for the right side.
     """
     if pass1_cps is None:
         raise ValueError("No Pass 1 contact point data available")
@@ -138,14 +146,22 @@ def generate_cp_scatter_figure(source_path, pass1_cps, contact_lines, output_pat
             ll = np.asarray(left_line)
             ax_scatter.plot(
                 ll[:, 0], ll[:, 1], "-", color="red",
-                linewidth=2, zorder=5,
+                linewidth=2, zorder=7,
             )
         if right_line is not None:
             rl = np.asarray(right_line)
             ax_scatter.plot(
                 rl[:, 0], rl[:, 1], "-", color="red",
-                linewidth=2, zorder=5, label="Median contact line",
+                linewidth=2, zorder=7, label="Median contact line",
             )
+
+    needle_xs = [v for v in (left_needle_x, right_needle_x) if v is not None]
+    for i, nx in enumerate(needle_xs):
+        ax_scatter.axvline(
+            nx, linestyle="--", color="magenta",
+            linewidth=1.5, alpha=0.8, zorder=4,
+            label="Median needle line" if i == 0 else None,
+        )
 
     ax_scatter.set_title("Contact Point Scatter Plot", fontsize=14)
     ax_scatter.set_xlabel("x (px)", fontsize=12)

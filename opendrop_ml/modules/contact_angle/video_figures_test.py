@@ -130,3 +130,33 @@ class TestGenerateCpScatterFigure:
             generate_cp_scatter_figure(
                 "/tmp", empty_cps, sample_lines, str(tmp_path / "out.png")
             )
+
+    def test_renders_with_both_needle_lines(
+        self, sample_cps, sample_lines, tmp_path,
+    ):
+        output = str(tmp_path / "scatter_needle_both.png")
+        generate_cp_scatter_figure(
+            "/nonexistent/path", sample_cps, sample_lines, output,
+            left_needle_x=120.0, right_needle_x=380.0,
+        )
+        assert os.path.isfile(output)
+        assert os.path.getsize(output) > 1000
+
+    def test_renders_with_one_needle_line(
+        self, sample_cps, sample_lines, tmp_path,
+    ):
+        output = str(tmp_path / "scatter_needle_left_only.png")
+        generate_cp_scatter_figure(
+            "/nonexistent/path", sample_cps, sample_lines, output,
+            left_needle_x=120.0, right_needle_x=None,
+        )
+        assert os.path.isfile(output)
+
+    def test_backward_compat_without_needle_kwargs(
+        self, sample_cps, sample_lines, tmp_path,
+    ):
+        output = str(tmp_path / "scatter_no_needle.png")
+        generate_cp_scatter_figure(
+            "/nonexistent/path", sample_cps, sample_lines, output,
+        )
+        assert os.path.isfile(output)

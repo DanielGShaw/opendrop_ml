@@ -11,6 +11,7 @@ sys.path.insert(
 from opendrop_ml.modules.contact_angle.contact_line import (
     _line_intersection,
     find_first_intercept,
+    find_last_intercept,
     fit_contact_line,
 )
 
@@ -52,6 +53,54 @@ def test_find_first_intercept_no_crossing_returns_minus_one():
     contour = np.array([[0.0, 0.0], [5.0, 2.0], [10.0, 0.0]])
     line = np.array([[-5.0, 100.0], [15.0, 100.0]])  # line far above contour
     assert find_first_intercept(contour, line) == -1
+
+
+def test_find_last_intercept_returns_final_segment():
+    # Same triangle as find_first_intercept happy case, but iterating
+    # backward the first hit is the falling edge (segment index 1).
+    contour = np.array(
+        [
+            [0.0, 0.0],
+            [5.0, 10.0],
+            [10.0, 0.0],
+        ]
+    )
+    line = np.array([[-5.0, 5.0], [15.0, 5.0]])  # horizontal at y=5
+    assert find_last_intercept(contour, line) == 1
+
+
+def test_find_last_intercept_no_crossing_returns_minus_one():
+    contour = np.array([[0.0, 0.0], [5.0, 2.0], [10.0, 0.0]])
+    line = np.array([[-5.0, 100.0], [15.0, 100.0]])  # far above contour
+    assert find_last_intercept(contour, line) == -1
+
+
+def test_find_last_intercept_max_y_filters_high_intercepts():
+    # Triangle crosses a sloped line at two points with different y
+    # values. With max_y set between them, the backward iteration must
+    # skip the upper hit and return the lower one.
+    contour = np.array(
+        [
+            [0.0, 0.0],
+            [5.0, 10.0],
+            [10.0, 0.0],
+        ]
+    )
+    # Sloped line: y = x  (passes through (0,0) and (10,10))
+    # Rising segment [0]-[1]: crosses where 2*t = 5*t (t from linear
+    # interp) — concretely at (x, y) with x = 5*t, y = 10*t, and y = x
+    # gives 10*t = 5*t → t=0, i.e. the (0,0) endpoint.
+    # Use a shifted line instead so both crossings land mid-segment.
+    line = np.array([[0.0, 2.0], [10.0, 8.0]])  # slope 0.6, y = 0.6x + 2
+    # Rising edge [0]-[1]: y_contour = 2x vs y_line = 0.6x + 2 →
+    #   2x = 0.6x + 2 → x = 2/1.4 ≈ 1.43, y ≈ 2.86
+    # Falling edge [1]-[2]: y_contour = -2x + 20 vs y_line = 0.6x + 2 →
+    #   -2x + 20 = 0.6x + 2 → x = 18/2.6 ≈ 6.92, y ≈ 6.15
+    # Without max_y, last crossing (backward) is segment 1 (y≈6.15).
+    assert find_last_intercept(contour, line) == 1
+    # max_y=4 rejects the falling-edge hit (y≈6.15) — falls back to
+    # rising-edge hit (y≈2.86) at segment 0.
+    assert find_last_intercept(contour, line, max_y=4.0) == 0
 
 
 def test_fit_contact_line_recovers_slope_with_outlier():

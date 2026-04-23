@@ -83,9 +83,12 @@ def run_video_analysis(
 ):
     """Dispatch video-mode CA analysis.
 
-    Currently a single branch: the two-pass auto pipeline used for
-    standard sessile (needle-outside, horizontal surface) video input.
+    Branches on `user_input_data.needle_in_drop`: the needle-in-drop
+    (Isaac-style) two-pass pipeline when True, the standard sessile
+    (needle-outside, horizontal surface) two-pass pipeline otherwise.
     """
+    if user_input_data.needle_in_drop:
+        return _needle_in_two_pass(user_input_data, writer, progress, cancel)
     return _auto_two_pass(user_input_data, writer, progress, cancel)
 
 
@@ -100,6 +103,21 @@ def _auto_two_pass(
     # that only need UnifiedCsvWriter.
     from opendrop_ml.modules.contact_angle.video_two_pass import (
         _auto_two_pass as _impl,
+    )
+    return _impl(user_input_data, writer, progress, cancel)
+
+
+def _needle_in_two_pass(
+    user_input_data: ExperimentalSetup,
+    writer: UnifiedCsvWriter,
+    progress: Callable[[int, int, str], None],
+    cancel: Callable[[], bool],
+):
+    # Lazy-import stub. The target module lands in Phase G; until then,
+    # calling this raises ModuleNotFoundError (module-level import stays
+    # cheap and `test_all.py` stays green).
+    from opendrop_ml.modules.contact_angle.video_two_pass_needle_in import (
+        _needle_in_two_pass as _impl,
     )
     return _impl(user_input_data, writer, progress, cancel)
 

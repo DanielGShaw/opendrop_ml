@@ -26,7 +26,7 @@ frame_interval: 1 # Time between frames/images (float number)
 
 # --- Video mode ---
 is_video: false # Treat input as a single system over time (video file or image folder)
-needle_in_drop: false # Needle visible inside the drop (reserved; not yet read by the pipeline)
+needle_in_drop: true # Needle visible inside the drop; read by the video-mode router
 surface_tilted: false # Substrate is tilted (reserved; not yet read by the pipeline)
 tilt_angle_deg: 0.0 # Manual tilt angle (reserved; not yet read by the pipeline)
 manual_preprocessing: false # Any preprocessing step picked manually (reserved; not yet read by the pipeline)

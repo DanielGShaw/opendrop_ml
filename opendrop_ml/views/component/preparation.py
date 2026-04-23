@@ -343,7 +343,7 @@ def create_analysis_checklist_ift(self, parent, user_input_data: ExperimentalSet
     return analysis_clist_frame
 
 
-def create_user_inputs_cm(self, parent, user_input_data):
+def create_user_inputs_cm(self, parent, user_input_data, on_needle_toggle=None):
     """Create user input fields and return the frame containing them."""
     # Create the user input frame
     user_input_frame = CTkFrame(parent)
@@ -371,7 +371,7 @@ def create_user_inputs_cm(self, parent, user_input_data):
                             pady=(0, 10), sticky="nsew")
 
     # Configure the grid of input_fields_frame to be resizable
-    for i in range(4):
+    for i in range(5):
         input_fields_frame.grid_rowconfigure(i, weight=1)
     input_fields_frame.grid_columnconfigure(
         0, weight=0)  # Label column fixed width
@@ -448,6 +448,36 @@ def create_user_inputs_cm(self, parent, user_input_data):
         default_value=ThresholdSelect.AUTOMATED if is_video else user_input_data.baseline_method,
     )
     self.baseline_method.optionmenu.grid_configure(sticky="ew")
+
+    if is_video:
+        needle_yes = "Yes (auto)"
+        needle_no = "None"
+        needle_options = [needle_yes, needle_no]
+        needle_default = needle_yes if user_input_data.needle_in_drop else needle_no
+
+        def update_needle_in_drop(*args):
+            user_input_data.needle_in_drop = (
+                self.needle_in_drop.get_value() == needle_yes
+            )
+            if on_needle_toggle is not None:
+                on_needle_toggle(user_input_data.needle_in_drop)
+
+        self.needle_in_drop = OptionMenu(
+            self,
+            input_fields_frame,
+            "Needle inside drop:",
+            needle_options,
+            lambda *args: update_needle_in_drop(*args),
+            rw=4,
+            default_value=needle_default,
+        )
+        self.needle_in_drop.optionmenu.grid_configure(sticky="ew")
+
+        create_tooltip(
+            self.needle_in_drop.label,
+            "Select 'Yes (auto)' when the needle is visible inside the droplet; "
+            "the preview shows auto-detected needle lines.",
+        )
 
     create_tooltip(
         self.drop_id_method.label, "The method to identify the droplet region"

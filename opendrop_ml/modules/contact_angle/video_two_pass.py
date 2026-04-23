@@ -11,19 +11,24 @@ Entry point: :func:`_auto_two_pass` (called by
 """
 
 import math
-import os
 from typing import Callable, Dict, Iterable, Optional, Tuple
 
 import numpy as np
 
+from opendrop_ml.modules.contact_angle._video_helpers import (
+    _frame_filepath,
+    _frame_timestamp,
+    _load_ml_model,
+    _try_circular,
+    _try_ellipse,
+    _try_polynomial,
+    _try_yl,
+)
 from opendrop_ml.modules.contact_angle.contact_line import (
     find_first_intercept,
     fit_contact_line,
 )
-from opendrop_ml.modules.fitting.BA_fit import yl_fit
 from opendrop_ml.modules.fitting.circular_fit import circular_fit
-from opendrop_ml.modules.fitting.ellipse_fit import ellipse_fit
-from opendrop_ml.modules.fitting.polynomial_fit import polynomial_fit
 from opendrop_ml.modules.image.frame_loader import get_frame_count, load_frames
 from opendrop_ml.modules.ML_model.prepare_experimental import (
     experimental_pred,
@@ -33,11 +38,8 @@ from opendrop_ml.modules.ML_model.prepare_experimental import (
 from opendrop_ml.modules.preprocessing.preprocessing import CPID, isolate_contour
 from opendrop_ml.utils.config import LEFT_ANGLE, RIGHT_ANGLE
 from opendrop_ml.utils.enums import FittingMethod
-from opendrop_ml.utils.os import resource_path
 
 
-# Polynomial / tangent fit parameters applied to each profile in Pass 2.
-N_TANGENT_POINTS = 10
 POLYNOMIAL_DEGREE_TANGENT = 1
 POLYNOMIAL_DEGREE_POLY = 2
 
@@ -82,6 +84,10 @@ def _auto_two_pass(user_input_data, writer, progress: ProgressCb, cancel: Cancel
     ``pass1_cps``
         ``{"left": [[x, y], …], "right": [[x, y], …]}`` — the raw Pass 1
         CPs used to fit the median lines, or ``None`` on cancel.
+    ``left_needle_x``, ``right_needle_x``
+        Always ``None`` for the needle-outside pipeline. Emitted so
+        the needle-in pipeline (which populates them) can share the
+        same Phase I figure generator.
     """
     source_path = user_input_data.import_files[0]
     skip = max(1, int(user_input_data.video_skip_interval))
@@ -102,6 +108,8 @@ def _auto_two_pass(user_input_data, writer, progress: ProgressCb, cancel: Cancel
             "left_contact_line": None,
             "right_contact_line": None,
             "pass1_cps": None,
+            "left_needle_x": None,
+            "right_needle_x": None,
         }
     left_line, right_line, left_cps, right_cps = pass1
 
@@ -130,6 +138,8 @@ def _auto_two_pass(user_input_data, writer, progress: ProgressCb, cancel: Cancel
             "left": left_cps.tolist(),
             "right": right_cps.tolist(),
         },
+        "left_needle_x": None,
+        "right_needle_x": None,
     }
 
 
@@ -301,62 +311,6 @@ def _analyze_frame(
     return contact_angles, ""
 
 
-# ---------------------------------------------------------------------------
-# Per-method helpers — isolate failures so the rest of the row survives.
-# ---------------------------------------------------------------------------
-
-def _try_polynomial(out: Dict, method: FittingMethod, profile, degree: int) -> None:
-    try:
-        angles, *_ = polynomial_fit(
-            profile,
-            num_points=N_TANGENT_POINTS,
-            polynomial_degree=degree,
-            display=False,
-        )
-        out[method] = {
-            LEFT_ANGLE: float(angles[0]),
-            RIGHT_ANGLE: float(angles[1]),
-        }
-    except Exception:
-        pass
-
-
-def _try_circular(out: Dict, profile) -> None:
-    try:
-        angles, *_ = circular_fit(profile, display=False)
-        out[FittingMethod.CIRCLE_FIT] = {
-            LEFT_ANGLE: float(angles[0]),
-            RIGHT_ANGLE: float(angles[1]),
-        }
-    except Exception:
-        pass
-
-
-def _try_ellipse(out: Dict, profile) -> None:
-    try:
-        angles, *_ = ellipse_fit(profile, display=False)
-        if not angles:
-            return
-        out[FittingMethod.ELLIPSE_FIT] = {
-            LEFT_ANGLE: float(angles[0]),
-            RIGHT_ANGLE: float(angles[1]),
-        }
-    except Exception:
-        pass
-
-
-def _try_yl(out: Dict, profile) -> None:
-    try:
-        result = yl_fit(profile, display=False)
-        angles = result[0]
-        out[FittingMethod.YL_FIT] = {
-            LEFT_ANGLE: float(angles[0]),
-            RIGHT_ANGLE: float(angles[1]),
-        }
-    except Exception:
-        pass
-
-
 def _try_ml(
     out: Dict,
     frame: np.ndarray,
@@ -473,31 +427,3 @@ def _rerun_preprocess_downsampled(
     return contour_ml, idx_l, idx_r
 
 
-# ---------------------------------------------------------------------------
-# ML model + frame-metadata helpers
-# ---------------------------------------------------------------------------
-
-def _load_ml_model():
-    # Imported lazily: TF import cost is ~1s and only worth paying when the
-    # user actually enabled ML_MODEL for the run.
-    import tensorflow as tf
-
-    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-    os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
-    model_path = resource_path("modules/ML_model/")
-    return tf.keras.models.load_model(model_path)
-
-
-def _frame_filepath(source_path: str, meta: Dict) -> str:
-    """Return a per-row path: the image for a directory, the video for a file."""
-    if "filename" in meta:
-        return os.path.join(source_path, meta["filename"])
-    return source_path
-
-
-def _frame_timestamp(frame_number: int, meta: Dict) -> float:
-    """Return t in seconds, or NaN for image directories (no native fps)."""
-    fps = meta.get("fps")
-    if fps is None or fps <= 0:
-        return float("nan")
-    return frame_number / fps

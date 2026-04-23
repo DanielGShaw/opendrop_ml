@@ -1,14 +1,11 @@
 """Needle detection and masking for needle-in-drop video analysis.
 
-Ported from the working notebook:
-paper_results/data/video_analysis/isaac/*/needle_in_clean.ipynb
-
-Key functions:
-- extract_edges_two_contours: extract the two largest contours from an image
-- hough_baseline: detect horizontal baseline via standard Hough transform
-- detect_vertical_lines: detect two vertical needle lines via Hough transform
-- remove_points_near_lines: remove contour points near detected lines
-- mask_needle: orchestrator that combines detection + removal
+Public API:
+    - extract_edges_two_contours: extract the two largest contours
+    - hough_baseline: detect horizontal baseline via standard Hough transform
+    - detect_vertical_lines: detect two vertical needle lines
+    - remove_points_near_lines: remove contour points near detected lines
+    - mask_needle: orchestrator combining detection + removal
 """
 
 import numpy as np
@@ -21,16 +18,13 @@ IGNORE_EDGE_MARGIN = 1  # Margin to ignore edge points near image borders
 def extract_edges_two_contours(img, threshold_val=None, blur=False):
     """Extract the two largest contours from an image.
 
-    Uses Otsu thresholding if threshold_val is not provided.
-    Filters out points near image borders (IGNORE_EDGE_MARGIN).
-
-    Matches extract_edges_CV2 from needle_in_clean.ipynb.
+    Uses Otsu thresholding if threshold_val is not provided. Filters
+    out points near image borders (IGNORE_EDGE_MARGIN).
 
     Args:
         img: BGR or grayscale image (np.ndarray).
         threshold_val: Manual threshold value, or None for Otsu.
-        blur: If True, apply 3x3 Gaussian blur before thresholding
-              (matches extract_edges_CV default in preprocessing.py).
+        blur: If True, apply 3x3 Gaussian blur before thresholding.
 
     Returns:
         (contour1, contour2, threshold_used) where contour1 is the longest
@@ -64,16 +58,15 @@ def extract_edges_two_contours(img, threshold_val=None, blur=False):
             "Expected at least 2 contours, found {}".format(len(contours))
         )
 
-    # Reshape contours to (N, 2)
     contours = [c.reshape(-1, 2) for c in contours]
 
-    # Sort by arc length (perimeter), descending
-    contours.sort(key=lambda c: cv2.arcLength(
-        c.reshape(-1, 1, 2), closed=False), reverse=True)
+    contours.sort(
+        key=lambda c: cv2.arcLength(c.reshape(-1, 1, 2), closed=False),
+        reverse=True,
+    )
 
     profiles = contours[:2]
 
-    # Filter out points near image edges and remove duplicates
     height, width = img.shape[:2]
     for i, drop_profile in enumerate(profiles):
         if width >= IGNORE_EDGE_MARGIN and height >= IGNORE_EDGE_MARGIN:
@@ -85,7 +78,6 @@ def extract_edges_two_contours(img, threshold_val=None, blur=False):
             )
             drop_profile = drop_profile[mask]
 
-        # Remove duplicate consecutive points
         keep = np.ones(len(drop_profile), dtype=bool)
         keep[1:] = np.any(drop_profile[1:] != drop_profile[:-1], axis=1)
         profiles[i] = drop_profile[keep]
@@ -94,10 +86,7 @@ def extract_edges_two_contours(img, threshold_val=None, blur=False):
 
 
 def hough_baseline(edges_img, threshold=40, vertical_threshold=10):
-    """Detect horizontal baseline using standard Hough Line Transform.
-
-    Matches hough_baseline from needle_in_clean.ipynb (uses cv2.HoughLines,
-    not HoughLinesP).
+    """Detect a horizontal baseline using the standard Hough Line Transform.
 
     Args:
         edges_img: Binary edge image.
@@ -113,7 +102,6 @@ def hough_baseline(edges_img, threshold=40, vertical_threshold=10):
     if lines is None:
         return None
 
-    # Filter out vertical lines — keep lines near horizontal (theta near 90°)
     filtered_lines = []
     for line in lines:
         rho, theta = line[0]
@@ -123,7 +111,6 @@ def hough_baseline(edges_img, threshold=40, vertical_threshold=10):
     if not filtered_lines:
         return None
 
-    # Convert rho/theta to endpoint form
     converted = []
     for line in filtered_lines:
         rho, theta = line[0]
@@ -137,7 +124,6 @@ def hough_baseline(edges_img, threshold=40, vertical_threshold=10):
         y2 = int(y0 - 1000 * a)
         converted.append([[x1, y1], [x2, y2]])
 
-    # Sort by flatness (smallest absolute gradient)
     def gradient_key(line_pts):
         lx1, ly1 = line_pts[0]
         lx2, ly2 = line_pts[1]
@@ -149,13 +135,13 @@ def hough_baseline(edges_img, threshold=40, vertical_threshold=10):
     return np.array(converted[0])
 
 
-def detect_vertical_lines(edges_img, hough_threshold=100,
-                          vertical_angle_threshold=30):
+def detect_vertical_lines(
+    edges_img, hough_threshold=100, vertical_angle_threshold=30
+):
     """Detect two vertical needle lines using Hough Line Transform.
 
-    Matches detect_vertical_lines from needle_in_clean.ipynb. Uses
-    merge-count sorting to distinguish real needle lines (many overlapping
-    detections) from border artifacts (few detections).
+    Uses merge-count sorting to distinguish real needle lines (many
+    overlapping detections) from border artifacts (few detections).
 
     Args:
         edges_img: Binary edge image.
@@ -164,10 +150,10 @@ def detect_vertical_lines(edges_img, hough_threshold=100,
             (degrees) to consider a line as a needle candidate.
 
     Returns:
-        (left_ext, right_ext, left_seg, right_seg)
-        where ext are [[x1, y1], [x2, y2]] extended to full image height,
-        and seg are [x1, y1, x2, y2] original segments.
-        Returns (None, None, None, None) if detection fails.
+        (left_ext, right_ext, left_seg, right_seg) where ext are
+        [[x1, y1], [x2, y2]] extended to full image height, and seg
+        are [x1, y1, x2, y2] original segments. Returns
+        (None, None, None, None) if detection fails.
     """
     h, w = edges_img.shape[:2]
     min_line_length = int(h * 0.05)
@@ -175,25 +161,31 @@ def detect_vertical_lines(edges_img, hough_threshold=100,
     merge_threshold = int(w * 0.01)
 
     lines = cv2.HoughLinesP(
-        edges_img, 1, np.pi / 180, hough_threshold,
-        minLineLength=min_line_length, maxLineGap=max_line_gap,
+        edges_img,
+        1,
+        np.pi / 180,
+        hough_threshold,
+        minLineLength=min_line_length,
+        maxLineGap=max_line_gap,
     )
 
     if lines is None:
         return None, None, None, None
 
-    # Filter to near-vertical lines
     vertical_lines = []
     for line in lines:
         x1, y1, x2, y2 = line[0]
         angle = abs(np.arctan2(y2 - y1, x2 - x1) * 180 / np.pi)
-        if 90 - vertical_angle_threshold <= angle <= 90 + vertical_angle_threshold:
+        if (
+            90 - vertical_angle_threshold
+            <= angle
+            <= 90 + vertical_angle_threshold
+        ):
             vertical_lines.append([x1, y1, x2, y2])
 
     if len(vertical_lines) < 2:
         return None, None, None, None
 
-    # Merge close lines by x1/x2 proximity, tracking merge counts
     merged_lines = []
     merge_counts = []
     for line in vertical_lines:
@@ -201,10 +193,11 @@ def detect_vertical_lines(edges_img, hough_threshold=100,
         should_merge = False
         for i, merged_line in enumerate(merged_lines):
             mx1, my1, mx2, my2 = merged_line
-            if (abs(mx1 - x1) < merge_threshold
-                    and abs(mx2 - x2) < merge_threshold):
+            if (
+                abs(mx1 - x1) < merge_threshold
+                and abs(mx2 - x2) < merge_threshold
+            ):
                 should_merge = True
-                # Keep the line with the highest y-values (lower on image)
                 if max(y1, y2) > max(my1, my2):
                     merged_lines[i] = line
                 merge_counts[i] += 1
@@ -216,18 +209,16 @@ def detect_vertical_lines(edges_img, hough_threshold=100,
     if len(merged_lines) < 2:
         return None, None, None, None
 
-    # Sort by merge count descending, then by y1
     sorted_with_counts = sorted(
         zip(merged_lines, merge_counts),
-        key=lambda lc: lc[1], reverse=True,
+        key=lambda lc: lc[1],
+        reverse=True,
     )
     merged_lines = [line for line, count in sorted_with_counts]
     merged_lines = sorted(merged_lines, key=lambda line: line[1])
 
-    # Take top 2 sorted by x-coordinate (left, right)
     using = sorted(merged_lines[:2], key=lambda line: line[0])
 
-    # Extend lines to full image height
     extended_lines = []
     for x1, y1, x2, y2 in using[:2]:
         if x2 != x1:
@@ -242,19 +233,22 @@ def detect_vertical_lines(edges_img, hough_threshold=100,
     if len(extended_lines) < 2:
         return None, None, None, None
 
-    # Clamp x-coordinates to image bounds
     for i, line in enumerate(extended_lines):
         extended_lines[i][0] = max(0, min(w - 1, line[0]))
         extended_lines[i][2] = max(0, min(w - 1, line[2]))
 
-    left_ext = np.array([
-        [extended_lines[0][0], extended_lines[0][1]],
-        [extended_lines[0][2], extended_lines[0][3]],
-    ])
-    right_ext = np.array([
-        [extended_lines[-1][0], extended_lines[-1][1]],
-        [extended_lines[-1][2], extended_lines[-1][3]],
-    ])
+    left_ext = np.array(
+        [
+            [extended_lines[0][0], extended_lines[0][1]],
+            [extended_lines[0][2], extended_lines[0][3]],
+        ]
+    )
+    right_ext = np.array(
+        [
+            [extended_lines[-1][0], extended_lines[-1][1]],
+            [extended_lines[-1][2], extended_lines[-1][3]],
+        ]
+    )
 
     return left_ext, right_ext, using[0], using[1]
 
@@ -301,13 +295,19 @@ def remove_points_near_lines(contour, lines, distance_threshold=2.0):
     return contour[mask]
 
 
-def mask_needle(left_contour, right_contour, img_shape, hough_threshold=40,
-                distance_threshold=5.0, display=False):
+def mask_needle(
+    left_contour,
+    right_contour,
+    img_shape,
+    hough_threshold=40,
+    distance_threshold=5.0,
+    display=False,
+):
     """Detect needle lines and remove nearby points from drop contours.
 
-    This is the main orchestrator: it creates an edge image from the
-    contours, detects vertical needle lines, removes points near those
-    lines (and near the baseline), then returns cleaned contours.
+    Main orchestrator: creates an edge image from the contours, detects
+    vertical needle lines, removes points near those lines (and near
+    the baseline), then returns cleaned contours.
 
     Args:
         left_contour: Nx2 array for left drop edge.
@@ -323,7 +323,6 @@ def mask_needle(left_contour, right_contour, img_shape, hough_threshold=40,
     """
     h, w = img_shape[:2]
 
-    # Create binary edge image from contours for Hough detection
     edge_img = np.zeros((h, w), dtype=np.uint8)
     for pt in left_contour:
         x, y = int(pt[0]), int(pt[1])
@@ -334,15 +333,12 @@ def mask_needle(left_contour, right_contour, img_shape, hough_threshold=40,
         if 0 <= x < w and 0 <= y < h:
             edge_img[y, x] = 255
 
-    # Detect baseline
     baseline = hough_baseline(edge_img, threshold=hough_threshold)
 
-    # Detect vertical needle lines
     left_line, right_line, _, _ = detect_vertical_lines(
         edge_img, hough_threshold=hough_threshold
     )
 
-    # Build list of lines to remove points near
     lines_to_remove = []
     if baseline is not None:
         lines_to_remove.append(baseline.tolist())
@@ -351,7 +347,6 @@ def mask_needle(left_contour, right_contour, img_shape, hough_threshold=40,
     if right_line is not None:
         lines_to_remove.append(right_line.tolist())
 
-    # Remove points near lines
     left_isolated = remove_points_near_lines(
         left_contour, lines_to_remove, distance_threshold
     )
@@ -361,102 +356,34 @@ def mask_needle(left_contour, right_contour, img_shape, hough_threshold=40,
 
     if display:
         _plot_debug(
-            edge_img, left_contour, right_contour,
-            left_isolated, right_isolated,
-            baseline, left_line, right_line
+            edge_img,
+            left_contour,
+            right_contour,
+            left_isolated,
+            right_isolated,
+            baseline,
+            left_line,
+            right_line,
         )
 
     return left_isolated, right_isolated, baseline, left_line, right_line
 
 
 # ---------------------------------------------------------------------------
-# Line intersection utilities (used by evaluate_isaac.py)
-# ---------------------------------------------------------------------------
-
-def find_first_intercept(contour, line_points):
-    """Find the index of the first contour-line intersection.
-
-    Args:
-        contour: Nx2 array of ordered [x, y] coordinates.
-        line_points: [[x1, y1], [x2, y2]] defining the line.
-
-    Returns:
-        Index of the first intersecting segment, or -1.
-    """
-    line_p1, line_p2 = line_points
-    n_points = len(contour)
-
-    for i in range(n_points - 1):
-        intersection = _line_intersection(
-            contour[i], contour[i + 1], line_p1, line_p2
-        )
-        if intersection is not None:
-            return i
-    return -1
-
-
-def find_last_intercept(contour, line_points, max_y=None):
-    """Find the index of the last contour-line intersection.
-
-    Iterates backward through the contour.
-
-    Args:
-        contour: Nx2 array of ordered [x, y] coordinates.
-        line_points: [[x1, y1], [x2, y2]] defining the line.
-        max_y: If provided, only return intersections with y <= max_y.
-
-    Returns:
-        Index of the last intersecting segment, or -1.
-    """
-    line_p1, line_p2 = line_points
-    n_points = len(contour)
-
-    for i in range(n_points - 2, -1, -1):
-        intersection = _line_intersection(
-            contour[i], contour[i + 1], line_p1, line_p2
-        )
-        if intersection is not None:
-            if max_y is not None:
-                _, y_intercept = intersection
-                if y_intercept <= max_y:
-                    return i
-            else:
-                return i
-    return -1
-
-
-# ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
 
-def _line_intersection(p1, p2, q1, q2, tol=0.5):
-    """Check if two line segments intersect and return the intersection point.
-
-    Uses parametric line intersection (2D cross product method).
-
-    Returns:
-        Intersection point as np.array, or None if no intersection.
-    """
-    p = np.array(p1, dtype=float)
-    r = np.array(p2, dtype=float) - p
-    q = np.array(q1, dtype=float)
-    s = np.array(q2, dtype=float) - q
-
-    r_cross_s = np.cross(r, s)
-    if abs(r_cross_s) < tol:
-        return None  # Parallel or collinear
-
-    t = np.cross((q - p), s) / r_cross_s
-    u = np.cross((q - p), r) / r_cross_s
-
-    if -tol <= t <= 1 + tol and -tol <= u <= 1 + tol:
-        return p + t * r
-    return None
-
-
-def _plot_debug(edge_img, left_orig, right_orig, left_iso, right_iso,
-                baseline, left_line, right_line):
-    """Show debug visualization of needle masking results."""
+def _plot_debug(
+    edge_img,
+    left_orig,
+    right_orig,
+    left_iso,
+    right_iso,
+    baseline,
+    left_line,
+    right_line,
+):
+    """Show debug visualisation of needle masking results."""
     try:
         import matplotlib.pyplot as plt
     except ImportError:
@@ -467,23 +394,36 @@ def _plot_debug(edge_img, left_orig, right_orig, left_iso, right_iso,
     ax1.imshow(edge_img, cmap="gray")
     ax1.set_title("Edge image + detected lines")
     if baseline is not None:
-        ax1.plot(baseline[:, 0], baseline[:, 1], "g-",
-                 linewidth=2, label="Baseline")
+        ax1.plot(
+            baseline[:, 0], baseline[:, 1], "g-", linewidth=2, label="Baseline"
+        )
     if left_line is not None:
-        ax1.plot([left_line[0][0], left_line[1][0]],
-                 [left_line[0][1], left_line[1][1]], "r-",
-                 linewidth=2, label="Left needle")
+        ax1.plot(
+            [left_line[0][0], left_line[1][0]],
+            [left_line[0][1], left_line[1][1]],
+            "r-",
+            linewidth=2,
+            label="Left needle",
+        )
     if right_line is not None:
-        ax1.plot([right_line[0][0], right_line[1][0]],
-                 [right_line[0][1], right_line[1][1]], "b-",
-                 linewidth=2, label="Right needle")
+        ax1.plot(
+            [right_line[0][0], right_line[1][0]],
+            [right_line[0][1], right_line[1][1]],
+            "b-",
+            linewidth=2,
+            label="Right needle",
+        )
     ax1.legend()
 
     ax2.set_title("Isolated contours (after removal)")
     if len(left_iso) > 0:
-        ax2.plot(left_iso[:, 0], left_iso[:, 1], ".", markersize=1, label="Left")
+        ax2.plot(
+            left_iso[:, 0], left_iso[:, 1], ".", markersize=1, label="Left"
+        )
     if len(right_iso) > 0:
-        ax2.plot(right_iso[:, 0], right_iso[:, 1], ".", markersize=1, label="Right")
+        ax2.plot(
+            right_iso[:, 0], right_iso[:, 1], ".", markersize=1, label="Right"
+        )
     ax2.legend()
     ax2.set_aspect("equal")
     ax2.invert_yaxis()

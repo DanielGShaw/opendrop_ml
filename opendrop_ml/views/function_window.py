@@ -64,8 +64,8 @@ class FunctionWindow(CTkToplevel):
     ):
         super().__init__()  # Call the parent class constructor
         self.title(function_type.value)
-        self.geometry("1000x750")
-        self.minsize(1000, 750)
+        self.geometry("1150x750")
+        self.minsize(1150, 750)
 
         # main window
         self.main_window = main_window
@@ -439,7 +439,7 @@ class FunctionWindow(CTkToplevel):
             needed_width = 1100
 
         screen_w = self.winfo_screenwidth()
-        width = max(1000, min(needed_width, screen_w - 50))
+        width = max(1150, min(needed_width, screen_w - 50))
         height = self.winfo_height()
 
         self.minsize(width, 750)
@@ -686,6 +686,8 @@ class FunctionWindow(CTkToplevel):
                     "right": result.get("right_contact_line"),
                 },
                 output_path=scatter_path,
+                left_needle_x=result.get("left_needle_x"),
+                right_needle_x=result.get("right_needle_x"),
             )
         except Exception as e:
             print("[Warning] CP scatter figure generation failed: {}".format(e))

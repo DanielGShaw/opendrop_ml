@@ -41,7 +41,7 @@ def test_experimental_setup_has_new_fields():
     """All six video-mode flags default correctly on a fresh setup."""
     setup = ExperimentalSetup()
     assert setup.is_video is False
-    assert setup.needle_in_drop is False
+    assert setup.needle_in_drop is True
     assert setup.surface_tilted is False
     assert setup.tilt_angle_deg == 0.0
     assert setup.manual_preprocessing is False
@@ -141,7 +141,7 @@ def test_writer_append_mode_preserves_header(tmp_path, setup_with_two_methods):
 
 
 def test_run_video_analysis_routes_to_two_pass(monkeypatch):
-    """Router stub forwards all four args to _auto_two_pass."""
+    """needle_in_drop=False forwards all four args to _auto_two_pass."""
     calls = []
 
     def spy(user_input_data, writer, progress, cancel):
@@ -150,7 +150,9 @@ def test_run_video_analysis_routes_to_two_pass(monkeypatch):
 
     monkeypatch.setattr(ca_data_processor, "_auto_two_pass", spy)
 
-    sentinel_user = object()
+    setup = ExperimentalSetup()
+    # Default is False, but set explicitly to make intent obvious.
+    setup.needle_in_drop = False
     sentinel_writer = object()
 
     def progress(*args):
@@ -159,11 +161,38 @@ def test_run_video_analysis_routes_to_two_pass(monkeypatch):
     def cancel():
         return False
 
-    result = run_video_analysis(sentinel_user, sentinel_writer, progress, cancel)
+    result = run_video_analysis(setup, sentinel_writer, progress, cancel)
 
     assert result == "spy-return"
     assert len(calls) == 1
-    assert calls[0] == (sentinel_user, sentinel_writer, progress, cancel)
+    assert calls[0] == (setup, sentinel_writer, progress, cancel)
+
+
+def test_run_video_analysis_routes_to_needle_in(monkeypatch):
+    """needle_in_drop=True forwards all four args to _needle_in_two_pass."""
+    calls = []
+
+    def spy(user_input_data, writer, progress, cancel):
+        calls.append((user_input_data, writer, progress, cancel))
+        return "needle-spy-return"
+
+    monkeypatch.setattr(ca_data_processor, "_needle_in_two_pass", spy)
+
+    setup = ExperimentalSetup()
+    setup.needle_in_drop = True
+    sentinel_writer = object()
+
+    def progress(*args):
+        return None
+
+    def cancel():
+        return False
+
+    result = run_video_analysis(setup, sentinel_writer, progress, cancel)
+
+    assert result == "needle-spy-return"
+    assert len(calls) == 1
+    assert calls[0] == (setup, sentinel_writer, progress, cancel)
 
 
 def test_auto_two_pass_delegates_to_video_two_pass(monkeypatch):

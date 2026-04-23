@@ -59,7 +59,7 @@ class ExperimentalSetup(object):
         # for planned needle-in, tilt-correction, and manual-preprocessing
         # paths.
         self.is_video: bool = False
-        self.needle_in_drop: bool = False
+        self.needle_in_drop: bool = True
         self.surface_tilted: bool = False
         self.tilt_angle_deg: float = 0.0
         self.manual_preprocessing: bool = False

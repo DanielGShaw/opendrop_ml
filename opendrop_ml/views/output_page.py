@@ -136,10 +136,17 @@ class OutputPage(ctk.CTkFrame):
                 info_frame, text=files_text, anchor="w", justify="left"
             ).grid(row=2, column=0, padx=10, pady=2, sticky="w")
 
-        hint = (
-            "Tip: Inspect the *_cp_scatter.png file to verify\n"
-            "preprocessing before trusting the CSV results."
-        )
+        if getattr(self.user_input_data, "needle_in_drop", False):
+            hint = (
+                "Tip: Inspect the *_cp_scatter.png file to verify\n"
+                "needle detection and contact-point placement before\n"
+                "trusting the CSV results."
+            )
+        else:
+            hint = (
+                "Tip: Inspect the *_cp_scatter.png file to verify\n"
+                "preprocessing before trusting the CSV results."
+            )
         ctk.CTkLabel(
             info_frame, text=hint, anchor="w", justify="left",
             text_color="gray",

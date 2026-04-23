@@ -1,8 +1,9 @@
 """Contact-line utilities for the video-mode two-pass pipeline.
 
 `fit_contact_line` fits an ODR line through IQR-filtered contact points
-(Pass 1 calibration); `find_first_intercept` locates the first contour
-segment that crosses a fitted line (Pass 2 stable-CP placement).
+(Pass 1 calibration); `find_first_intercept` and `find_last_intercept`
+locate the first/last contour segments that cross a fitted line (Pass 2
+stable-CP placement).
 """
 
 import numpy as np
@@ -67,6 +68,36 @@ def find_first_intercept(contour, line_points):
         )
         if intersection is not None:
             return i
+    return -1
+
+
+def find_last_intercept(contour, line_points, max_y=None):
+    """Find the index of the last contour-line intersection.
+
+    Iterates backward through the contour.
+
+    Args:
+        contour: Nx2 array of ordered [x, y] coordinates.
+        line_points: [[x1, y1], [x2, y2]] defining the line.
+        max_y: If provided, only return intersections with y <= max_y.
+
+    Returns:
+        Index of the last intersecting segment, or -1.
+    """
+    line_p1, line_p2 = line_points
+    n_points = len(contour)
+
+    for i in range(n_points - 2, -1, -1):
+        intersection = _line_intersection(
+            contour[i], contour[i + 1], line_p1, line_p2
+        )
+        if intersection is not None:
+            if max_y is not None:
+                _, y_intercept = intersection
+                if y_intercept <= max_y:
+                    return i
+            else:
+                return i
     return -1
 
 

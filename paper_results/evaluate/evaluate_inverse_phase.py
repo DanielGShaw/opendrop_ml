@@ -53,7 +53,7 @@ from opendrop_ml.modules.fitting.polynomial_fit import polynomial_fit
 from opendrop_ml.modules.fitting.circular_fit import circular_fit
 from opendrop_ml.modules.fitting.ellipse_fit import ellipse_fit
 from opendrop_ml.modules.fitting.BA_fit import yl_fit
-from evaluate.needle_masking import find_first_intercept
+from opendrop_ml.modules.contact_angle.contact_line import find_first_intercept
 
 import tensorflow as tf
 

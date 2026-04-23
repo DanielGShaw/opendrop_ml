@@ -8,7 +8,7 @@ sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 )
 
-from opendrop_ml.modules.contact_angle import video_two_pass
+from opendrop_ml.modules.contact_angle import _video_helpers, video_two_pass
 from opendrop_ml.modules.core.classes import ExperimentalSetup
 from opendrop_ml.utils.config import LEFT_ANGLE, RIGHT_ANGLE
 from opendrop_ml.utils.enums import FittingMethod
@@ -236,16 +236,16 @@ def test_per_fit_failure_isolated(monkeypatch):
         lambda contour_half, line: 2,
     )
     monkeypatch.setattr(
-        video_two_pass, "polynomial_fit",
+        _video_helpers, "polynomial_fit",
         lambda profile, **kw: ((45.0, 46.0), None, None, {}, {}),
     )
 
     def boom(profile, display=False):
         raise RuntimeError("synthetic yl failure")
 
-    monkeypatch.setattr(video_two_pass, "yl_fit", boom)
+    monkeypatch.setattr(_video_helpers, "yl_fit", boom)
     monkeypatch.setattr(
-        video_two_pass, "circular_fit",
+        _video_helpers, "circular_fit",
         lambda profile, display=False: ((40.0, 41.0), None, None, None, {}, {}),
     )
 
@@ -371,6 +371,29 @@ def test_filepath_is_image_path_for_directory(monkeypatch):
 
     assert writer.rows[0]["filepath"] == os.path.join("/fake/source", "f0.png")
     assert writer.rows[1]["filepath"] == os.path.join("/fake/source", "f1.png")
+
+
+def test_return_dict_carries_none_needle_x_values(monkeypatch):
+    """Auto pipeline emits the needle-x keys as None so Phase I's
+    figure generator can branch on presence uniformly."""
+    _patch_pipeline(monkeypatch, n_frames=2)
+    setup = _make_setup(methods=[FittingMethod.TANGENT_FIT])
+
+    completed = video_two_pass._auto_two_pass(
+        setup, FakeWriter(), lambda *a: None, lambda: False
+    )
+    assert completed["left_needle_x"] is None
+    assert completed["right_needle_x"] is None
+
+    # Also verify the cancelled Pass-1 branch emits them.
+    monkeypatch.setattr(
+        video_two_pass, "_pass1_calibrate", lambda *a, **kw: None
+    )
+    cancelled = video_two_pass._auto_two_pass(
+        setup, FakeWriter(), lambda *a: None, lambda: True
+    )
+    assert cancelled["left_needle_x"] is None
+    assert cancelled["right_needle_x"] is None
 
 
 if __name__ == "__main__":
