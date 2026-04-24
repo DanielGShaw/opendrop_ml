@@ -460,7 +460,7 @@ def plot_kristina_results():
     ax.set_xlabel("Frame number")
     ax.set_ylabel(u"$\\theta$ (\u00B0)")
     ax.set_title("Kristina PEEK 60° — Method Comparison")
-    ax.legend(ncol=3, fontsize=8)
+    ax.legend(ncol=2, fontsize=8)
     ax.text(0.01, 1.02, "b)", transform=ax.transAxes, fontsize=14, fontweight="bold")
 
     fig.tight_layout()

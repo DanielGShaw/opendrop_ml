@@ -14,9 +14,9 @@ Entry point: :func:`_needle_in_two_pass` (called by
 ``ca_data_processor.run_video_analysis`` when
 ``user_input_data.needle_in_drop`` is True).
 
-Ports ``paper_results/evaluate/evaluate_isaac.py`` into the app
-package; Isaac-specific constants and multi-stage needle-masking flow
-preserved verbatim (see comments at each step).
+Isaac-specific constants and the multi-stage needle-masking flow are
+preserved verbatim from the reference implementation — see comments
+at each step for the invariants.
 """
 
 import math

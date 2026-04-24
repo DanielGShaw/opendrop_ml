@@ -17,7 +17,6 @@ import csv
 import math
 import os
 import numpy as np
-import timeit
 import copy
 
 
@@ -31,7 +30,13 @@ class UnifiedCsvWriter:
     of which pipeline produced the row.
     """
 
-    _VIDEO_COLUMNS = ("frame_number", "timestamp_s", "filepath", "error_status")
+    _VIDEO_COLUMNS = (
+        "frame_number",
+        "timestamp_s",
+        "filepath",
+        "error_status",
+        "detected_tilt_angle",
+    )
 
     def __init__(self, path: str, user_input_data: ExperimentalSetup):
         self.path = path
@@ -60,9 +65,16 @@ class UnifiedCsvWriter:
         filepath: str,
         error_status: str,
         contact_angles: Optional[Dict] = None,
+        detected_tilt_angle: float = math.nan,
     ) -> None:
         contact_angles = contact_angles or {}
-        row = [frame_number, timestamp_s, filepath, error_status]
+        row = [
+            frame_number,
+            timestamp_s,
+            filepath,
+            error_status,
+            detected_tilt_angle,
+        ]
         for method in self._methods:
             method_data = contact_angles.get(method) or {}
             left = method_data.get(LEFT_ANGLE)
@@ -83,13 +95,23 @@ def run_video_analysis(
 ):
     """Dispatch video-mode CA analysis.
 
-    Branches on `user_input_data.needle_in_drop`: the needle-in-drop
-    (Isaac-style) two-pass pipeline when True, the standard sessile
-    (needle-outside, horizontal surface) two-pass pipeline otherwise.
+    Branches on ``(needle_in_drop, surface_tilted)``:
+    - ``(False, False)`` → standard sessile two-pass pipeline.
+    - ``(True,  False)`` → needle-in-drop (Isaac-style) two-pass pipeline.
+    - ``(False, True)``  → single-pass with auto tilt detection.
+    - ``(True,  True)``  → unsupported (raises ``NotImplementedError``).
     """
-    if user_input_data.needle_in_drop:
+    key = (user_input_data.needle_in_drop, user_input_data.surface_tilted)
+    if key == (False, False):
+        return _auto_two_pass(user_input_data, writer, progress, cancel)
+    if key == (True, False):
         return _needle_in_two_pass(user_input_data, writer, progress, cancel)
-    return _auto_two_pass(user_input_data, writer, progress, cancel)
+    if key == (False, True):
+        return _single_pass_with_tilt(user_input_data, writer, progress, cancel)
+    raise NotImplementedError(
+        "Combined needle-in-drop and tilted-surface analysis is not "
+        "yet supported or validated."
+    )
 
 
 def _auto_two_pass(
@@ -113,12 +135,35 @@ def _needle_in_two_pass(
     progress: Callable[[int, int, str], None],
     cancel: Callable[[], bool],
 ):
-    # Lazy-import stub. The target module lands in Phase G; until then,
-    # calling this raises ModuleNotFoundError (module-level import stays
-    # cheap and `test_all.py` stays green).
+    # Lazy-import stub — keeps module-level imports cheap so the
+    # default ``test_all.py`` run stays fast.
     from opendrop_ml.modules.contact_angle.video_two_pass_needle_in import (
         _needle_in_two_pass as _impl,
     )
+    return _impl(user_input_data, writer, progress, cancel)
+
+
+def _single_pass_with_tilt(
+    user_input_data: ExperimentalSetup,
+    writer: UnifiedCsvWriter,
+    progress: Callable[[int, int, str], None],
+    cancel: Callable[[], bool],
+):
+    # Lazy-import stub. Two-pass tilted variant is gated by
+    # ``_USE_TWO_PASS_TILTED`` in ``video_single_pass_tilted``. Keep
+    # module-level imports cheap so the default ``test_all.py`` run
+    # stays fast.
+    from opendrop_ml.modules.contact_angle.video_single_pass_tilted import (
+        _USE_TWO_PASS_TILTED,
+        _single_pass_with_tilt as _impl,
+    )
+    if _USE_TWO_PASS_TILTED:
+        from opendrop_ml.modules.contact_angle.video_two_pass_tilted import (
+            _auto_two_pass_with_tilt_correction,
+        )
+        return _auto_two_pass_with_tilt_correction(
+            user_input_data, writer, progress, cancel,
+        )
     return _impl(user_input_data, writer, progress, cancel)
 
 
@@ -140,9 +185,6 @@ class CaDataProcessor:
         for i in range(n_frames):
             input_file = user_input_data.import_files[i]
             try:
-                print(f"\nProcessing frame {i+1} of {n_frames}...")
-                print(f"\nProcessing {input_file}")
-                time_start = timeit.default_timer()
                 raw_experiment = ExperimentalDrop()
 
                 # Load image into the experimental drop object
@@ -180,7 +222,6 @@ class CaDataProcessor:
                         set_surface_line(raw_experiment, user_input_data)
 
                     if analysis_methods[FittingMethod.YL_FIT]:
-                        print("Performing YL fit...")
                         perform_fits(
                             raw_experiment, yl=analysis_methods[FittingMethod.YL_FIT]
                         )
@@ -226,13 +267,6 @@ class CaDataProcessor:
                             ] = timings
 
                 self.results.append(copy.deepcopy(raw_experiment.contact_angles))
-
-                print("Extracted outputs:")
-                for key1 in raw_experiment.contact_angles.keys():
-                    for key2 in raw_experiment.contact_angles[key1].keys():
-                        print(key1 + " " + key2 + ": ")
-                        print("    ", raw_experiment.contact_angles[key1][key2])
-                        print()
 
                 if callback:
                     callback(i + 1, raw_experiment)

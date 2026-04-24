@@ -8,9 +8,13 @@ Produces two PNGs saved alongside the per-run CSV:
                             box-whisker distributions.
 """
 
+import math
+from typing import Optional
+
 import numpy as np
 import pandas as pd
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -19,7 +23,11 @@ import cv2
 from opendrop_ml.modules.image.frame_loader import get_first_frame
 
 
-def generate_timeseries_figure(csv_path, output_path):
+def generate_timeseries_figure(
+    csv_path,
+    output_path,
+    median_tilt_angle: Optional[float] = None,
+):
     """Plot all enabled methods' left/right angles vs frame number.
 
     Reads the unified CSV written by ``UnifiedCsvWriter`` and produces a
@@ -29,6 +37,11 @@ def generate_timeseries_figure(csv_path, output_path):
     Args:
         csv_path: Path to the unified results CSV.
         output_path: Where to save the PNG.
+        median_tilt_angle: Optional median surface-tilt angle (degrees)
+            emitted by ``_single_pass_with_tilt``. When provided and
+            finite, the top-panel title is suffixed with the detected
+            tilt for at-a-glance inspection. Non-tilted pipelines pass
+            ``None`` and the suffix is omitted.
     """
     df = pd.read_csv(csv_path)
     if "frame_number" not in df.columns:
@@ -57,22 +70,34 @@ def generate_timeseries_figure(csv_path, output_path):
 
         mask = np.isfinite(left_vals)
         axes[0].plot(
-            frames[mask], left_vals[mask],
-            "o-", label=method_name, markersize=3, linewidth=0.8,
+            frames[mask],
+            left_vals[mask],
+            "o-",
+            label=method_name,
+            markersize=3,
+            linewidth=0.8,
         )
 
         mask = np.isfinite(right_vals)
         axes[1].plot(
-            frames[mask], right_vals[mask],
-            "o-", label=method_name, markersize=3, linewidth=0.8,
+            frames[mask],
+            right_vals[mask],
+            "o-",
+            label=method_name,
+            markersize=3,
+            linewidth=0.8,
         )
 
-    axes[0].set_ylabel(u"Left \u03b8 (\u00b0)")
-    axes[0].set_title("Contact Angle Time Series")
+    title = "Contact Angle Time Series"
+    if median_tilt_angle is not None and not math.isnan(float(median_tilt_angle)):
+        title += "  (median tilt: {:.1f}\u00b0)".format(float(median_tilt_angle))
+
+    axes[0].set_ylabel("Left \u03b8 (\u00b0)")
+    axes[0].set_title(title)
     axes[0].legend(fontsize=8)
 
     axes[1].set_xlabel("Frame number")
-    axes[1].set_ylabel(u"Right \u03b8 (\u00b0)")
+    axes[1].set_ylabel("Right \u03b8 (\u00b0)")
     axes[1].legend(fontsize=8)
 
     fig.tight_layout()
@@ -81,8 +106,13 @@ def generate_timeseries_figure(csv_path, output_path):
 
 
 def generate_cp_scatter_figure(
-    source_path, pass1_cps, contact_lines, output_path,
-    left_needle_x=None, right_needle_x=None,
+    source_path,
+    pass1_cps,
+    contact_lines,
+    output_path,
+    left_needle_x=None,
+    right_needle_x=None,
+    rotated_first_frame=None,
 ):
     """Overlay Pass 1 contact points on the first frame with fitted lines.
 
@@ -101,6 +131,11 @@ def generate_cp_scatter_figure(
             scatter panel when provided. Emitted by ``_needle_in_two_pass``;
             ``_auto_two_pass`` passes ``None`` and the line is omitted.
         right_needle_x: As ``left_needle_x`` but for the right side.
+        rotated_first_frame: Optional BGR frame already tilt-corrected by
+            ``_single_pass_with_tilt``. When provided, used as the background
+            so the CPs (which are in rotated-frame coordinates) align with
+            the image. Non-tilted pipelines pass ``None`` and the original
+            first frame is loaded via ``source_path``.
     """
     if pass1_cps is None:
         raise ValueError("No Pass 1 contact point data available")
@@ -112,11 +147,14 @@ def generate_cp_scatter_figure(
         raise ValueError("Pass 1 produced no contact points")
 
     bg_img = None
-    try:
-        frame, _, _ = get_first_frame(source_path)
-        bg_img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    except Exception:
-        pass
+    if rotated_first_frame is not None:
+        bg_img = cv2.cvtColor(rotated_first_frame, cv2.COLOR_BGR2RGB)
+    else:
+        try:
+            frame, _, _ = get_first_frame(source_path)
+            bg_img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        except Exception:
+            pass
 
     fig = plt.figure(figsize=(10, 10))
     gs = gridspec.GridSpec(4, 4, hspace=0.5, wspace=0.5)
@@ -130,13 +168,23 @@ def generate_cp_scatter_figure(
 
     if len(left_pts) > 0:
         ax_scatter.scatter(
-            left_pts[:, 0], left_pts[:, 1],
-            alpha=0.6, s=50, zorder=6, label="Left CPs", color="C0",
+            left_pts[:, 0],
+            left_pts[:, 1],
+            alpha=0.6,
+            s=50,
+            zorder=6,
+            label="Left CPs",
+            color="C0",
         )
     if len(right_pts) > 0:
         ax_scatter.scatter(
-            right_pts[:, 0], right_pts[:, 1],
-            alpha=0.6, s=50, zorder=6, label="Right CPs", color="C1",
+            right_pts[:, 0],
+            right_pts[:, 1],
+            alpha=0.6,
+            s=50,
+            zorder=6,
+            label="Right CPs",
+            color="C1",
         )
 
     if contact_lines:
@@ -145,21 +193,34 @@ def generate_cp_scatter_figure(
         if left_line is not None:
             ll = np.asarray(left_line)
             ax_scatter.plot(
-                ll[:, 0], ll[:, 1], "-", color="red",
-                linewidth=2, zorder=7,
+                ll[:, 0],
+                ll[:, 1],
+                "-",
+                color="red",
+                linewidth=2,
+                zorder=7,
             )
         if right_line is not None:
             rl = np.asarray(right_line)
             ax_scatter.plot(
-                rl[:, 0], rl[:, 1], "-", color="red",
-                linewidth=2, zorder=7, label="Median contact line",
+                rl[:, 0],
+                rl[:, 1],
+                "-",
+                color="red",
+                linewidth=2,
+                zorder=7,
+                label="Median contact line",
             )
 
     needle_xs = [v for v in (left_needle_x, right_needle_x) if v is not None]
     for i, nx in enumerate(needle_xs):
         ax_scatter.axvline(
-            nx, linestyle="--", color="magenta",
-            linewidth=1.5, alpha=0.8, zorder=4,
+            nx,
+            linestyle="--",
+            color="magenta",
+            linewidth=1.5,
+            alpha=0.8,
+            zorder=4,
             label="Median needle line" if i == 0 else None,
         )
 
@@ -192,8 +253,12 @@ def generate_cp_scatter_figure(
 
         positions = list(range(1, len(all_y) + 1))
         ax_ybox.boxplot(
-            all_y, vert=True, positions=positions,
-            labels=box_labels, patch_artist=False, showfliers=True,
+            all_y,
+            vert=True,
+            positions=positions,
+            labels=box_labels,
+            patch_artist=False,
+            showfliers=True,
         )
         ax_ybox.set_title("y Distributions", fontsize=13)
         ax_ybox.set_xticklabels(box_labels, rotation=45, ha="right", fontsize=10)
@@ -202,10 +267,14 @@ def generate_cp_scatter_figure(
         ax_ybox.set_ylabel("y (px)", fontsize=11)
 
         pos_ybox = ax_ybox.get_position()
-        ax_ybox.set_position([
-            pos_ybox.x0, pos_scatter.y0,
-            pos_ybox.width, pos_scatter.height,
-        ])
+        ax_ybox.set_position(
+            [
+                pos_ybox.x0,
+                pos_scatter.y0,
+                pos_ybox.width,
+                pos_scatter.height,
+            ]
+        )
 
     fig.savefig(output_path, dpi=150, bbox_inches="tight")
     plt.close(fig)

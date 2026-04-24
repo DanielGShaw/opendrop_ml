@@ -5,6 +5,10 @@ import math
 import os
 import tempfile
 
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
@@ -12,6 +16,23 @@ from opendrop_ml.modules.contact_angle.video_figures import (
     generate_timeseries_figure,
     generate_cp_scatter_figure,
 )
+
+
+@pytest.fixture
+def capture_axes(monkeypatch):
+    """Intercept plt.subplots to expose the Axes the figure under test
+    wrote into, so assertions can read titles after plt.close().
+    """
+    captured = {}
+    real_subplots = plt.subplots
+
+    def fake_subplots(*args, **kwargs):
+        fig, axes = real_subplots(*args, **kwargs)
+        captured["axes"] = axes
+        return fig, axes
+
+    monkeypatch.setattr(plt, "subplots", fake_subplots)
+    return captured
 
 
 @pytest.fixture
@@ -33,13 +54,31 @@ def sample_csv(tmp_path):
         writer.writerow(columns)
         for i in range(1, 11):
             if i == 5:
-                writer.writerow([i, float("nan"), "/test", "contour_short",
-                                 float("nan"), float("nan"),
-                                 float("nan"), float("nan")])
+                writer.writerow(
+                    [
+                        i,
+                        float("nan"),
+                        "/test",
+                        "contour_short",
+                        float("nan"),
+                        float("nan"),
+                        float("nan"),
+                        float("nan"),
+                    ]
+                )
             else:
-                writer.writerow([i, i * 0.033, "/test", "",
-                                 110.0 + i * 0.5, 108.0 + i * 0.3,
-                                 111.0 + i * 0.4, 109.0 + i * 0.2])
+                writer.writerow(
+                    [
+                        i,
+                        i * 0.033,
+                        "/test",
+                        "",
+                        110.0 + i * 0.5,
+                        108.0 + i * 0.3,
+                        111.0 + i * 0.4,
+                        109.0 + i * 0.2,
+                    ]
+                )
     return csv_path
 
 
@@ -47,14 +86,18 @@ def sample_csv(tmp_path):
 def sample_cps():
     """Create synthetic Pass 1 contact point data."""
     np.random.seed(42)
-    left = np.column_stack([
-        np.random.normal(100, 3, 20),
-        np.random.normal(300, 5, 20),
-    ])
-    right = np.column_stack([
-        np.random.normal(400, 3, 20),
-        np.random.normal(300, 5, 20),
-    ])
+    left = np.column_stack(
+        [
+            np.random.normal(100, 3, 20),
+            np.random.normal(300, 5, 20),
+        ]
+    )
+    right = np.column_stack(
+        [
+            np.random.normal(400, 3, 20),
+            np.random.normal(300, 5, 20),
+        ]
+    )
     return {"left": left.tolist(), "right": right.tolist()}
 
 
@@ -97,6 +140,40 @@ class TestGenerateTimeseriesFigure:
         with pytest.raises(ValueError, match="No angle columns"):
             generate_timeseries_figure(csv_path, str(tmp_path / "out.png"))
 
+    def test_timeseries_suffix_with_median_tilt(
+        self, sample_csv, tmp_path, capture_axes
+    ):
+        output = str(tmp_path / "timeseries_tilt.png")
+        generate_timeseries_figure(sample_csv, output, median_tilt_angle=60.4)
+
+        title = capture_axes["axes"][0].get_title()
+        assert "median tilt" in title
+        assert "60.4" in title
+        assert "\u00b0" in title
+        assert os.path.isfile(output)
+
+    def test_backward_compat_without_tilt_kwargs(
+        self, sample_csv, tmp_path, capture_axes
+    ):
+        output = str(tmp_path / "timeseries_no_tilt.png")
+        generate_timeseries_figure(sample_csv, output)
+
+        title = capture_axes["axes"][0].get_title()
+        assert "median tilt" not in title
+        assert os.path.isfile(output)
+
+    def test_timeseries_no_suffix_when_median_tilt_nan(
+        self, sample_csv, tmp_path, capture_axes
+    ):
+        output = str(tmp_path / "timeseries_nan.png")
+        generate_timeseries_figure(
+            sample_csv, output, median_tilt_angle=float("nan")
+        )
+
+        title = capture_axes["axes"][0].get_title()
+        assert "median tilt" not in title
+        assert os.path.isfile(output)
+
 
 class TestGenerateCpScatterFigure:
     def test_creates_png_with_image_dir(self, sample_cps, sample_lines, tmp_path):
@@ -104,6 +181,7 @@ class TestGenerateCpScatterFigure:
         os.makedirs(img_dir)
         dummy_img = np.zeros((480, 640, 3), dtype=np.uint8)
         import cv2
+
         cv2.imwrite(os.path.join(img_dir, "frame_001.png"), dummy_img)
 
         output = str(tmp_path / "scatter.png")
@@ -132,31 +210,71 @@ class TestGenerateCpScatterFigure:
             )
 
     def test_renders_with_both_needle_lines(
-        self, sample_cps, sample_lines, tmp_path,
+        self,
+        sample_cps,
+        sample_lines,
+        tmp_path,
     ):
         output = str(tmp_path / "scatter_needle_both.png")
         generate_cp_scatter_figure(
-            "/nonexistent/path", sample_cps, sample_lines, output,
-            left_needle_x=120.0, right_needle_x=380.0,
+            "/nonexistent/path",
+            sample_cps,
+            sample_lines,
+            output,
+            left_needle_x=120.0,
+            right_needle_x=380.0,
         )
         assert os.path.isfile(output)
         assert os.path.getsize(output) > 1000
 
     def test_renders_with_one_needle_line(
-        self, sample_cps, sample_lines, tmp_path,
+        self,
+        sample_cps,
+        sample_lines,
+        tmp_path,
     ):
         output = str(tmp_path / "scatter_needle_left_only.png")
         generate_cp_scatter_figure(
-            "/nonexistent/path", sample_cps, sample_lines, output,
-            left_needle_x=120.0, right_needle_x=None,
+            "/nonexistent/path",
+            sample_cps,
+            sample_lines,
+            output,
+            left_needle_x=120.0,
+            right_needle_x=None,
         )
         assert os.path.isfile(output)
 
     def test_backward_compat_without_needle_kwargs(
-        self, sample_cps, sample_lines, tmp_path,
+        self,
+        sample_cps,
+        sample_lines,
+        tmp_path,
     ):
         output = str(tmp_path / "scatter_no_needle.png")
         generate_cp_scatter_figure(
-            "/nonexistent/path", sample_cps, sample_lines, output,
+            "/nonexistent/path",
+            sample_cps,
+            sample_lines,
+            output,
         )
         assert os.path.isfile(output)
+
+    def test_uses_rotated_first_frame_when_provided(
+        self,
+        sample_cps,
+        sample_lines,
+        tmp_path,
+    ):
+        """Tilted pipeline passes its pre-rotated frame; CPs overlay it
+        directly and source_path is never consulted for the background."""
+        output = str(tmp_path / "scatter_rotated.png")
+        rotated = np.full((480, 640, 3), 128, dtype=np.uint8)
+        generate_cp_scatter_figure(
+            "/nonexistent/path",
+            sample_cps,
+            sample_lines,
+            output,
+            rotated_first_frame=rotated,
+        )
+        assert os.path.isfile(output)
+        assert os.path.getsize(output) > 1000

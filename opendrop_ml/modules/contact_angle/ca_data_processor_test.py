@@ -59,7 +59,8 @@ def test_writer_header_is_unified(tmp_path, setup_with_two_methods):
     assert len(rows) == 1
     header = rows[0]
     assert header[:4] == ["frame_number", "timestamp_s", "filepath", "error_status"]
-    assert header[4:] == [
+    assert header[4] == "detected_tilt_angle"
+    assert header[5:] == [
         "tangent fit left angle",
         "tangent fit right angle",
         "ML model left angle",
@@ -110,16 +111,21 @@ def test_writer_all_columns_every_row(tmp_path, setup_with_two_methods):
     for row in data_rows:
         assert len(row) == len(header)
 
+    # detected_tilt_angle column defaults to NaN for every row (writer called
+    # without the new kwarg — existing two-pass pipelines take this path).
+    assert data_rows[0][4] == "nan"
+    assert data_rows[1][4] == "nan"
+    assert data_rows[2][4] == "nan"
     # Full row: all numeric
-    assert data_rows[0][4:] == ["45.0", "46.0", "44.5", "45.5"]
+    assert data_rows[0][5:] == ["45.0", "46.0", "44.5", "45.5"]
     # Partial row: ML_MODEL NaNs, TANGENT right NaN
-    assert data_rows[1][4] == "47.0"
-    assert data_rows[1][5] == "nan"
+    assert data_rows[1][5] == "47.0"
     assert data_rows[1][6] == "nan"
     assert data_rows[1][7] == "nan"
+    assert data_rows[1][8] == "nan"
     # Empty row: all NaNs; error_status populated
     assert data_rows[2][3] == "contour_short"
-    assert data_rows[2][4:] == ["nan", "nan", "nan", "nan"]
+    assert data_rows[2][5:] == ["nan", "nan", "nan", "nan"]
 
 
 def test_writer_append_mode_preserves_header(tmp_path, setup_with_two_methods):
@@ -193,6 +199,60 @@ def test_run_video_analysis_routes_to_needle_in(monkeypatch):
     assert result == "needle-spy-return"
     assert len(calls) == 1
     assert calls[0] == (setup, sentinel_writer, progress, cancel)
+
+
+def test_run_video_analysis_routes_to_single_pass_with_tilt(monkeypatch):
+    """(needle_in_drop=False, surface_tilted=True) → _single_pass_with_tilt."""
+    calls = []
+
+    def spy(user_input_data, writer, progress, cancel):
+        calls.append((user_input_data, writer, progress, cancel))
+        return "tilt-spy-return"
+
+    monkeypatch.setattr(ca_data_processor, "_single_pass_with_tilt", spy)
+
+    setup = ExperimentalSetup()
+    setup.needle_in_drop = False
+    setup.surface_tilted = True
+    sentinel_writer = object()
+    progress = lambda *a: None
+    cancel = lambda: False
+
+    result = run_video_analysis(setup, sentinel_writer, progress, cancel)
+
+    assert result == "tilt-spy-return"
+    assert len(calls) == 1
+    assert calls[0] == (setup, sentinel_writer, progress, cancel)
+
+
+def test_run_video_analysis_raises_for_needle_plus_tilt():
+    """(needle_in_drop=True, surface_tilted=True) is explicitly unsupported."""
+    setup = ExperimentalSetup()
+    setup.needle_in_drop = True
+    setup.surface_tilted = True
+
+    with pytest.raises(NotImplementedError) as excinfo:
+        run_video_analysis(setup, object(), lambda *a: None, lambda: False)
+    assert "needle-in-drop" in str(excinfo.value)
+    assert "tilted-surface" in str(excinfo.value)
+
+
+def test_writer_detected_tilt_angle_populates_column(tmp_path, setup_with_two_methods):
+    """Passing detected_tilt_angle writes the value into column index 4."""
+    path = str(tmp_path / "out.csv")
+    writer = UnifiedCsvWriter(path, setup_with_two_methods)
+
+    writer.write_row(
+        frame_number=0,
+        timestamp_s=0.0,
+        filepath="f0.png",
+        error_status="",
+        contact_angles=None,
+        detected_tilt_angle=60.25,
+    )
+
+    rows = _read_csv(path)
+    assert rows[1][4] == "60.25"
 
 
 def test_auto_two_pass_delegates_to_video_two_pass(monkeypatch):

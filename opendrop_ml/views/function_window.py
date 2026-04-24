@@ -1,6 +1,10 @@
 from opendrop_ml.modules.contact_angle.ca_data_processor import CaDataProcessor
 from opendrop_ml.modules.ift.ift_data_processor import IftDataProcessor
-from opendrop_ml.modules.core.classes import ExperimentalSetup, ExperimentalDrop, DropData
+from opendrop_ml.modules.core.classes import (
+    ExperimentalSetup,
+    ExperimentalDrop,
+    DropData,
+)
 from opendrop_ml.utils.os import resource_path, is_windows
 from opendrop_ml.views.helper.validation import (
     validate_user_input_data_ift,
@@ -353,12 +357,14 @@ class FunctionWindow(CTkToplevel):
 
             if self.current_stage == Stage.PREPARATION:
                 self._handle_preparation_stage(
-                    function_type, user_input_data, experimental_drop)
+                    function_type, user_input_data, experimental_drop
+                )
 
             elif self.current_stage == Stage.ANALYSIS:
 
                 self._handle_analysis_stage(
-                    function_type, user_input_data, experimental_drop, fitted_drop_data)
+                    function_type, user_input_data, experimental_drop, fitted_drop_data
+                )
 
             elif self.current_stage == Stage.OUTPUT:
                 self._handle_output_stage(function_type, user_input_data)
@@ -379,7 +385,9 @@ class FunctionWindow(CTkToplevel):
             )
             self.on_closing()
 
-    def _handle_preparation_stage(self, function_type, user_input_data, experimental_drop):
+    def _handle_preparation_stage(
+        self, function_type, user_input_data, experimental_drop
+    ):
         if not self.check_import(user_input_data):
             self.update_stage(Move.Back.value)
             self._show_info("No Selection", "Please select at least one file.")
@@ -395,7 +403,11 @@ class FunctionWindow(CTkToplevel):
 
         if function_type == FunctionType.INTERFACIAL_TENSION:
             self.ift_preparation_frame = IftPreparation(
-                self, user_input_data, experimental_drop, self.ift_processor, fg_color=self.FG_COLOR
+                self,
+                user_input_data,
+                experimental_drop,
+                self.ift_processor,
+                fg_color=self.FG_COLOR,
             )
             self.ift_preparation_frame.pack(fill="both", expand=True)
         else:
@@ -404,12 +416,13 @@ class FunctionWindow(CTkToplevel):
             )
             self.ca_preparation_frame.pack(fill="both", expand=True)
 
-    def _handle_analysis_stage(self, function_type, user_input_data, experimental_drop, fitted_drop_data):
+    def _handle_analysis_stage(
+        self, function_type, user_input_data, experimental_drop, fitted_drop_data
+    ):
         if function_type == FunctionType.INTERFACIAL_TENSION:
             messages = validate_user_input_data_ift(user_input_data)
         else:
-            messages = validate_user_input_data_cm(
-                user_input_data, experimental_drop)
+            messages = validate_user_input_data_cm(user_input_data, experimental_drop)
 
         if messages:
             self.update_stage(Move.Back.value)
@@ -466,7 +479,10 @@ class FunctionWindow(CTkToplevel):
                 {"n_frames": user_input_data.number_of_frames},
             )
 
-            if "Parameter estimation failed" in error_msg or "ERKStepEvolve()" in error_msg:
+            if (
+                "Parameter estimation failed" in error_msg
+                or "ERKStepEvolve()" in error_msg
+            ):
                 self.update_stage(Move.Back.value)
                 self.ift_analysis_frame.pack_forget()
                 self.ift_preparation_frame.pack(fill="both", expand=True)
@@ -488,7 +504,8 @@ class FunctionWindow(CTkToplevel):
         self._resize_for_analysis(FunctionType.CONTACT_ANGLE, user_input_data)
         self.ca_preparation_frame.pack_forget()
         self.ca_analysis_frame = CaAnalysis(
-            self, user_input_data, fg_color=self.FG_COLOR)
+            self, user_input_data, fg_color=self.FG_COLOR
+        )
         self.ca_analysis_frame.pack(fill="both", expand=True)
 
         try:
@@ -507,9 +524,12 @@ class FunctionWindow(CTkToplevel):
                 user_input_data,
                 {"n_frames": user_input_data.number_of_frames},
             )
-            if any(keyword in error_msg for keyword in [
-               "array must not contain infs or NaNs",
-               ]):
+            if any(
+                keyword in error_msg
+                for keyword in [
+                    "array must not contain infs or NaNs",
+                ]
+            ):
                 self._show_error(
                     "Invalid Image",
                     "This image is not for Contact Angle analysis.\n"
@@ -517,13 +537,16 @@ class FunctionWindow(CTkToplevel):
                     f"Debug log saved to:\n{log_path}",
                 )
                 self.on_closing()
-            elif any(keyword in error_msg for keyword in [
-                "list index out of range",
-                "'NoneType' object is not iterable",
-                "float division by zero",
-                "too many indices",
-                "do not appear to intersect",
-            ]):
+            elif any(
+                keyword in error_msg
+                for keyword in [
+                    "list index out of range",
+                    "'NoneType' object is not iterable",
+                    "float division by zero",
+                    "too many indices",
+                    "do not appear to intersect",
+                ]
+            ):
                 self._show_error(
                     "Invalid Region",
                     "No usable droplet detected or the boundary is incomplete.\n"
@@ -560,7 +583,9 @@ class FunctionWindow(CTkToplevel):
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self._video_tmp_dir = os.path.join(
-            os.path.expanduser("~"), "OpenDrop", "tmp",
+            os.path.expanduser("~"),
+            "OpenDrop",
+            "tmp",
             "{}_{}".format(timestamp, source_stem),
         )
         os.makedirs(self._video_tmp_dir, exist_ok=True)
@@ -661,15 +686,17 @@ class FunctionWindow(CTkToplevel):
         )
 
         stem = self._video_source_stem
-        csv_path = os.path.join(
-            self._video_tmp_dir, "{}_results.csv".format(stem)
-        )
+        csv_path = os.path.join(self._video_tmp_dir, "{}_results.csv".format(stem))
 
         try:
             ts_path = os.path.join(
                 self._video_tmp_dir, "{}_timeseries.png".format(stem)
             )
-            generate_timeseries_figure(csv_path, ts_path)
+            generate_timeseries_figure(
+                csv_path,
+                ts_path,
+                median_tilt_angle=result.get("median_tilt_angle"),
+            )
         except Exception as e:
             print("[Warning] Timeseries figure generation failed: {}".format(e))
 
@@ -688,9 +715,22 @@ class FunctionWindow(CTkToplevel):
                 output_path=scatter_path,
                 left_needle_x=result.get("left_needle_x"),
                 right_needle_x=result.get("right_needle_x"),
+                rotated_first_frame=result.get("rotated_first_frame"),
             )
         except Exception as e:
             print("[Warning] CP scatter figure generation failed: {}".format(e))
+
+        try:
+            from opendrop_ml.modules.contact_angle.video_state import save_state
+
+            save_state(
+                result,
+                self._video_tmp_dir,
+                stem,
+                source_path=user_input_data.import_files[0],
+            )
+        except Exception as e:
+            print("[Warning] State bundle save failed: {}".format(e))
 
     def _on_video_error(self, error_msg, user_input_data):
         log_path = self._log_analysis_exception(
@@ -700,9 +740,7 @@ class FunctionWindow(CTkToplevel):
             {"tmp_dir": getattr(self, "_video_tmp_dir", None)},
         )
         if self._window_exists():
-            self.ca_analysis_frame.on_video_complete(
-                "error: {}".format(error_msg)
-            )
+            self.ca_analysis_frame.on_video_complete("error: {}".format(error_msg))
         self.back_button.configure(state="normal")
         self.next_button.configure(state="normal")
         self._show_error(
@@ -714,7 +752,9 @@ class FunctionWindow(CTkToplevel):
 
     def _save_video_output(self, user_input_data):
         # Sync location from the entry widget (user may have typed directly)
-        if hasattr(self, "output_frame") and hasattr(self.output_frame, "location_entry"):
+        if hasattr(self, "output_frame") and hasattr(
+            self.output_frame, "location_entry"
+        ):
             entered_dir = self.output_frame.location_entry.get()
             if entered_dir:
                 user_input_data.output_directory = entered_dir
@@ -758,9 +798,7 @@ class FunctionWindow(CTkToplevel):
         except OSError:
             pass
 
-        files_str = "\n".join(
-            "  {}".format(os.path.basename(f)) for f in moved_files
-        )
+        files_str = "\n".join("  {}".format(os.path.basename(f)) for f in moved_files)
         self._show_info(
             "Save Successful",
             "Results saved to:\n{}\n\nFiles:\n{}".format(
@@ -775,8 +813,7 @@ class FunctionWindow(CTkToplevel):
         else:
             self.ca_analysis_frame.pack_forget()
 
-        self.output_frame = OutputPage(
-            self, user_input_data, fg_color=self.FG_COLOR)
+        self.output_frame = OutputPage(self, user_input_data, fg_color=self.FG_COLOR)
         self.output_frame.pack(fill="both", expand=True)
 
         self.next_button.pack_forget()
@@ -840,9 +877,15 @@ class FunctionWindow(CTkToplevel):
             self.prev_stage()
 
     def check_import(self, user_input_data: ExperimentalSetup) -> bool:
-        if user_input_data.number_of_frames is None or user_input_data.number_of_frames <= 0:
+        if (
+            user_input_data.number_of_frames is None
+            or user_input_data.number_of_frames <= 0
+        ):
             return False
-        if user_input_data.import_files is None or len(user_input_data.import_files) == 0:
+        if (
+            user_input_data.import_files is None
+            or len(user_input_data.import_files) == 0
+        ):
             return False
 
         if user_input_data.is_video:
@@ -933,7 +976,7 @@ class FunctionWindow(CTkToplevel):
                 self._video_cancel.set()
 
             # Step 1: cancel all  after()
-            if hasattr(self, 'after_ids'):
+            if hasattr(self, "after_ids"):
                 for after_id in self.after_ids:
                     try:
                         self.after_cancel(after_id)
@@ -953,7 +996,7 @@ class FunctionWindow(CTkToplevel):
 
             # Step 4: exit the loop and destory the window
             try:
-                self.quit()     # Stop mainloop if running
+                self.quit()  # Stop mainloop if running
             except Exception as e:
                 print("[Warning] quit() failed:", e)
 
@@ -963,10 +1006,11 @@ class FunctionWindow(CTkToplevel):
                 print("[Warning] destroy() failed:", e)
 
             # Step 5: main window if existed
-            if hasattr(self, 'main_window') and self.main_window.winfo_exists():
+            if hasattr(self, "main_window") and self.main_window.winfo_exists():
                 self.main_window.deiconify()
 
         except Exception as e:
             print("[Fatal] on_closing encountered an error:", e)
             import sys
+
             sys.exit(1)

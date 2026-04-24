@@ -10,6 +10,7 @@ from opendrop_ml.modules.image.needle_masking import (
     extract_edges_two_contours,
     detect_vertical_lines,
 )
+from opendrop_ml.modules.image.tilt_correction import correct_tilt
 from opendrop_ml.utils.image_handler import ImageHandler
 
 from customtkinter import CTkFrame, CTkLabel, CTkImage
@@ -23,8 +24,14 @@ NEEDLE_LINE_COLOR_BGR = (0, 0, 255)
 NEEDLE_LINE_ALPHA = 0.5
 NEEDLE_LINE_THICKNESS = 2
 CAPTION_SUCCESS = "Red: auto-detected needle lines"
-CAPTION_FAILURE = (
-    "\u26a0 Needle not auto-detected. Run may use wrong contact points."
+CAPTION_FAILURE = "\u26a0 Needle not auto-detected. Run may use wrong contact points."
+CAPTION_TILT_SUCCESS = "Auto-detected tilt: {angle:.1f}\u00b0"
+CAPTION_TILT_FAILURE = (
+    "\u26a0 Tilt not auto-detected. Run may produce misaligned angles."
+)
+CAPTION_COMBINED_BLOCK = (
+    "\u26a0 Combined needle-in-drop + tilted-surface not yet tested. "
+    "Disable one toggle to proceed."
 )
 WARNING_COLOR = "#c00"
 
@@ -50,8 +57,7 @@ class CaPreparation(CTkFrame):
         )  # Left side for input fields
 
         # Ensure that the parent frame (input_fields_frame) resizes properly
-        self.input_fields_frame.grid_rowconfigure(
-            0, weight=1)  # Ensure row 0 expands
+        self.input_fields_frame.grid_rowconfigure(0, weight=1)  # Ensure row 0 expands
         self.input_fields_frame.grid_columnconfigure(
             0, weight=1
         )  # Ensure column 0 expands
@@ -64,7 +70,8 @@ class CaPreparation(CTkFrame):
         )  # Right side for ImageApp
 
         if user_input_data.is_video:
-            self._render_needle_preview(bool(user_input_data.needle_in_drop))
+            self._render_video_preview()
+            self._refresh_next_button_state()
         else:
             # Instantiate the ImageApp on the right
             self.image_app = ImageApp(
@@ -83,17 +90,17 @@ class CaPreparation(CTkFrame):
 
     def create_user_input_fields(self, parent_frame):
         """Create and pack user input fields into the specified parent frame."""
-        on_toggle = (
-            self._on_needle_toggled if self.user_input_data.is_video else None
-        )
+        is_video = self.user_input_data.is_video
+        needle_cb = self._on_needle_toggled if is_video else None
+        tilt_cb = self._on_tilt_toggled if is_video else None
         user_input_frame = create_user_inputs_cm(
             self,
             parent_frame,
             self.user_input_data,
-            on_needle_toggle=on_toggle,
+            on_needle_toggle=needle_cb,
+            on_surface_tilted=tilt_cb,
         )
-        user_input_frame.grid(
-            row=0, column=0, sticky="nsew", pady=(10, 0))  # Use row 0
+        user_input_frame.grid(row=0, column=0, sticky="nsew", pady=(10, 0))  # Use row 0
 
     def create_analysis_method_fields(self, parent_frame):
         """Create and pack analysis method fields into the specified parent frame."""
@@ -107,13 +114,17 @@ class CaPreparation(CTkFrame):
         fitting_view_frame = create_plotting_checklist(
             self, parent_frame, self.user_input_data
         )
-        fitting_view_frame.grid(
-            row=2, column=0, sticky="nsew", pady=10)  # Use row 1
+        fitting_view_frame.grid(row=2, column=0, sticky="nsew", pady=10)  # Use row 1
 
     def _on_needle_toggled(self, needle_on: bool):
-        self._render_needle_preview(bool(needle_on))
+        self._render_video_preview()
+        self._refresh_next_button_state()
 
-    def _render_needle_preview(self, needle_on: bool):
+    def _on_tilt_toggled(self, tilt_on: bool):
+        self._render_video_preview()
+        self._refresh_next_button_state()
+
+    def _render_video_preview(self):
         if self._preview_container is not None:
             self._preview_container.destroy()
             self._preview_container = None
@@ -148,13 +159,24 @@ class CaPreparation(CTkFrame):
             ).pack(expand=True)
             return
 
+        needle_on = bool(self.user_input_data.needle_in_drop)
+        tilt_on = bool(self.user_input_data.surface_tilted)
+
         caption_text = ""
         caption_color = None
-
         display_bgr = frame_bgr
-        if needle_on:
-            overlay_result = self._build_needle_overlay(frame_bgr)
-            display_bgr, caption_text, caption_color = overlay_result
+
+        if needle_on and tilt_on:
+            caption_text = CAPTION_COMBINED_BLOCK
+            caption_color = WARNING_COLOR
+        elif needle_on:
+            display_bgr, caption_text, caption_color = self._build_needle_overlay(
+                frame_bgr
+            )
+        elif tilt_on:
+            display_bgr, caption_text, caption_color = self._build_tilt_preview(
+                frame_bgr
+            )
 
         self._pack_preview_image(container, display_bgr)
 
@@ -167,6 +189,30 @@ class CaPreparation(CTkFrame):
                 text_color=caption_color if caption_color else None,
                 wraplength=PREVIEW_WIDTH,
             ).pack(pady=(0, 10))
+
+    def _build_tilt_preview(self, frame_bgr):
+        """Return (display_bgr, caption, color). Failures drop to caption."""
+        try:
+            corrected, tilt_angle = correct_tilt(frame_bgr, crop=True)
+        except (ValueError, cv2.error):
+            return frame_bgr, CAPTION_TILT_FAILURE, WARNING_COLOR
+
+        if tilt_angle == 0.0:
+            return frame_bgr, CAPTION_TILT_FAILURE, WARNING_COLOR
+
+        caption = CAPTION_TILT_SUCCESS.format(angle=tilt_angle)
+        return corrected, caption, None
+
+    def _refresh_next_button_state(self):
+        if not self.user_input_data.is_video:
+            return
+        next_button = getattr(self.master, "next_button", None)
+        if next_button is None:
+            return
+        combined = bool(self.user_input_data.needle_in_drop) and bool(
+            self.user_input_data.surface_tilted
+        )
+        next_button.configure(state="disabled" if combined else "normal")
 
     def _build_needle_overlay(self, frame_bgr):
         """Return (display_bgr, caption, color). Failures drop to caption."""

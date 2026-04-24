@@ -10,6 +10,32 @@ import tkinter as tk
 from opendrop_ml.utils.tooltip_util import create_tooltip
 
 
+def _build_inspection_hint(user_input_data) -> str:
+    """Return the cp_scatter inspection-hint text for the active pipeline.
+
+    The three branches mirror the router in ``ca_data_processor``: needle-
+    in-drop takes precedence, then tilted surface, then the auto default.
+    The ``(True, True)`` combination is blocked at the router so first-
+    match ordering is safe.
+    """
+    if getattr(user_input_data, "needle_in_drop", False):
+        return (
+            "Tip: Inspect the *_cp_scatter.png file to verify\n"
+            "needle detection and contact-point placement before\n"
+            "trusting the CSV results."
+        )
+    if getattr(user_input_data, "surface_tilted", False):
+        return (
+            "Tip: Inspect the *_cp_scatter.png file to verify\n"
+            "tilt correction and contact-point placement before\n"
+            "trusting the CSV results."
+        )
+    return (
+        "Tip: Inspect the *_cp_scatter.png file to verify\n"
+        "preprocessing before trusting the CSV results."
+    )
+
+
 class OutputPage(ctk.CTkFrame):
     def __init__(self, parent, user_input_data: ExperimentalSetup, **kwargs):
         super().__init__(parent, **kwargs)
@@ -136,17 +162,7 @@ class OutputPage(ctk.CTkFrame):
                 info_frame, text=files_text, anchor="w", justify="left"
             ).grid(row=2, column=0, padx=10, pady=2, sticky="w")
 
-        if getattr(self.user_input_data, "needle_in_drop", False):
-            hint = (
-                "Tip: Inspect the *_cp_scatter.png file to verify\n"
-                "needle detection and contact-point placement before\n"
-                "trusting the CSV results."
-            )
-        else:
-            hint = (
-                "Tip: Inspect the *_cp_scatter.png file to verify\n"
-                "preprocessing before trusting the CSV results."
-            )
+        hint = _build_inspection_hint(self.user_input_data)
         ctk.CTkLabel(
             info_frame, text=hint, anchor="w", justify="left",
             text_color="gray",

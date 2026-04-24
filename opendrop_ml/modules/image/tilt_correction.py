@@ -1,13 +1,3 @@
-"""Tilt detection and image rotation for tilted-surface datasets.
-
-Extracted from files_from_old_computer/video_analysis/kristina/
-Rolling_drop_automatic_processing.ipynb
-
-Key functions:
-- detect_tilt_angle: find substrate tilt using Hough line detection
-- correct_tilt: rotate image to level the baseline, optionally crop borders
-"""
-
 import math
 
 import cv2
