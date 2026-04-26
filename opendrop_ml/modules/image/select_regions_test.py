@@ -1,7 +1,6 @@
 from opendrop_ml.modules.image.select_regions import (
     set_drop_region,
     set_surface_line,
-    correct_tilt,
     user_line,
     draw_rectangle,
     draw_line,
@@ -133,35 +132,6 @@ class TestSurfaceLine(unittest.TestCase):
             experimental_drop.drop_contour, expected_contour))
         self.assertTrue(np.array_equal(
             experimental_drop.contact_points, mock_CPs))
-
-
-class TestCorrectTilt(unittest.TestCase):
-
-    @patch("opendrop_ml.modules.image.select_regions.tilt_correction")
-    def test_correct_tilt_auto(self, mock_tilt_correction):
-        # Create mock return value
-        mock_cropped_image = np.zeros((100, 100, 3))
-        mock_tilt_correction.return_value = mock_cropped_image
-
-        # Simulate experimental_drop and experimental_setup objects
-        experimental_drop = MagicMock()
-        experimental_drop.cropped_image = mock_cropped_image
-        experimental_drop.contact_points = [(10, 20), (90, 80)]
-        experimental_setup = MagicMock()
-        experimental_setup.baseline_method = ThresholdSelect.AUTOMATED
-
-        # Call the function to be tested
-        correct_tilt(experimental_drop, experimental_setup)
-
-        # Check if tilt_correction was called correctly
-        mock_tilt_correction.assert_called_once_with(
-            mock_cropped_image, [(10, 20), (90, 80)]
-        )
-
-        # Verify if the return values were handled correctly
-        self.assertTrue(
-            np.array_equal(experimental_drop.cropped_image, mock_cropped_image)
-        )
 
 
 class TestDrawRectangle(unittest.TestCase):

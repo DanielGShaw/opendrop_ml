@@ -3,7 +3,6 @@ from opendrop_ml.modules.image.read_image import get_image
 from opendrop_ml.modules.image.select_regions import (
     set_drop_region,
     set_surface_line,
-    correct_tilt,
     # run_set_surface_line
 )
 from opendrop_ml.modules.contact_angle.extract_profile import extract_drop_profile
@@ -211,16 +210,15 @@ class CaDataProcessor:
                             ellipse=analysis_methods[FittingMethod.ELLIPSE_FIT],
                         )
 
-                # YL fit and ML model need tilt correction
+                # YL and ML run after the up-front extract_drop_profile + set_surface_line
+                # at lines 193-196 have already populated drop_contour from preprocess(.image).
+                # ML uses raw_experiment.image directly; YL uses drop_contour. Neither needs
+                # cropped_image, so no tilt correction is required at this stage — preprocess
+                # already does its own internal tilt correction inside isolate_contour.
                 if (
                     analysis_methods[FittingMethod.ML_MODEL]
                     or analysis_methods[FittingMethod.YL_FIT]
                 ):
-                    correct_tilt(raw_experiment, user_input_data)
-                    extract_drop_profile(raw_experiment, user_input_data)
-                    if user_input_data.baseline_method == ThresholdSelect.AUTOMATED:
-                        set_surface_line(raw_experiment, user_input_data)
-
                     if analysis_methods[FittingMethod.YL_FIT]:
                         perform_fits(
                             raw_experiment, yl=analysis_methods[FittingMethod.YL_FIT]

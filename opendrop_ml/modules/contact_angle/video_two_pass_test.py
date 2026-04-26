@@ -374,7 +374,7 @@ def test_filepath_is_image_path_for_directory(monkeypatch):
 
 
 def test_return_dict_carries_none_needle_x_values(monkeypatch):
-    """Auto pipeline emits the needle-x keys as None so Phase I's
+    """Auto pipeline emits the needle-x keys as None so the
     figure generator can branch on presence uniformly."""
     _patch_pipeline(monkeypatch, n_frames=2)
     setup = _make_setup(methods=[FittingMethod.TANGENT_FIT])

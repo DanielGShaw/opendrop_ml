@@ -3,7 +3,6 @@
 
 from opendrop_ml.modules.core.classes import ExperimentalDrop, ExperimentalSetup
 from opendrop_ml.modules.preprocessing.preprocessing import (
-    tilt_correction,
     preprocess,
 )
 from opendrop_ml.utils.geometry import Rect2
@@ -629,23 +628,6 @@ def set_surface_line(
         user_line(experimental_drop, experimental_setup)
 
 
-def correct_tilt(
-    experimental_drop: ExperimentalDrop, experimental_setup: ExperimentalSetup
-) -> None:
-    if experimental_setup.baseline_method == ThresholdSelect.AUTOMATED:
-        experimental_drop.cropped_image = tilt_correction(
-            experimental_drop.cropped_image, experimental_drop.contact_points
-        )
-
-    # gets tricky where the baseline is manually set because under the current workflow users would
-    # be required to re-input their baseline until it's flat - when the baseline should be flat
-    # and known once it's set and corrected for
-    elif experimental_setup.baseline_method == ThresholdSelect.USER_SELECTED:
-        rotated_img_crop = tilt_correction(
-            img, experimental_drop.contact_points, user_set_baseline=True
-        )
-
-
 def set_scale(image_size: Tuple[int, int, int], screen_size: List[int]) -> float:
     x_ratio = image_size[1] / float(screen_size[0])
     y_ratio = image_size[0] / float(screen_size[1])
@@ -807,6 +789,23 @@ def user_line(
     xx = np.concatenate((drop_data[0:A, 0], drop_data[N - A: N + 1, 0]))
     yy = np.concatenate((drop_data[0:A, 1], drop_data[N - A: N + 1, 1]))
     coefficients = np.polyfit(xx, yy, 1)
+
+    # On tilted-surface images the contour endpoints can sit at very different
+    # y-values, yielding a near-vertical polyfit that takes hundreds of A/D
+    # keypresses (0.1° each) to correct and tends to crash downstream fits as
+    # the contour gets sliced degenerately. When the auto-detected slope exceeds
+    # 45° from horizontal, fall back to a horizontal line placed just below the
+    # entire contour so perform_fits sees the full drop on the first iteration.
+    slope_deg = abs(np.degrees(np.arctan(coefficients[0])))
+    if slope_deg > 45.0:
+        fallback_y = float(np.max(drop_data[:, 1])) + 1.0
+        print(
+            f"Auto-detected baseline slope ({slope_deg:.1f}°) exceeds 45°; "
+            f"starting with a horizontal baseline at y={fallback_y:.0f}. "
+            "Use A/D to rotate."
+        )
+        coefficients = np.array([0.0, fallback_y])
+
     line = np.poly1d(coefficients)
 
     xx = np.array([0, img.shape[1]])
@@ -909,14 +908,32 @@ def user_line(
             ):
                 from opendrop_ml.modules.fitting.fits import perform_fits
 
-                perform_fits(
-                    experimental_drop,
-                    tangent=methods_boole[FittingMethod.TANGENT_FIT],
-                    polynomial=methods_boole[FittingMethod.POLYNOMIAL_FIT],
-                    circle=methods_boole[FittingMethod.CIRCLE_FIT],
-                    ellipse=methods_boole[FittingMethod.ELLIPSE_FIT],
-                )
-            if methods_boole[FittingMethod.TANGENT_FIT]:
+                # The interactive loop calls perform_fits on every keypress; early
+                # iterations can hit a degenerate drop_contour as the user rotates
+                # the baseline into position, and individual fits (esp. circle /
+                # ellipse) may raise. Don't kill the cv2 loop — drop overlays for
+                # this frame and let the user keep adjusting.
+                try:
+                    perform_fits(
+                        experimental_drop,
+                        tangent=methods_boole[FittingMethod.TANGENT_FIT],
+                        polynomial=methods_boole[FittingMethod.POLYNOMIAL_FIT],
+                        circle=methods_boole[FittingMethod.CIRCLE_FIT],
+                        ellipse=methods_boole[FittingMethod.ELLIPSE_FIT],
+                    )
+                except Exception as fit_err:
+                    print(
+                        f"perform_fits failed during baseline adjustment "
+                        f"({type(fit_err).__name__}: {fit_err}); skipping overlay this frame."
+                    )
+            # perform_fits skips circle/ellipse with a warning when the contour is
+            # too degenerate to fit; guard each rendering block against the
+            # corresponding key being absent so the cv2 loop doesn't crash before
+            # the user has a chance to rotate the baseline into a workable position.
+            if (
+                methods_boole[FittingMethod.TANGENT_FIT]
+                and "tangent fit" in experimental_drop.contact_angles
+            ):
                 tangent_lines = tuple(
                     experimental_drop.contact_angles["tangent fit"]["tangent lines"]
                 )
@@ -937,6 +954,7 @@ def user_line(
             if (
                 methods_boole[FittingMethod.POLYNOMIAL_FIT]
                 and not methods_boole[FittingMethod.TANGENT_FIT]
+                and "polynomial fit" in experimental_drop.contact_angles
             ):
                 tangent_lines = tuple(
                     experimental_drop.contact_angles["polynomial fit"]["tangent lines"]
@@ -945,11 +963,17 @@ def user_line(
                          tangent_lines[0][1], (0, 0, 255), 2)
                 cv2.line(img, tangent_lines[1][0],
                          tangent_lines[1][1], (0, 0, 255), 2)
-            if methods_boole[FittingMethod.CIRCLE_FIT]:
+            if (
+                methods_boole[FittingMethod.CIRCLE_FIT]
+                and "circle fit" in experimental_drop.contact_angles
+            ):
                 xc, yc = experimental_drop.contact_angles["circle fit"]["circle center"]
                 r = experimental_drop.contact_angles["circle fit"]["circle radius"]
                 cv2.circle(img, (int(xc), int(yc)), int(r), (255, 150, 0), 1)
-            if methods_boole[FittingMethod.ELLIPSE_FIT]:
+            if (
+                methods_boole[FittingMethod.ELLIPSE_FIT]
+                and "ellipse fit" in experimental_drop.contact_angles
+            ):
                 center = experimental_drop.contact_angles["ellipse fit"][
                     "ellipse center"
                 ]

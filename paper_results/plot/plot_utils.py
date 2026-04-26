@@ -1,8 +1,7 @@
 """Shared plotting configuration for paper figures.
 
 Defines colors, markers, figure sizes, and helper functions used
-by all figure-generation scripts. Matches the legacy styling from
-files_from_old_computer/figure_generation_notebooks/.
+by all figure-generation scripts.
 """
 
 import os
@@ -79,7 +78,7 @@ def setup_matplotlib():
 
 
 # ---------------------------------------------------------------------------
-# Methods to show in figures (excludes polynomial — see plan Phase 0.5)
+# Methods to show in figures (polynomial excluded by design)
 # ---------------------------------------------------------------------------
 FIGURE_METHODS = ["tangent", "circular", "ellipse", "yl", "ml"]
 

@@ -12,9 +12,6 @@ domain against the ML model's training domain:
 Output:
   figures/experimental/training_domain_coverage.png
 
-Ported from files_from_old_computer/figure_generation_notebooks/
-  'Other figures needed.py' lines 440-551 (the In[58] composite panel).
-
 Run from OpenDrop_OP/:
     python paper_results/plot/plot_training_coverage.py
 """
@@ -48,9 +45,8 @@ def load_data():
     """Return (df_exp, df_syn) — both sourced from paper_results/results/.
 
     `df_syn` is the synthetic evaluation set (324 images across 9 ground-truth
-    angles × 4 Bond × 2 scales × 4 roughnesses). The reference figure used the
-    same CSV (from files_from_old_computer/) to derive training-domain bounds;
-    switching to the paper_results copy keeps the figure self-contained.
+    angles × 4 Bond × 2 scales × 4 roughnesses); training-domain bounds are
+    derived from it.
     """
     df_exp = pd.read_csv(os.path.join(RESULTS_DIR, "experimental_results.csv"))
     df_syn = pd.read_csv(os.path.join(RESULTS_DIR, "synthetic_results.csv"))

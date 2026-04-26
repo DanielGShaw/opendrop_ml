@@ -16,22 +16,19 @@ PYTHON = sys.executable
 
 # Pipeline steps in order
 STEPS = [
-    ("Phase 1a: Experimental evaluation", "evaluate/evaluate_experimental.py"),
-    ("Phase 1b: Synthetic evaluation", "evaluate/evaluate_synthetic.py"),
-    ("Phase 2a: Experimental comparison", "compare/compare_experimental.py"),
-    ("Phase 2b: Synthetic comparison", "compare/compare_synthetic.py"),
-    ("Phase 3a: Experimental figures", "plot/plot_experimental.py"),
-    ("Phase 3a2: Training-domain coverage", "plot/plot_training_coverage.py"),
-    ("Phase 3b: Synthetic figures", "plot/plot_synthetic.py"),
-    ("Phase 3c: Speed figures", "plot/plot_speed.py"),
-    ("Phase 3.5a: Sensitivity dataset evaluation", "evaluate/evaluate_sensitivity.py"),
-    ("Phase 3.5b: Sensitivity dataset figures", "plot/plot_sensitivity.py"),
-    ("Phase 5a: Inverse phase evaluation", "evaluate/evaluate_inverse_phase.py"),
-    ("Phase 5b: Isaac evaluation", "evaluate/evaluate_isaac.py"),
-    ("Phase 5c: Kristina evaluation", "evaluate/evaluate_kristina.py"),
-    ("Phase 5d: Video analysis comparison", "compare/compare_video_analysis.py"),
-    ("Phase 5e: Video analysis figures", "plot/plot_video_analysis.py"),
-    ("Phase 6: CP-comparison composite figures", "plot/plot_cp_comparison.py"),
+    ("Experimental evaluation", "evaluate/evaluate_experimental.py"),
+    ("Synthetic evaluation", "evaluate/evaluate_synthetic.py"),
+    ("Experimental figures", "plot/plot_experimental.py"),
+    ("Training-domain coverage figures", "plot/plot_training_coverage.py"),
+    ("Synthetic figures", "plot/plot_synthetic.py"),
+    ("Speed figures", "plot/plot_speed.py"),
+    ("Sensitivity dataset evaluation", "evaluate/evaluate_sensitivity.py"),
+    ("Sensitivity dataset figures", "plot/plot_sensitivity.py"),
+    ("Inverse phase evaluation", "evaluate/evaluate_inverse_phase.py"),
+    ("Isaac evaluation", "evaluate/evaluate_isaac.py"),
+    ("Kristina evaluation", "evaluate/evaluate_kristina.py"),
+    ("Video analysis figures", "plot/plot_video_analysis.py"),
+    ("CP-comparison composite figures", "plot/plot_cp_comparison.py"),
 ]
 
 

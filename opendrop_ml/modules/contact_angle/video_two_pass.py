@@ -87,7 +87,7 @@ def _auto_two_pass(user_input_data, writer, progress: ProgressCb, cancel: Cancel
     ``left_needle_x``, ``right_needle_x``
         Always ``None`` for the needle-outside pipeline. Emitted so
         the needle-in pipeline (which populates them) can share the
-        same Phase I figure generator.
+        same figure generator.
     """
     source_path = user_input_data.import_files[0]
     skip = max(1, int(user_input_data.video_skip_interval))

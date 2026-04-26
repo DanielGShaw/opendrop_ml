@@ -130,7 +130,7 @@ def _needle_in_two_pass(user_input_data, writer, progress: ProgressCb,
         Median needle-intercept x-coordinates (floats) used to build
         the vertical needle lines in Pass 2. ``None`` on cancel. The
         auto (needle-out) pipeline returns the same keys with
-        ``None`` values, so Phase I's figure generator can branch on
+        ``None`` values, so the figure generator can branch on
         presence uniformly.
     """
     source_path = user_input_data.import_files[0]

@@ -546,6 +546,13 @@ After starting the application:
 
 See [TESTING.md](./TESTING.md) for more details on how to run the built-in unit tests.
 
+# Reproducing the paper results
+
+The scripts under `paper_results/` regenerate every CSV and figure in the
+paper. See [`paper_results/README.md`](./paper_results/README.md) for the
+full workflow — it includes the clone command for the `jdber1/conan-ML`
+v03 baseline repo required by the sensitivity and inverse-phase evaluations.
+
 # Appropriate use of ML model in Contact Angle Analysis
 
 The Conan-ML model uses a Conv1D architecture with a preprocessing pipeline

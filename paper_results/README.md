@@ -12,15 +12,29 @@ cd OpenDrop_OP
 python setup.py build_ext --inplace
 ```
 
+### v03 baseline repo (required for sensitivity + inverse-phase evaluation)
+
+The v03 Conan-ML baseline isn't vendored here — clone it alongside this
+package. `evaluate_sensitivity.py` and `evaluate_inverse_phase.py` import
+from it directly, and the sensitivity dataset lives inside the clone.
+
+```bash
+# From OpenDrop_OP/paper_results/
+git clone https://github.com/jdber1/conan-ML.git conan_model_repo
+```
+
+The expected path is `paper_results/conan_model_repo/` (matches
+`CONAN_MODEL_REPO_DIR` in `paper_results/config.py`). The directory is
+gitignored — each reproducer clones it locally.
+
 ## Dataset Paths
 
-Paths are configured in `config.py`. Default locations:
+Paths are configured in `config.py`. All datasets live in-tree under `paper_results/`:
 
 - **Experimental images**: `paper_results/data/experimental/` (171 images)
-- **Synthetic images**: `files_from_old_computer/synthetic_dataset/synthetic_evaluation_data_set_dpi64_images/` (324 images)
-- **Sensitivity images**: `paper_results/conan_model_repo/sensitivity data set/` (120 images)
-- **Reference CSVs**: `files_from_old_computer/experimental_dataset/list_full.csv`, `files_from_old_computer/synthetic_dataset/list_synthetic_dpi64.csv`
-- **Model comparison CSVs**: `files_from_old_computer/comparison_notebooks/list_compare.csv`, `list_synthetic_dpi64_compare.csv`
+- **Synthetic images**: `paper_results/data/synthetic/` (324 images)
+- **Sensitivity images**: `paper_results/conan_model_repo/sensitivity data set/` (120 images — in the v03 clone, see Prerequisites)
+- **Video analysis datasets** (Isaac, Kristina, inverse-phase): `paper_results/data/video_analysis/` (gitignored, see deferred data-hosting item in `ML_MODEL_INTEGRATION_PLAN.md` Phase 7.4)
 
 ## Usage
 
@@ -30,22 +44,18 @@ cd OpenDrop_OP
 python paper_results/run_all.py
 ```
 
-### Run individual phases
+### Run individual steps
 ```bash
-# Phase 1: Generate results
+# Generate results
 python paper_results/evaluate/evaluate_experimental.py   # → results/experimental_results.csv
 python paper_results/evaluate/evaluate_synthetic.py      # → results/synthetic_results.csv
 
-# Phase 2: Compare against prior results (requires Phase 1 output)
-python paper_results/compare/compare_experimental.py     # → comparison/experimental_comparison.csv
-python paper_results/compare/compare_synthetic.py        # → comparison/synthetic_comparison.csv
-
-# Phase 3: Generate figures (requires Phase 1 output)
+# Generate figures (requires evaluation output)
 python paper_results/plot/plot_experimental.py            # → figures/experimental/*.png
 python paper_results/plot/plot_synthetic.py               # → figures/synthetic/*.png
 python paper_results/plot/plot_speed.py                   # → figures/experimental/experimental_speed.png
 
-# Phase 3.5: Sensitivity dataset — v03 vs v05.05 (requires Phase 1 output)
+# Sensitivity dataset — v03 vs v05.05 (requires evaluation output)
 python paper_results/evaluate/evaluate_sensitivity.py     # → results/sensitivity_results.csv
 python paper_results/plot/plot_sensitivity.py              # → figures/comparison/sensitivity_agreement.png
 ```
@@ -71,10 +81,6 @@ python paper_results/plot/plot_sensitivity.py              # → figures/compari
 **Comparison** (`figures/comparison/`):
 - `sensitivity_agreement.png` — 3-panel: v03 and v05.05 agreement + delta on sensitivity dataset
 
-### Comparison (`comparison/`)
-- `experimental_comparison.csv` — Per-image deltas: new vs prior pipeline
-- `synthetic_comparison.csv` — Per-image deltas: new vs prior pipeline
-
 ## Methods Evaluated
 
 | Method | Function | Parameters |
@@ -91,5 +97,5 @@ python paper_results/plot/plot_sensitivity.py              # → figures/compari
 - Experimental evaluation: ~8 minutes (169 images)
 - Synthetic evaluation: ~11 minutes (324 images)
 - Sensitivity evaluation: ~3 minutes (120 images, both models)
-- Comparison + figures: ~1 minute
+- Figures: ~1 minute
 - **Total**: ~25 minutes

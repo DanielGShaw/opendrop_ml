@@ -279,5 +279,67 @@ def test_auto_two_pass_delegates_to_video_two_pass(monkeypatch):
     assert calls == [(sentinel_user, sentinel_writer, progress, cancel)]
 
 
+def test_process_data_does_not_mutate_cropped_image(monkeypatch):
+    """cropped_image must remain the unrotated canvas captured by set_drop_region;
+    nothing in the processing pipeline should overwrite it. Regression guard for
+    the tangent-overlay misalignment bug — every fit method's overlay renders on
+    cropped_image, so anything that mutates it desyncs the overlay from the coords.
+    """
+    from opendrop_ml.utils.enums import ThresholdSelect
+
+    original_cropped = object()  # sentinel for the unrotated canvas
+
+    def fake_get_image(raw_experiment, user_input_data, i):
+        raw_experiment.image = object()
+        raw_experiment.cropped_image = original_cropped
+
+    def fake_set_drop_region(raw_experiment, user_input_data, i):
+        return None
+
+    def fake_extract_drop_profile(raw_experiment, user_input_data):
+        return None
+
+    def fake_set_surface_line(raw_experiment, user_input_data):
+        return None
+
+    def fake_perform_fits(raw_experiment, **kwargs):
+        if kwargs.get("yl"):
+            raw_experiment.contact_angles[FittingMethod.YL_FIT] = {
+                LEFT_ANGLE: 90.0, RIGHT_ANGLE: 90.0,
+            }
+        else:
+            raw_experiment.contact_angles.setdefault(FittingMethod.TANGENT_FIT, {
+                LEFT_ANGLE: 45.0, RIGHT_ANGLE: 45.0,
+            })
+
+    monkeypatch.setattr(ca_data_processor, "get_image", fake_get_image)
+    monkeypatch.setattr(ca_data_processor, "set_drop_region", fake_set_drop_region)
+    monkeypatch.setattr(
+        ca_data_processor, "extract_drop_profile", fake_extract_drop_profile
+    )
+    monkeypatch.setattr(ca_data_processor, "set_surface_line", fake_set_surface_line)
+    monkeypatch.setattr(ca_data_processor, "perform_fits", fake_perform_fits)
+
+    setup = ExperimentalSetup()
+    setup.number_of_frames = 1
+    setup.import_files = ["dummy.png"]
+    setup.baseline_method = ThresholdSelect.AUTOMATED
+    for method in setup.analysis_methods_ca:
+        setup.analysis_methods_ca[method] = False
+    setup.analysis_methods_ca[FittingMethod.TANGENT_FIT] = True
+    setup.analysis_methods_ca[FittingMethod.YL_FIT] = True
+
+    captured_drops = []
+
+    def callback(num, raw_experiment):
+        captured_drops.append(raw_experiment)
+
+    processor = ca_data_processor.CaDataProcessor()
+    processor.process_data(None, setup, callback)
+
+    assert len(captured_drops) == 1
+    assert captured_drops[0].cropped_image is original_cropped
+
+
 if __name__ == "__main__":
     pytest.main(["-v", __file__])

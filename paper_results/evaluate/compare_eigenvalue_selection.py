@@ -22,7 +22,7 @@ sys.path.insert(0, OPENDROP_DIR)
 sys.path.insert(0, PAPER_RESULTS_DIR)
 
 import cv2
-from config import SYNTHETIC_IMAGES_DIR
+from config import SYNTHETIC_DATA_DIR
 
 from opendrop_ml.modules.preprocessing.preprocessing import isolate_contour, CPID
 from opendrop_ml.modules.fitting.ellipse_fit import (
@@ -214,10 +214,10 @@ def print_results(results):
 
 if __name__ == "__main__":
     print("Selecting 20 synthetic images across angle range...")
-    selected = select_images(SYNTHETIC_IMAGES_DIR, n_per_angle=2)
+    selected = select_images(SYNTHETIC_DATA_DIR, n_per_angle=2)
     print(f"Selected {len(selected)} images")
 
     print("\nRunning ellipse fit with both eigenvalue selection methods...")
-    results = run_comparison(SYNTHETIC_IMAGES_DIR, selected)
+    results = run_comparison(SYNTHETIC_DATA_DIR, selected)
 
     print_results(results)

@@ -13,11 +13,7 @@ Output: paper_results/figures/CA_tangent_plots/{experimental,synthetic}/
 Image selections are user-curated and hard-coded below. Edit the
 EXPERIMENTAL_IMAGES / SYNTHETIC_IMAGES lists to change selections.
 
-Rendering mirrors the legacy reference
-(files_from_old_computer/figure_generation_notebooks/Other figures needed.py
-lines 1007-1144) exactly: inline legend, line styles, aspect handling.
-
-Run as part of `run_all.py` Phase 6, or standalone:
+Run as part of `run_all.py`, or standalone:
 
     python -m paper_results.plot.plot_cp_comparison
 """

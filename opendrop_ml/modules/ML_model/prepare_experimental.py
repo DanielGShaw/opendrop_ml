@@ -157,18 +157,17 @@ def resize_image(image: np.ndarray, scale: float = 0.5) -> np.ndarray:
 def prepare_for_model(img, input_len=50, n_surface=10, display=False, blur=True):
     """Prepare experimental image for the all-angle ML model.
 
-    Uses the new all-angle preprocessing pipeline (CPID contact point
-    identification) to extract a 50-point window around each CP from the
-    actual contour: 10 real surface contour points on the substrate side of
-    the CP, and 40 drop contour points on the drop side. Left and right sides
-    are extracted independently (not by mirroring), matching the format the
-    model was trained on. Normalisation is applied via normalize_ds().
+    Uses CPID contact-point identification to extract a 50-point window
+    around each CP from the actual contour: 10 real surface contour points
+    on the substrate side of the CP, and 40 drop contour points on the
+    drop side. Left and right sides are extracted independently (not by
+    mirroring), matching the format the model was trained on.
+    Normalisation is applied via normalize_ds().
 
     A resolution check is applied before window extraction: if the drop
     profile is above the resolution plateau threshold (>974 points), or falls
     in the angle-dependent range (565–974) and fails the m*angle+c test, the
-    image is downsampled by 0.5x and preprocessing is re-run. This matches
-    the resolution check used in the original evaluation pipeline.
+    image is downsampled by 0.5x and preprocessing is re-run.
 
     :param img: BGR image as a numpy array (from cv2.imread)
     :param input_len: Total window size fed to the model (default 50)

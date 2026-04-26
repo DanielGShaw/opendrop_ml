@@ -205,6 +205,15 @@ class CaAnalysis(CTkFrame):
             table_frame.update_idletasks()
             table_frame.onFrameConfigure(table_frame.xy_canvas)
 
+    @staticmethod
+    def _cv_image_to_pil(image):
+        """Convert an OpenCV BGR/grayscale ndarray to a PIL image, or return None."""
+        if image is None or not isinstance(image, np.ndarray):
+            return None
+        if image.ndim == 3 and image.shape[2] == 3:
+            return Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        return Image.fromarray(image)
+
     def receive_output(self, num_of_processed, experimental_drop=None):
         """Process results and display contact angles"""
         if len(self.output) < num_of_processed:
@@ -263,29 +272,15 @@ class CaAnalysis(CTkFrame):
         try:
             image_path = self.user_input_data.import_files[index]
 
-            # Get cropped image from experimental_drop
             cropped_cv = None
-            if experimental_drop is not None and hasattr(
-                experimental_drop, "cropped_image"
-            ):
-                cropped_cv = experimental_drop.cropped_image
+            if experimental_drop is not None:
+                cropped_cv = getattr(experimental_drop, "cropped_image", None)
 
-            # Convert to PIL image and save
-            if cropped_cv is not None:
-                # Convert OpenCV image to PIL format
-                if isinstance(cropped_cv, np.ndarray):
-                    # OpenCV format(BGR) to PIL format(RGB)
-                    if cropped_cv.ndim == 3 and cropped_cv.shape[2] == 3:
-                        cropped_rgb = cv2.cvtColor(
-                            cropped_cv, cv2.COLOR_BGR2RGB)
-                        cropped_pil = Image.fromarray(cropped_rgb)
-                    else:
-                        cropped_pil = Image.fromarray(cropped_cv)
-
-                    # Save cropped image
-                    self.cropped_images[index] = cropped_pil
-                    print(
-                        f"Successfully saved cropped image, size: {cropped_pil.size}")
+            cropped_pil = self._cv_image_to_pil(cropped_cv)
+            if cropped_pil is not None:
+                self.cropped_images[index] = cropped_pil
+                print(
+                    f"Successfully saved cropped image, size: {cropped_pil.size}")
 
             # Check for contact angle data
             if hasattr(experimental_drop, "contact_angles"):
@@ -419,9 +414,16 @@ class CaAnalysis(CTkFrame):
             contact_points = self.get_contact_points(angles_data)
             tangent_lines = self.get_tangent_lines(angles_data)
 
-            if contact_points and tangent_lines and index in self.cropped_images:
-                # Create annotated image
-                cropped_img = self.cropped_images[index]
+            if contact_points and tangent_lines:
+                # All five fit methods share preprocess's tilt-corrected coordinate
+                # frame (set_surface_line calls preprocess(.image) which runs its
+                # own internal tilt correction inside isolate_contour). That frame
+                # aligns with the unrotated cropped_image, so every overlay uses
+                # cropped_images[index] as the canvas.
+                cropped_img = self.cropped_images.get(index)
+                if cropped_img is None:
+                    return False
+
                 annotated_img = self.draw_on_cropped_image(
                     cropped_img, left_angle, right_angle, contact_points, tangent_lines
                 )

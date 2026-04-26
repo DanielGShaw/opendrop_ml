@@ -22,7 +22,7 @@ sys.path.insert(0, OPENDROP_DIR)
 sys.path.insert(0, PAPER_RESULTS_DIR)
 
 from config import (
-    EXPERIMENTAL_IMAGES_DIR,
+    EXPERIMENTAL_DATA_DIR,
     RESULTS_DIR,
     ML_MODEL_DIR,
     N_TANGENT_POINTS,
@@ -219,14 +219,14 @@ def main():
     # Collect images
     images = sorted(
         f
-        for f in os.listdir(EXPERIMENTAL_IMAGES_DIR)
+        for f in os.listdir(EXPERIMENTAL_DATA_DIR)
         if f.lower().endswith(IMAGE_EXTENSIONS)
     )
     n_images = len(images)
-    print(f"Found {n_images} images in {EXPERIMENTAL_IMAGES_DIR}")
+    print(f"Found {n_images} images in {EXPERIMENTAL_DATA_DIR}")
 
     if n_images == 0:
-        print("ERROR: No images found. Check EXPERIMENTAL_IMAGES_DIR in config.py")
+        print("ERROR: No images found. Check EXPERIMENTAL_DATA_DIR in config.py")
         sys.exit(1)
 
     # Evaluate all images
@@ -235,7 +235,7 @@ def main():
     t_start = time.time()
 
     for i, img_name in enumerate(images):
-        img_path = os.path.join(EXPERIMENTAL_IMAGES_DIR, img_name)
+        img_path = os.path.join(EXPERIMENTAL_DATA_DIR, img_name)
 
         elapsed = time.time() - t_start
         eta_str = ""
