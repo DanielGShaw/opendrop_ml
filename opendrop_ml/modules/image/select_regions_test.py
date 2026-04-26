@@ -52,9 +52,10 @@ class TestSelectRegions(unittest.TestCase):
         # Check if isolate_contour was called correctly
         mock_isolate_contour.assert_called_once_with(mock_image)
 
-        # Verify if experimental_drop handled isolate_contour's return value correctly
+        # set_drop_region applies info["bounds"] to crop isolate_contour's
+        # full-image return (top=20, bottom=80, left=10, right=90).
         self.assertTrue(np.array_equal(
-            experimental_drop.cropped_image, mock_image))
+            experimental_drop.cropped_image, mock_image[20:80, 10:90]))
         self.assertEqual(experimental_setup.drop_region, [(10, 20), (90, 80)])
 
     @patch("opendrop_ml.modules.image.select_regions.user_roi")
