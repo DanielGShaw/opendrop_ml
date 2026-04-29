@@ -489,9 +489,15 @@ def compute_pass1_calibration(
         np.asarray(r["right_needle_int"]) for r in pass1_results
     ])
     baselines = [r["baseline"] for r in pass1_results]
+    left_contours = [np.asarray(r["left_contour"]) for r in pass1_results]
+    right_contours = [np.asarray(r["right_contour"]) for r in pass1_results]
 
-    left_line = fit_contact_line(left_cps_arr)
-    right_line = fit_contact_line(right_cps_arr)
+    left_line = fit_contact_line(
+        left_cps_arr, contours=left_contours, side="left",
+    )
+    right_line = fit_contact_line(
+        right_cps_arr, contours=right_contours, side="right",
+    )
 
     # Median needle intercept point per side (x, y). The needle is
     # narrow and easily bent; a robust median point with buffer room

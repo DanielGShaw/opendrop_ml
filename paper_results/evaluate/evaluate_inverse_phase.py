@@ -42,7 +42,6 @@ from config import (
 from opendrop_ml.modules.preprocessing.preprocessing import (
     isolate_contour,
     CPID,
-    linear_fit,
 )
 from opendrop_ml.modules.ML_model.prepare_experimental import (
     normalize_ds,
@@ -53,7 +52,10 @@ from opendrop_ml.modules.fitting.polynomial_fit import polynomial_fit
 from opendrop_ml.modules.fitting.circular_fit import circular_fit
 from opendrop_ml.modules.fitting.ellipse_fit import ellipse_fit
 from opendrop_ml.modules.fitting.BA_fit import yl_fit
-from opendrop_ml.modules.contact_angle.contact_line import find_first_intercept
+from opendrop_ml.modules.contact_angle.contact_line import (
+    find_first_intercept,
+    fit_contact_line,
+)
 
 import tensorflow as tf
 
@@ -92,34 +94,6 @@ def _safe_error(errors, key, fallback_key=None):
     return val
 
 
-def _fit_contact_line(CPs):
-    """Fit a linear contact line through contact points with IQR filtering.
-
-    Matches the reference Inverse_phase_analysis_executable.py approach:
-    filter CPs to y-coordinate IQR range, then fit a line.
-    """
-    q1 = np.percentile(CPs[:, 1], 25)
-    q3 = np.percentile(CPs[:, 1], 75)
-    CPs_inrange = np.array([cp for cp in CPs if q1 <= cp[1] <= q3])
-
-    if len(CPs_inrange) < 2:
-        CPs_inrange = CPs
-
-    try:
-        m, c, _ = linear_fit(CPs_inrange, display=False)
-    except Exception:
-        med = np.median(CPs, axis=0)
-        return np.array([[CPs[:, 0].min(), med[1]], [CPs[:, 0].max(), med[1]]])
-
-    start_x = CPs[:, 0].min()
-    end_x = CPs[:, 0].max()
-    start_y = m * start_x + c
-    end_y = m * end_x + c
-
-    return np.array([[start_x, start_y], [end_x, end_y]])
-
-
-
 def _check_resolution_drop(profile):
     """Check if image resolution needs dropping for ML model."""
     profile_len = len(profile)
@@ -151,6 +125,7 @@ def run_pass1(images, step=MEDIAN_STEP):
     """
     left_CPs = []
     right_CPs = []
+    contours_per_frame = []
     successes = 0
     failures = 0
 
@@ -174,6 +149,7 @@ def run_pass1(images, step=MEDIAN_STEP):
             else:
                 left_CPs.append(CPs[1].copy())
                 right_CPs.append(CPs[0].copy())
+            contours_per_frame.append(np.asarray(contour))
             successes += 1
         except Exception:
             failures += 1
@@ -188,8 +164,12 @@ def run_pass1(images, step=MEDIAN_STEP):
     left_CPs_arr = np.array(left_CPs)
     right_CPs_arr = np.array(right_CPs)
 
-    left_line = _fit_contact_line(left_CPs_arr)
-    right_line = _fit_contact_line(right_CPs_arr)
+    left_line = fit_contact_line(
+        left_CPs_arr, contours=contours_per_frame, side="left",
+    )
+    right_line = fit_contact_line(
+        right_CPs_arr, contours=contours_per_frame, side="right",
+    )
 
     left_median = np.median(left_CPs_arr, axis=0)
     right_median = np.median(right_CPs_arr, axis=0)

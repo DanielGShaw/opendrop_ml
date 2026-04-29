@@ -231,6 +231,7 @@ def _pass1_calibrate_with_tilt(
 
     left_cps: list = []
     right_cps: list = []
+    contours_per_frame: list = []
     rotated_first_frame: Optional[np.ndarray] = None
     sample_idx = 0
     for frame, _frame_number, _meta in load_frames(
@@ -281,6 +282,7 @@ def _pass1_calibrate_with_tilt(
         else:
             left_cps.append(np.asarray(cps[1]).copy())
             right_cps.append(np.asarray(cps[0]).copy())
+        contours_per_frame.append(np.asarray(contour))
 
         progress(sample_idx, total_samples, "Pass 1")
 
@@ -294,8 +296,12 @@ def _pass1_calibrate_with_tilt(
 
     left_arr = np.array(left_cps)
     right_arr = np.array(right_cps)
-    left_line, left_stats = fit_contact_line_with_stats(left_arr)
-    right_line, right_stats = fit_contact_line_with_stats(right_arr)
+    left_line, left_stats = fit_contact_line_with_stats(
+        left_arr, contours=contours_per_frame, side="left",
+    )
+    right_line, right_stats = fit_contact_line_with_stats(
+        right_arr, contours=contours_per_frame, side="right",
+    )
 
     return (
         float(shared_tilt),

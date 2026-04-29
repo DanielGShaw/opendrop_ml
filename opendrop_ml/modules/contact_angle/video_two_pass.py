@@ -156,6 +156,7 @@ def _pass1_calibrate(
 ) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]]:
     left_cps = []
     right_cps = []
+    contours_per_frame = []
 
     sample_idx = 0
     for frame, _frame_number, _meta in load_frames(source_path, frame_step=skip):
@@ -180,6 +181,7 @@ def _pass1_calibrate(
         else:
             left_cps.append(np.asarray(cps[1]).copy())
             right_cps.append(np.asarray(cps[0]).copy())
+        contours_per_frame.append(np.asarray(contour))
 
         progress(sample_idx, pass1_total, "Pass 1")
 
@@ -191,8 +193,12 @@ def _pass1_calibrate(
 
     left_arr = np.array(left_cps)
     right_arr = np.array(right_cps)
-    left_line = fit_contact_line(left_arr)
-    right_line = fit_contact_line(right_arr)
+    left_line = fit_contact_line(
+        left_arr, contours=contours_per_frame, side="left",
+    )
+    right_line = fit_contact_line(
+        right_arr, contours=contours_per_frame, side="right",
+    )
     return left_line, right_line, left_arr, right_arr
 
 

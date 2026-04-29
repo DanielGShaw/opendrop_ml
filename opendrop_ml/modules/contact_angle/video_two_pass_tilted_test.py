@@ -561,7 +561,7 @@ def test_pass2_cp_outlier_gate(monkeypatch, distance, expect_skip):
     stats = {"residual_iqr": 1.0, "n_filtered": 10, "n_total": 10}
     monkeypatch.setattr(
         video_two_pass_tilted, "fit_contact_line_with_stats",
-        lambda arr: (pinned_line, stats),
+        lambda arr, contours=None, side=None: (pinned_line, stats),
     )
 
     setup = _make_setup(methods=[FittingMethod.TANGENT_FIT])

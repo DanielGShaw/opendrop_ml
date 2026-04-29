@@ -180,12 +180,17 @@ def test_create_edge_image_rasterises_and_clips():
 # ---------------------------------------------------------------------------
 
 def _pass1_result(left_cp, right_cp, left_int, right_int, baseline):
+    # n=3 fixtures short-circuit through Fix B's CASE_11_MIN_CPS guard
+    # before contours are inspected — any Nx2 placeholder satisfies the
+    # dict shape compute_pass1_calibration expects.
     return {
         "left_CP": np.asarray(left_cp, dtype=float),
         "right_CP": np.asarray(right_cp, dtype=float),
         "left_needle_int": np.asarray(left_int, dtype=float),
         "right_needle_int": np.asarray(right_int, dtype=float),
         "baseline": np.asarray(baseline, dtype=float),
+        "left_contour": np.empty((0, 2)),
+        "right_contour": np.empty((0, 2)),
     }
 
 
