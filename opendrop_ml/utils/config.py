@@ -13,7 +13,6 @@ BASELINE_OPTIONS = [ThresholdSelect.AUTOMATED, ThresholdSelect.USER_SELECTED]
 NEEDLE_OPTIONS = ["0.7176", "1.270", "1.651"]
 FILE_SOURCE_OPTIONS_CA = ["Local images", "Flea3", "USB camera"]
 FILE_SOURCE_OPTIONS_IFT = ["Local images", "cv2.VideoCapture", "GenlCam"]
-EDGEFINDER_OPTIONS = ["OpenCV", "Subpixel", "Both"]
 
 # OPENDROP
 INTERFACIAL_TENSION = "Interfacial Tension"

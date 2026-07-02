@@ -6,7 +6,6 @@ threshold_method: Automated # Method for image thresholding for CA analysis (Aut
 needle_region_method: Automated # Method for locating the needle region for IFT analysis (Automated or User-selected)
 threshold_val: null # Custom threshold number value (if not automated)
 baseline_method: Automated # Method for detecting the baseline for CA analysis (Automated or User-selected)
-edgefinder: OpenCV # Edge detection algorithm (OpenCV, Subpixel or Both)
 
 # --- Physical properties input by user (used in IFT analysis) ---
 drop_density: 1000 # Density of drop fluid (g/cm³)

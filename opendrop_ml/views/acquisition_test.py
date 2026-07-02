@@ -18,7 +18,6 @@ def mock_user_input():
         image_source = "Local images"
         import_files = []
         frame_interval = 0
-        edgefinder = ""
         number_of_frames = 0
         is_video = False
 
@@ -31,7 +30,6 @@ def component(mock_user_input):
         component = Acquisition.__new__(Acquisition)
         component.image_source = MagicMock()
         component.frame_interval = MagicMock()
-        component.edgefinder = MagicMock()
         component.choose_files_button = MagicMock()
         component.choose_files_label = MagicMock()
         component.initialize_image_display = MagicMock()
@@ -55,7 +53,6 @@ def component(mock_user_input):
 def test_component_initialization(component):
     assert hasattr(component, "image_source")
     assert hasattr(component, "frame_interval")
-    assert hasattr(component, "edgefinder")
     assert hasattr(component, "choose_files_button")
 
 
@@ -90,8 +87,6 @@ def test_update_input_mode_video(component, mock_user_input):
     component.video_source_dropdown.optionmenu.grid.assert_called()
     component.frame_interval.label.grid_remove.assert_called()
     component.frame_interval.entry.grid_remove.assert_called()
-    component.edgefinder.label.grid_remove.assert_called()
-    component.edgefinder.optionmenu.grid_remove.assert_called()
 
 
 def test_update_input_mode_static(component, mock_user_input):
@@ -107,8 +102,6 @@ def test_update_input_mode_static(component, mock_user_input):
     component.video_source_dropdown.optionmenu.grid_remove.assert_called()
     component.frame_interval.label.grid.assert_called()
     component.frame_interval.entry.grid.assert_called()
-    component.edgefinder.label.grid.assert_called()
-    component.edgefinder.optionmenu.grid.assert_called()
 
 
 @patch("opendrop_ml.views.acquisition.get_middle_frame")

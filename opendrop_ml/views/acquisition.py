@@ -6,7 +6,6 @@ from opendrop_ml.utils.config import (
     IMAGE_TYPE,
     VIDEO_TYPE,
     FILE_SOURCE_OPTIONS_CA,
-    EDGEFINDER_OPTIONS,
     INPUT_MODE_OPTIONS,
     VIDEO_SOURCE_OPTIONS,
 )
@@ -124,20 +123,6 @@ class Acquisition(CTkFrame):
         # Row 3: Choose files button
         self.setup_choose_files_frame(self.image_acquisition_frame)
 
-        # Row 4: Edge finder (CA only)
-        if function_type == FunctionType.CONTACT_ANGLE:
-
-            self.edgefinder = OptionMenu(
-                self,
-                self.image_acquisition_frame,
-                "Edge finder:",
-                EDGEFINDER_OPTIONS,
-                self.update_edgefinder,
-                rw=4,
-            )
-            self.edgefinder.optionmenu.grid_configure(sticky="ew")
-            self.image_acquisition_frame.grid_rowconfigure(4, weight=0)
-
         # Row 6: Frame interval
         default_value = getattr(self.user_input_data, "frame_interval", 1)
 
@@ -205,9 +190,6 @@ class Acquisition(CTkFrame):
     def update_frame_interval(self, *args):
         self.user_input_data.frame_interval = self.frame_interval.get_value()
 
-    def update_edgefinder(self, *args):
-        self.user_input_data.edgefinder = self.edgefinder.get_value()
-
     def update_input_mode(self, selection: str):
         self.input_mode = selection
 
@@ -223,10 +205,6 @@ class Acquisition(CTkFrame):
             self.frame_interval.label.grid_remove()
             self.frame_interval.entry.grid_remove()
 
-            if self.function_type == FunctionType.CONTACT_ANGLE:
-                self.edgefinder.label.grid_remove()
-                self.edgefinder.optionmenu.grid_remove()
-
         else:  # "Static"
             self.user_input_data.is_video = False
 
@@ -238,10 +216,6 @@ class Acquisition(CTkFrame):
 
             self.frame_interval.label.grid()
             self.frame_interval.entry.grid()
-
-            if self.function_type == FunctionType.CONTACT_ANGLE:
-                self.edgefinder.label.grid()
-                self.edgefinder.optionmenu.grid()
 
         self._reset_selection()
 

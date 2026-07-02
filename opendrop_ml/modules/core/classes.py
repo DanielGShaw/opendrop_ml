@@ -40,7 +40,6 @@ class ExperimentalSetup(object):
         self.needle_region_method: RegionSelect = RegionSelect.AUTOMATED
         self.baseline_method: ThresholdSelect = ThresholdSelect.AUTOMATED
         self.threshold_val = None
-        self.edgefinder = None
 
         self.original_boole: bool = False
         self.cropped_boole: bool = False
