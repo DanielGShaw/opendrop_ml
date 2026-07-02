@@ -46,8 +46,7 @@ def create_navigation(parent):
     stage_labels = []
     for i, stage in enumerate(stages):
         # Create a label for each stage
-        label = CTkLabel(navigation_frame, text=stage,
-                         font=("Roboto", 13), anchor="e")
+        label = CTkLabel(navigation_frame, text=stage, font=("Roboto", 13), anchor="e")
         label.pack(side="left", expand=True)
         stage_labels.append(label)
 

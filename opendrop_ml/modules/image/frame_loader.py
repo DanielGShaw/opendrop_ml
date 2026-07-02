@@ -64,10 +64,9 @@ def get_frame_count(source_path):
         int: Total frame count.
     """
     if os.path.isdir(source_path):
-        return len([
-            f for f in os.listdir(source_path)
-            if f.lower().endswith(IMAGE_EXTENSIONS)
-        ])
+        return len(
+            [f for f in os.listdir(source_path) if f.lower().endswith(IMAGE_EXTENSIONS)]
+        )
 
     cap = cv2.VideoCapture(source_path)
     if not cap.isOpened():
@@ -89,8 +88,11 @@ def get_first_frame(source_path):
     """
     if os.path.isdir(source_path):
         filenames = sorted(
-            (f for f in os.listdir(source_path)
-             if f.lower().endswith(IMAGE_EXTENSIONS)),
+            (
+                f
+                for f in os.listdir(source_path)
+                if f.lower().endswith(IMAGE_EXTENSIONS)
+            ),
             key=natural_sort_key,
         )
         if not filenames:
@@ -125,8 +127,11 @@ def get_middle_frame(source_path):
     """
     if os.path.isdir(source_path):
         filenames = sorted(
-            (f for f in os.listdir(source_path)
-             if f.lower().endswith(IMAGE_EXTENSIONS)),
+            (
+                f
+                for f in os.listdir(source_path)
+                if f.lower().endswith(IMAGE_EXTENSIONS)
+            ),
             key=natural_sort_key,
         )
         if not filenames:
@@ -157,6 +162,7 @@ def get_middle_frame(source_path):
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
+
 
 def _load_from_directory(directory, frame_step):
     filenames = sorted(

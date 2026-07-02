@@ -5,9 +5,7 @@ import cv2
 import numpy as np
 import pytest
 
-sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
-)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
 from opendrop_ml.modules.image.needle_masking import (
     IGNORE_EDGE_MARGIN,
@@ -51,6 +49,7 @@ def _make_two_vertical_edge_image(size=200, x_left=50, x_right=150):
 # extract_edges_two_contours
 # ---------------------------------------------------------------------------
 
+
 def test_extract_edges_two_contours_returns_two_contours():
     img = _make_two_blob_image()
     c1, c2, thresh = extract_edges_two_contours(img)
@@ -80,6 +79,7 @@ def test_extract_edges_two_contours_single_blob_raises():
 # hough_baseline
 # ---------------------------------------------------------------------------
 
+
 def test_hough_baseline_detects_horizontal_line():
     edges = _make_horizontal_edge_image(size=120, y=60)
     baseline = hough_baseline(edges, threshold=40)
@@ -104,6 +104,7 @@ def test_hough_baseline_only_vertical_lines_returns_none():
 # ---------------------------------------------------------------------------
 # detect_vertical_lines
 # ---------------------------------------------------------------------------
+
 
 def test_detect_vertical_lines_happy_case():
     edges = _make_two_vertical_edge_image(size=200, x_left=50, x_right=150)
@@ -136,6 +137,7 @@ def test_detect_vertical_lines_empty_image_returns_none_tuple():
 # ---------------------------------------------------------------------------
 # remove_points_near_lines
 # ---------------------------------------------------------------------------
+
 
 def test_remove_points_near_lines_drops_close_points_keeps_far_points():
     # 5 contour points; one sits exactly on the line y=5, the rest are far.
@@ -180,6 +182,7 @@ def test_remove_points_near_lines_none_lines_skipped():
 # mask_needle — minimal integration
 # ---------------------------------------------------------------------------
 
+
 def test_mask_needle_removes_points_near_detected_vertical_lines():
     # Build two "contours" that together trace a baseline + two vertical
     # needle lines, so the orchestrator's Hough detection can find them.
@@ -212,6 +215,7 @@ def test_mask_needle_removes_points_near_detected_vertical_lines():
 # ---------------------------------------------------------------------------
 # module constant
 # ---------------------------------------------------------------------------
+
 
 def test_ignore_edge_margin_is_positive_int():
     assert isinstance(IGNORE_EDGE_MARGIN, int)

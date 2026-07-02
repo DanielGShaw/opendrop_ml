@@ -15,9 +15,7 @@ class TestPointsAboveBaseline(unittest.TestCase):
     def test_horizontal_baseline_keeps_visually_above_points(self):
         # Horizontal baseline left-to-right at y=10. In image coordinates the
         # "above" side is y < 10, so only the y=5 points should survive.
-        contour = np.array(
-            [[1.0, 5.0], [2.0, 5.0], [3.0, 15.0], [4.0, 20.0]]
-        )
+        contour = np.array([[1.0, 5.0], [2.0, 5.0], [3.0, 15.0], [4.0, 20.0]])
         out = points_above_baseline(contour, ix=0, iy=10, fx=100, fy=10)
         assert_array_equal(out, np.array([[1.0, 5.0], [2.0, 5.0]]))
 
@@ -103,33 +101,46 @@ class TestLongestContourArcAboveBaseline(unittest.TestCase):
     def test_returns_only_longest_contiguous_run(self):
         # Drop arc (5 above-baseline points) followed by a spike tip (2 above
         # points), separated by below-baseline gap. Baseline at y=10.
-        contour = np.array([
-            # drop arc (y < 10)
-            [0.0, 5.0], [1.0, 4.0], [2.0, 3.0], [3.0, 4.0], [4.0, 5.0],
-            # surface dip back below baseline
-            [5.0, 12.0], [6.0, 13.0], [7.0, 12.0],
-            # spike tip (y < 10)
-            [8.0, 8.0], [9.0, 9.0],
-            # back below baseline
-            [10.0, 14.0],
-        ])
-        out = longest_contour_arc_above_baseline(
-            contour, ix=0, iy=10, fx=20, fy=10
+        contour = np.array(
+            [
+                # drop arc (y < 10)
+                [0.0, 5.0],
+                [1.0, 4.0],
+                [2.0, 3.0],
+                [3.0, 4.0],
+                [4.0, 5.0],
+                # surface dip back below baseline
+                [5.0, 12.0],
+                [6.0, 13.0],
+                [7.0, 12.0],
+                # spike tip (y < 10)
+                [8.0, 8.0],
+                [9.0, 9.0],
+                # back below baseline
+                [10.0, 14.0],
+            ]
         )
+        out = longest_contour_arc_above_baseline(contour, ix=0, iy=10, fx=20, fy=10)
         assert_array_equal(out, contour[0:5])
 
     def test_handles_wrap_around(self):
         # Contour starts mid-drop-arc: above-baseline run wraps from index 9
         # (last) back through 0,1,2,3 (first four).
-        contour = np.array([
-            [3.0, 5.0], [4.0, 4.0], [5.0, 5.0], [6.0, 6.0],   # 0..3 above
-            [7.0, 12.0], [8.0, 13.0], [4.0, 12.0],            # 4..6 below
-            [3.0, 11.5],                                       # 7  below
-            [2.0, 7.0], [1.0, 5.0],                            # 8..9 above (wraps to 0..3)
-        ])
-        out = longest_contour_arc_above_baseline(
-            contour, ix=0, iy=10, fx=20, fy=10
+        contour = np.array(
+            [
+                [3.0, 5.0],
+                [4.0, 4.0],
+                [5.0, 5.0],
+                [6.0, 6.0],  # 0..3 above
+                [7.0, 12.0],
+                [8.0, 13.0],
+                [4.0, 12.0],  # 4..6 below
+                [3.0, 11.5],  # 7  below
+                [2.0, 7.0],
+                [1.0, 5.0],  # 8..9 above (wraps to 0..3)
+            ]
         )
+        out = longest_contour_arc_above_baseline(contour, ix=0, iy=10, fx=20, fy=10)
         # Expected: indices 8, 9, 0, 1, 2, 3 in that order.
         expected = np.concatenate([contour[8:10], contour[0:4]])
         assert_array_equal(out, expected)
@@ -137,29 +148,28 @@ class TestLongestContourArcAboveBaseline(unittest.TestCase):
     def test_picks_longest_when_multiple_runs(self):
         # Two above-baseline runs: short (1 point) then long (3 points).
         # Longest should win regardless of which appears first.
-        contour = np.array([
-            [0.0, 5.0],                          # 0  above (short run)
-            [1.0, 12.0], [2.0, 13.0],            # 1..2 below
-            [3.0, 4.0], [4.0, 3.0], [5.0, 4.0],  # 3..5 above (long run)
-            [6.0, 11.0],                         # 6  below
-        ])
-        out = longest_contour_arc_above_baseline(
-            contour, ix=0, iy=10, fx=20, fy=10
+        contour = np.array(
+            [
+                [0.0, 5.0],  # 0  above (short run)
+                [1.0, 12.0],
+                [2.0, 13.0],  # 1..2 below
+                [3.0, 4.0],
+                [4.0, 3.0],
+                [5.0, 4.0],  # 3..5 above (long run)
+                [6.0, 11.0],  # 6  below
+            ]
         )
+        out = longest_contour_arc_above_baseline(contour, ix=0, iy=10, fx=20, fy=10)
         assert_array_equal(out, contour[3:6])
 
     def test_all_above_returns_full_contour(self):
         contour = np.array([[1.0, 5.0], [2.0, 4.0], [3.0, 5.0]])
-        out = longest_contour_arc_above_baseline(
-            contour, ix=0, iy=10, fx=20, fy=10
-        )
+        out = longest_contour_arc_above_baseline(contour, ix=0, iy=10, fx=20, fy=10)
         assert_array_equal(out, contour)
 
     def test_all_below_returns_empty(self):
         contour = np.array([[1.0, 15.0], [2.0, 14.0], [3.0, 15.0]])
-        out = longest_contour_arc_above_baseline(
-            contour, ix=0, iy=10, fx=20, fy=10
-        )
+        out = longest_contour_arc_above_baseline(contour, ix=0, iy=10, fx=20, fy=10)
         self.assertEqual(out.shape, (0, 2))
 
     def test_empty_contour_returns_empty(self):

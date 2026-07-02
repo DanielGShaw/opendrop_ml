@@ -6,7 +6,6 @@ from opendrop_ml.utils.config import (
     IMAGE_TYPE,
     VIDEO_TYPE,
     FILE_SOURCE_OPTIONS_CA,
-    EDGEFINDER_OPTIONS,
     INPUT_MODE_OPTIONS,
     VIDEO_SOURCE_OPTIONS,
 )
@@ -67,7 +66,8 @@ class Acquisition(CTkFrame):
         self.image_acquisition_frame = CTkFrame(self.input_fields_frame)
         set_light_only_color(self.image_acquisition_frame, "entry")
         self.image_acquisition_frame.grid(
-            row=0, column=0, sticky="new", padx=15, pady=10)
+            row=0, column=0, sticky="new", padx=15, pady=10
+        )
         self.image_acquisition_frame.grid_columnconfigure(
             1, weight=1
         )  # Second column (values) can expand
@@ -123,20 +123,6 @@ class Acquisition(CTkFrame):
         # Row 3: Choose files button
         self.setup_choose_files_frame(self.image_acquisition_frame)
 
-        # Row 4: Edge finder (CA only)
-        if function_type == FunctionType.CONTACT_ANGLE:
-
-            self.edgefinder = OptionMenu(
-                self,
-                self.image_acquisition_frame,
-                "Edge finder:",
-                EDGEFINDER_OPTIONS,
-                self.update_edgefinder,
-                rw=4,
-            )
-            self.edgefinder.optionmenu.grid_configure(sticky="ew")
-            self.image_acquisition_frame.grid_rowconfigure(4, weight=0)
-
         # Row 6: Frame interval
         default_value = getattr(self.user_input_data, "frame_interval", 1)
 
@@ -154,8 +140,7 @@ class Acquisition(CTkFrame):
         # Create right side frame for image display with vertical centering
         self.images_frame = CTkFrame(self)
         set_light_only_color(self.images_frame, "outerframe")
-        self.images_frame.grid(
-            row=0, column=1, sticky="nsew", padx=15, pady=(10, 0))
+        self.images_frame.grid(row=0, column=1, sticky="nsew", padx=15, pady=(10, 0))
 
         # Configure right frame to center content
         self.images_frame.grid_rowconfigure(0, weight=1)
@@ -205,9 +190,6 @@ class Acquisition(CTkFrame):
     def update_frame_interval(self, *args):
         self.user_input_data.frame_interval = self.frame_interval.get_value()
 
-    def update_edgefinder(self, *args):
-        self.user_input_data.edgefinder = self.edgefinder.get_value()
-
     def update_input_mode(self, selection: str):
         self.input_mode = selection
 
@@ -223,10 +205,6 @@ class Acquisition(CTkFrame):
             self.frame_interval.label.grid_remove()
             self.frame_interval.entry.grid_remove()
 
-            if self.function_type == FunctionType.CONTACT_ANGLE:
-                self.edgefinder.label.grid_remove()
-                self.edgefinder.optionmenu.grid_remove()
-
         else:  # "Static"
             self.user_input_data.is_video = False
 
@@ -238,10 +216,6 @@ class Acquisition(CTkFrame):
 
             self.frame_interval.label.grid()
             self.frame_interval.entry.grid()
-
-            if self.function_type == FunctionType.CONTACT_ANGLE:
-                self.edgefinder.label.grid()
-                self.edgefinder.optionmenu.grid()
 
         self._reset_selection()
 
@@ -301,8 +275,7 @@ class Acquisition(CTkFrame):
         self.user_input_data.number_of_frames = num_files
 
         if num_files > 0:
-            self.choose_files_button.configure(
-                text=f"{num_files} File(s) Selected")
+            self.choose_files_button.configure(text=f"{num_files} File(s) Selected")
             self.current_index = 0
             self.initialize_image_display()
         else:
@@ -346,8 +319,7 @@ class Acquisition(CTkFrame):
             return
 
         image_files = [
-            f for f in os.listdir(folder_path)
-            if f.lower().endswith(IMAGE_EXTENSIONS)
+            f for f in os.listdir(folder_path) if f.lower().endswith(IMAGE_EXTENSIONS)
         ]
 
         if not image_files:
@@ -421,7 +393,8 @@ class Acquisition(CTkFrame):
 
         width, height = pil_image.size
         new_width, new_height = self.image_handler.get_fitting_dimensions(
-            width, height,
+            width,
+            height,
             max_width=IMAGE_FRAME_WIDTH,
             max_height=IMAGE_FRAME_HEIGHT,
         )
@@ -495,8 +468,7 @@ class Acquisition(CTkFrame):
 
         self.index_entry = CTkEntry(self.image_navigation_frame, width=40)
         self.index_entry.grid(row=0, column=1, padx=5, pady=5)
-        self.index_entry.bind(
-            "<Return>", lambda event: self.update_index_from_entry())
+        self.index_entry.bind("<Return>", lambda event: self.update_index_from_entry())
         self.index_entry.insert(0, str(self.current_index + 1))
 
         self.navigation_label = CTkLabel(
@@ -533,8 +505,7 @@ class Acquisition(CTkFrame):
         new_width, new_height = self.image_handler.get_fitting_dimensions(
             width, height, max_width=IMAGE_FRAME_WIDTH, max_height=IMAGE_FRAME_HEIGHT
         )
-        self.tk_image = CTkImage(
-            self.current_image, size=(new_width, new_height))
+        self.tk_image = CTkImage(self.current_image, size=(new_width, new_height))
 
         self.image_label.image = self.tk_image
         self.update_idletasks()
@@ -547,8 +518,7 @@ class Acquisition(CTkFrame):
                 self.current_index + direction
             ) % self.user_input_data.number_of_frames
             # Load the new image
-            self.load_image(
-                self.user_input_data.import_files[self.current_index])
+            self.load_image(self.user_input_data.import_files[self.current_index])
             self.update_index_entry()  # Update the entry with the current index
             file_name = os.path.basename(
                 self.user_input_data.import_files[self.current_index]
@@ -558,13 +528,11 @@ class Acquisition(CTkFrame):
     def update_index_from_entry(self):
         """Update current index based on user input in the entry."""
         try:
-            new_index = int(self.index_entry.get()) - \
-                1  # Convert to zero-based index
+            new_index = int(self.index_entry.get()) - 1  # Convert to zero-based index
             if 0 <= new_index < self.user_input_data.number_of_frames:
                 self.current_index = new_index
                 # Load the new image
-                self.load_image(
-                    self.user_input_data.import_files[self.current_index])
+                self.load_image(self.user_input_data.import_files[self.current_index])
             else:
                 print("Index out of range.")
         except ValueError:

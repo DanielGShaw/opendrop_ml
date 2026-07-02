@@ -61,9 +61,7 @@ def parse_synthetic_filename(filename):
         name = name[:-1]  # strip trailing underscore
 
     # Split by _CPL_ and _CPR_ to separate the three parts
-    match = re.match(
-        r"^(.+?)_CPL_(\d+)_(\d+)_CPR_(\d+)_(\d+)$", name
-    )
+    match = re.match(r"^(.+?)_CPL_(\d+)_(\d+)_CPR_(\d+)_(\d+)$", name)
     if not match:
         raise ValueError(f"Cannot parse filename: {filename}")
 
@@ -212,9 +210,17 @@ def evaluate_image(img_path, model, gt):
 
     # --- Young-Laplace fit ---
     try:
-        yl_angles, bond, baseline_width, volume, fit_contour, baseline, errors, sym_errors, timings = yl_fit(
-            profile, display=False
-        )
+        (
+            yl_angles,
+            bond,
+            baseline_width,
+            volume,
+            fit_contour,
+            baseline,
+            errors,
+            sym_errors,
+            timings,
+        ) = yl_fit(profile, display=False)
         result["yl_left_angle"] = yl_angles[0]
         result["yl_right_angle"] = yl_angles[1]
         result["yl_bond_number"] = bond
@@ -271,7 +277,9 @@ def print_bucket_summary(df, method_col, gt_col="gt_angle"):
     for label in ANGLE_BUCKET_LABELS:
         bucket = df_valid[df_valid["_bucket"] == label]
         if not bucket.empty:
-            print(f"      {label}: MAE = {bucket['_error'].mean():.2f} (n={len(bucket)})")
+            print(
+                f"      {label}: MAE = {bucket['_error'].mean():.2f} (n={len(bucket)})"
+            )
 
 
 def main():

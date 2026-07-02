@@ -87,8 +87,7 @@ def test_polynomial_fit_img(mock_preprocess, sample_data, sample_profile):
 
 
 def test_polynomial_fit(sample_profile):
-    angles, CPs, tangent_lines, errors, timings = polynomial_fit(
-        sample_profile)
+    angles, CPs, tangent_lines, errors, timings = polynomial_fit(sample_profile)
 
     assert len(angles) == 2
     assert len(CPs) == 2
@@ -115,9 +114,9 @@ def test_polynomial_fit_known_angle(expected_ca):
 
     angles, CPs, tangent_lines, errors, timings = polynomial_fit(profile)
 
-    assert angles[0] == pytest.approx(expected_ca, abs=5.0), (
-        f"Left angle {angles[0]:.1f}° differs from expected {expected_ca}° by more than 5°"
-    )
-    assert angles[1] == pytest.approx(expected_ca, abs=5.0), (
-        f"Right angle {angles[1]:.1f}° differs from expected {expected_ca}° by more than 5°"
-    )
+    assert angles[0] == pytest.approx(
+        expected_ca, abs=5.0
+    ), f"Left angle {angles[0]:.1f}° differs from expected {expected_ca}° by more than 5°"
+    assert angles[1] == pytest.approx(
+        expected_ca, abs=5.0
+    ), f"Right angle {angles[1]:.1f}° differs from expected {expected_ca}° by more than 5°"

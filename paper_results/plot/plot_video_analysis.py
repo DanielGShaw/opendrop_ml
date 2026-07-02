@@ -25,7 +25,13 @@ PAPER_RESULTS_DIR = os.path.dirname(SCRIPT_DIR)
 sys.path.insert(0, PAPER_RESULTS_DIR)
 sys.path.insert(0, SCRIPT_DIR)
 
-from config import RESULTS_DIR, ISAAC_DIR, INVERSE_PHASE_DIR, VIDEO_EXTENSIONS, IMAGE_EXTENSIONS
+from config import (
+    RESULTS_DIR,
+    ISAAC_DIR,
+    INVERSE_PHASE_DIR,
+    VIDEO_EXTENSIONS,
+    IMAGE_EXTENSIONS,
+)
 from plot_utils import (
     setup_matplotlib,
     save_figure,
@@ -75,6 +81,7 @@ def _get_first_frame(dataset_name):
 # Inverse Phase: time-series of ML and tangent angles vs frame number
 # -----------------------------------------------------------------------
 
+
 def plot_inverse_phase_timeseries():
     """ML predicted angle vs frame number with tangent fit overlay."""
     results_path = os.path.join(RESULTS_DIR, "inverse_phase_results.csv")
@@ -90,11 +97,25 @@ def plot_inverse_phase_timeseries():
     # Panel a: ML angles vs frame number
     ax = axes[0]
     if "ml_left_angle" in df.columns:
-        ax.plot(frames, df["ml_left_angle"], "*-", color=COLORS["ml"],
-                label="ML left", markersize=4, linewidth=0.8)
-        ax.plot(frames, df["ml_right_angle"], "*-", color=COLORS["ml"] + "50",
-                label="ML right", markersize=4, linewidth=0.8)
-    ax.set_ylabel(u"$\\theta$ (\u00B0)")
+        ax.plot(
+            frames,
+            df["ml_left_angle"],
+            "*-",
+            color=COLORS["ml"],
+            label="ML left",
+            markersize=4,
+            linewidth=0.8,
+        )
+        ax.plot(
+            frames,
+            df["ml_right_angle"],
+            "*-",
+            color=COLORS["ml"] + "50",
+            label="ML right",
+            markersize=4,
+            linewidth=0.8,
+        )
+    ax.set_ylabel("$\\theta$ (\u00B0)")
     ax.set_title("Inverse Phase — ML Model Predictions")
     ax.legend()
     ax.text(0.01, 1.02, "a)", transform=ax.transAxes, fontsize=14, fontweight="bold")
@@ -102,12 +123,26 @@ def plot_inverse_phase_timeseries():
     # Panel b: Tangent angles vs frame number
     ax = axes[1]
     if "tangent_left_angle" in df.columns:
-        ax.plot(frames, df["tangent_left_angle"], "^-", color=COLORS["tangent"],
-                label="Tangent left", markersize=4, linewidth=0.8)
-        ax.plot(frames, df["tangent_right_angle"], "^-", color=COLORS["tangent"] + "50",
-                label="Tangent right", markersize=4, linewidth=0.8)
+        ax.plot(
+            frames,
+            df["tangent_left_angle"],
+            "^-",
+            color=COLORS["tangent"],
+            label="Tangent left",
+            markersize=4,
+            linewidth=0.8,
+        )
+        ax.plot(
+            frames,
+            df["tangent_right_angle"],
+            "^-",
+            color=COLORS["tangent"] + "50",
+            label="Tangent right",
+            markersize=4,
+            linewidth=0.8,
+        )
     ax.set_xlabel("Frame number")
-    ax.set_ylabel(u"$\\theta$ (\u00B0)")
+    ax.set_ylabel("$\\theta$ (\u00B0)")
     ax.set_title("Inverse Phase — Tangent Fit")
     ax.legend()
     ax.text(0.01, 1.02, "b)", transform=ax.transAxes, fontsize=14, fontweight="bold")
@@ -119,6 +154,7 @@ def plot_inverse_phase_timeseries():
 # -----------------------------------------------------------------------
 # Inverse Phase: CP scatter overlaid on first image
 # -----------------------------------------------------------------------
+
 
 def plot_inverse_phase_cp_scatter():
     """Contact point positions overlaid on first inverse phase image,
@@ -151,11 +187,16 @@ def plot_inverse_phase_cp_scatter():
     bg_img = None
     if os.path.isdir(INVERSE_PHASE_DIR):
         import re
+
         images = sorted(
-            (f for f in os.listdir(INVERSE_PHASE_DIR)
-             if f.lower().endswith(IMAGE_EXTENSIONS)),
-            key=lambda s: [int(c) if c.isdigit() else c.lower()
-                           for c in re.split(r"(\d+)", str(s))],
+            (
+                f
+                for f in os.listdir(INVERSE_PHASE_DIR)
+                if f.lower().endswith(IMAGE_EXTENSIONS)
+            ),
+            key=lambda s: [
+                int(c) if c.isdigit() else c.lower() for c in re.split(r"(\d+)", str(s))
+            ],
         )
         if images:
             first_img = cv2.imread(os.path.join(INVERSE_PHASE_DIR, images[0]))
@@ -180,10 +221,24 @@ def plot_inverse_phase_cp_scatter():
     if bg_img is not None:
         ax_scatter.imshow(bg_img)
 
-    ax_scatter.scatter(left_x, left_y, alpha=0.6, s=50, zorder=6,
-                       label="Left Contact Points", color="C0")
-    ax_scatter.scatter(right_x, right_y, alpha=0.6, s=50, zorder=6,
-                       label="Right Contact Points", color="C1")
+    ax_scatter.scatter(
+        left_x,
+        left_y,
+        alpha=0.6,
+        s=50,
+        zorder=6,
+        label="Left Contact Points",
+        color="C0",
+    )
+    ax_scatter.scatter(
+        right_x,
+        right_y,
+        alpha=0.6,
+        s=50,
+        zorder=6,
+        label="Right Contact Points",
+        color="C1",
+    )
 
     # Fitted contact lines (red)
     left_pts = np.column_stack([left_x, left_y])
@@ -193,11 +248,19 @@ def plot_inverse_phase_cp_scatter():
     right_line = _fit_cp_line(right_pts)
 
     if left_line is not None:
-        ax_scatter.plot(left_line[:, 0], left_line[:, 1], "-", color="red",
-                        linewidth=2, zorder=5)
+        ax_scatter.plot(
+            left_line[:, 0], left_line[:, 1], "-", color="red", linewidth=2, zorder=5
+        )
     if right_line is not None:
-        ax_scatter.plot(right_line[:, 0], right_line[:, 1], "-", color="red",
-                        linewidth=2, zorder=5, label="Contact line movement")
+        ax_scatter.plot(
+            right_line[:, 0],
+            right_line[:, 1],
+            "-",
+            color="red",
+            linewidth=2,
+            zorder=5,
+            label="Contact line movement",
+        )
 
     ax_scatter.set_title("Contact Point Scatter Plot", fontsize=14)
     ax_scatter.set_xlabel("x-axis (px)", fontsize=12)
@@ -218,8 +281,14 @@ def plot_inverse_phase_cp_scatter():
     # Median annotations
     for i, x_vals in enumerate([left_x, right_x]):
         median_x = np.median(x_vals)
-        ax_xbox.annotate("{:.0f}".format(median_x), xy=(median_x, i + 1.2),
-                         va="center", ha="left", fontsize=9, color="black")
+        ax_xbox.annotate(
+            "{:.0f}".format(median_x),
+            xy=(median_x, i + 1.2),
+            va="center",
+            ha="left",
+            fontsize=9,
+            color="black",
+        )
     ax_xbox.set_xlim(xlims)
     ax_xbox.set_xlabel("x-axis (px)", fontsize=11)
 
@@ -227,8 +296,12 @@ def plot_inverse_phase_cp_scatter():
     # Offset positions and manual outlier plotting (matching reference)
     positions = [0.9, 1.9]
     box_y = ax_ybox.boxplot(
-        [left_y, right_y], vert=True, positions=positions,
-        labels=scatter_labels, patch_artist=False, showfliers=False,
+        [left_y, right_y],
+        vert=True,
+        positions=positions,
+        labels=scatter_labels,
+        patch_artist=False,
+        showfliers=False,
     )
 
     # Plot outliers manually, offset to the right of the box
@@ -251,8 +324,9 @@ def plot_inverse_phase_cp_scatter():
 
     # Sync y-box vertical extent with scatter panel
     pos_ybox = ax_ybox.get_position()
-    ax_ybox.set_position([pos_ybox.x0, pos_scatter.y0,
-                          pos_ybox.width, pos_scatter.height])
+    ax_ybox.set_position(
+        [pos_ybox.x0, pos_scatter.y0, pos_ybox.width, pos_scatter.height]
+    )
 
     save_figure(fig, SUBDIR, "inverse_phase_cp_scatter.png")
 
@@ -261,14 +335,13 @@ def plot_inverse_phase_cp_scatter():
 # Isaac: time-series per dataset, overlaid with commercial reference
 # -----------------------------------------------------------------------
 
+
 def plot_isaac_timeseries():
     """ML predicted angle vs frame number for each Isaac dataset."""
     datasets = ["MS_APTES_S2_0001", "0822_10k_Bb5", "SC69_1"]
 
     for dataset in datasets:
-        results_path = os.path.join(
-            RESULTS_DIR, "isaac_{}_results.csv".format(dataset)
-        )
+        results_path = os.path.join(RESULTS_DIR, "isaac_{}_results.csv".format(dataset))
         if not os.path.isfile(results_path):
             print("  Isaac {} results not found, skipping.".format(dataset))
             continue
@@ -282,21 +355,50 @@ def plot_isaac_timeseries():
         if "ml_left_angle" in df.columns:
             ml_left = df["ml_left_angle"].values
             ml_right = df["ml_right_angle"].values
-            ax.plot(frames, ml_left, "*-", color=COLORS["ml"],
-                    label="ML left", markersize=3, linewidth=0.5)
-            ax.plot(frames, ml_right, "*-", color=COLORS["ml"] + "50",
-                    label="ML right", markersize=3, linewidth=0.5)
+            ax.plot(
+                frames,
+                ml_left,
+                "*-",
+                color=COLORS["ml"],
+                label="ML left",
+                markersize=3,
+                linewidth=0.5,
+            )
+            ax.plot(
+                frames,
+                ml_right,
+                "*-",
+                color=COLORS["ml"] + "50",
+                label="ML right",
+                markersize=3,
+                linewidth=0.5,
+            )
 
         # Tangent fit
         if "tangent_left_angle" in df.columns:
-            ax.plot(frames, df["tangent_left_angle"], "^-", color=COLORS["tangent"],
-                    label="Tangent left", markersize=3, linewidth=0.5, alpha=0.6)
-            ax.plot(frames, df["tangent_right_angle"], "^-",
-                    color=COLORS["tangent"] + "50",
-                    label="Tangent right", markersize=3, linewidth=0.5, alpha=0.6)
+            ax.plot(
+                frames,
+                df["tangent_left_angle"],
+                "^-",
+                color=COLORS["tangent"],
+                label="Tangent left",
+                markersize=3,
+                linewidth=0.5,
+                alpha=0.6,
+            )
+            ax.plot(
+                frames,
+                df["tangent_right_angle"],
+                "^-",
+                color=COLORS["tangent"] + "50",
+                label="Tangent right",
+                markersize=3,
+                linewidth=0.5,
+                alpha=0.6,
+            )
 
         ax.set_xlabel("Frame number")
-        ax.set_ylabel(u"$\\theta$ (\u00B0)")
+        ax.set_ylabel("$\\theta$ (\u00B0)")
         ax.set_title("Isaac — {} — Contact Angle Time Series".format(dataset))
         ax.legend(loc="best")
 
@@ -334,9 +436,7 @@ def plot_isaac_cp_scatter():
     available = []
 
     for dataset in datasets:
-        results_path = os.path.join(
-            RESULTS_DIR, "isaac_{}_results.csv".format(dataset)
-        )
+        results_path = os.path.join(RESULTS_DIR, "isaac_{}_results.csv".format(dataset))
         if os.path.isfile(results_path):
             df = pd.read_csv(results_path)
             if "left_CP_x" in df.columns:
@@ -362,12 +462,26 @@ def plot_isaac_cp_scatter():
             ax.set_facecolor("#f0f0f0")
 
         # Scatter CP positions (semi-transparent so background visible)
-        ax.scatter(valid["left_CP_x"], valid["left_CP_y"],
-                   alpha=0.35, s=15, label="Left CP", color="C0",
-                   edgecolors="none", zorder=3)
-        ax.scatter(valid["right_CP_x"], valid["right_CP_y"],
-                   alpha=0.35, s=15, label="Right CP", color="C1",
-                   edgecolors="none", zorder=3)
+        ax.scatter(
+            valid["left_CP_x"],
+            valid["left_CP_y"],
+            alpha=0.35,
+            s=15,
+            label="Left CP",
+            color="C0",
+            edgecolors="none",
+            zorder=3,
+        )
+        ax.scatter(
+            valid["right_CP_x"],
+            valid["right_CP_y"],
+            alpha=0.35,
+            s=15,
+            label="Right CP",
+            color="C1",
+            edgecolors="none",
+            zorder=3,
+        )
 
         # Fitted contact lines (red) through each CP cluster
         left_pts = valid[["left_CP_x", "left_CP_y"]].values
@@ -378,14 +492,26 @@ def plot_isaac_cp_scatter():
 
         line_plotted = False
         if left_line is not None:
-            ax.plot(left_line[:, 0], left_line[:, 1], "-", color="red",
-                    linewidth=2, zorder=5,
-                    label="Contact line" if not line_plotted else None)
+            ax.plot(
+                left_line[:, 0],
+                left_line[:, 1],
+                "-",
+                color="red",
+                linewidth=2,
+                zorder=5,
+                label="Contact line" if not line_plotted else None,
+            )
             line_plotted = True
         if right_line is not None:
-            ax.plot(right_line[:, 0], right_line[:, 1], "-", color="red",
-                    linewidth=2, zorder=5,
-                    label="Contact line" if not line_plotted else None)
+            ax.plot(
+                right_line[:, 0],
+                right_line[:, 1],
+                "-",
+                color="red",
+                linewidth=2,
+                zorder=5,
+                label="Contact line" if not line_plotted else None,
+            )
 
         ax.set_title(dataset, fontsize=13)
         ax.set_xlabel("x (px)")
@@ -400,6 +526,7 @@ def plot_isaac_cp_scatter():
 # -----------------------------------------------------------------------
 # Kristina PEEK: angle per usable frame, left vs right
 # -----------------------------------------------------------------------
+
 
 def plot_kristina_results():
     """ML predicted angle per usable frame for Kristina PEEK dataset."""
@@ -429,11 +556,23 @@ def plot_kristina_results():
     # Panel a: ML predictions
     ax = axes[0]
     if "ml_left_angle" in usable.columns:
-        ax.plot(frames, usable["ml_left_angle"], "*-", color=COLORS["ml"],
-                label="ML left", markersize=6)
-        ax.plot(frames, usable["ml_right_angle"], "*-", color=COLORS["ml"] + "50",
-                label="ML right", markersize=6)
-    ax.set_ylabel(u"$\\theta$ (\u00B0)")
+        ax.plot(
+            frames,
+            usable["ml_left_angle"],
+            "*-",
+            color=COLORS["ml"],
+            label="ML left",
+            markersize=6,
+        )
+        ax.plot(
+            frames,
+            usable["ml_right_angle"],
+            "*-",
+            color=COLORS["ml"] + "50",
+            label="ML right",
+            markersize=6,
+        )
+    ax.set_ylabel("$\\theta$ (\u00B0)")
     ax.set_title("Kristina PEEK 60° — ML Model")
     ax.legend()
     ax.text(0.01, 1.02, "a)", transform=ax.transAxes, fontsize=14, fontweight="bold")
@@ -450,15 +589,27 @@ def plot_kristina_results():
             color = COLORS.get(method, "gray")
             marker = MARKERS.get(method, "o")
             label = LABELS.get(method, method)
-            ax.plot(frames[:len(left_vals)], left_vals, marker + "-",
-                    color=color, label="{} L".format(label),
-                    markersize=5, linewidth=0.8)
-            ax.plot(frames[:len(right_vals)], right_vals, marker + "-",
-                    color=color + "50", label="{} R".format(label),
-                    markersize=5, linewidth=0.8)
+            ax.plot(
+                frames[: len(left_vals)],
+                left_vals,
+                marker + "-",
+                color=color,
+                label="{} L".format(label),
+                markersize=5,
+                linewidth=0.8,
+            )
+            ax.plot(
+                frames[: len(right_vals)],
+                right_vals,
+                marker + "-",
+                color=color + "50",
+                label="{} R".format(label),
+                markersize=5,
+                linewidth=0.8,
+            )
 
     ax.set_xlabel("Frame number")
-    ax.set_ylabel(u"$\\theta$ (\u00B0)")
+    ax.set_ylabel("$\\theta$ (\u00B0)")
     ax.set_title("Kristina PEEK 60° — Method Comparison")
     ax.legend(ncol=2, fontsize=8)
     ax.text(0.01, 1.02, "b)", transform=ax.transAxes, fontsize=14, fontweight="bold")
@@ -472,7 +623,7 @@ def plot_kristina_results():
 # -----------------------------------------------------------------------
 
 # ML model styling — both use red stars
-COLORS_V03 = COLORS["ml"]    # red (same as v05)
+COLORS_V03 = COLORS["ml"]  # red (same as v05)
 MARKERS_V03 = MARKERS["ml"]  # star (same as v05)
 LABELS_V03 = "Conan 2024"
 
@@ -500,32 +651,73 @@ def plot_inverse_phase_agreement():
 
     # Define panels: (key, left_col, right_col, color, marker, label)
     panels = [
-        ("tangent", "tangent_left_angle", "tangent_right_angle",
-         COLORS["tangent"], MARKERS["tangent"], LABELS["tangent"]),
-        ("circular", "circular_left_angle", "circular_right_angle",
-         COLORS["circular"], MARKERS["circular"], LABELS["circular"]),
-        ("ellipse", "ellipse_left_angle", "ellipse_right_angle",
-         COLORS["ellipse"], MARKERS["ellipse"], LABELS["ellipse"]),
-        ("v03", "v03_ml_left_angle", "v03_ml_right_angle",
-         COLORS_V03, MARKERS_V03, LABELS_V03),
-        ("ml", "ml_left_angle", "ml_right_angle",
-         COLORS["ml"], MARKERS["ml"], "This work"),
+        (
+            "tangent",
+            "tangent_left_angle",
+            "tangent_right_angle",
+            COLORS["tangent"],
+            MARKERS["tangent"],
+            LABELS["tangent"],
+        ),
+        (
+            "circular",
+            "circular_left_angle",
+            "circular_right_angle",
+            COLORS["circular"],
+            MARKERS["circular"],
+            LABELS["circular"],
+        ),
+        (
+            "ellipse",
+            "ellipse_left_angle",
+            "ellipse_right_angle",
+            COLORS["ellipse"],
+            MARKERS["ellipse"],
+            LABELS["ellipse"],
+        ),
+        (
+            "v03",
+            "v03_ml_left_angle",
+            "v03_ml_right_angle",
+            COLORS_V03,
+            MARKERS_V03,
+            LABELS_V03,
+        ),
+        (
+            "ml",
+            "ml_left_angle",
+            "ml_right_angle",
+            COLORS["ml"],
+            MARKERS["ml"],
+            "This work",
+        ),
     ]
     fig, axes = plt.subplots(3, 2, figsize=(10, 14), constrained_layout=True)
 
     ml_keys = {"v03", "ml"}
     # Short subscripts for the y-axis label, matching plot_synthetic.py's
     # agreement plots (Tangent, Circle, Ellipse) — no " fit" suffix.
-    ylabel_subscripts = {"tangent": "Tangent", "circular": "Circle", "ellipse": "Ellipse"}
+    ylabel_subscripts = {
+        "tangent": "Tangent",
+        "circular": "Circle",
+        "ellipse": "Ellipse",
+    }
     for idx, (key, lcol, rcol, color, marker, label) in enumerate(panels):
         row, col = divmod(idx, 2)
         ax = axes[row, col]
 
         # Filter to rows with valid data for this method
         if lcol not in df.columns or rcol not in df.columns:
-            ax.text(0.5, 0.5, "{}\n(not available)".format(label),
-                    ha="center", va="center", transform=ax.transAxes,
-                    fontsize=14, color="gray")
+            ax.text(
+                0.5,
+                0.5,
+                "{}\n(not available)".format(label),
+                ha="center",
+                va="center",
+                transform=ax.transAxes,
+                fontsize=14,
+                color="gray",
+            )
             continue
 
         mask = valid_yl & df[lcol].notna() & df[rcol].notna()
@@ -535,20 +727,33 @@ def plot_inverse_phase_agreement():
         m_right = df.loc[mask, rcol].values
 
         # Scatter: left (transparent fill) and right
-        ax.scatter(yl_left, m_left, marker=marker, s=MARKER_SIZE,
-                   facecolor=color + "00", edgecolor=color, label=label)
-        ax.scatter(yl_right, m_right, marker=marker, s=MARKER_SIZE,
-                   facecolor=color + "00", edgecolor=color)
+        ax.scatter(
+            yl_left,
+            m_left,
+            marker=marker,
+            s=MARKER_SIZE,
+            facecolor=color + "00",
+            edgecolor=color,
+            label=label,
+        )
+        ax.scatter(
+            yl_right,
+            m_right,
+            marker=marker,
+            s=MARKER_SIZE,
+            facecolor=color + "00",
+            edgecolor=color,
+        )
 
         add_agreement_line(ax, lims=(80, 180))
         ax.set_xlim(80, 180)
         ax.set_ylim(80, 180)
         ax.set_aspect("equal")
-        ax.set_xlabel(u"$\\theta_{YL}$ (\u00B0)")
+        ax.set_xlabel("$\\theta_{YL}$ (\u00B0)")
         if key in ml_keys:
-            ax.set_ylabel(u"$\\theta_{ML}$ (\u00B0)")
+            ax.set_ylabel("$\\theta_{ML}$ (\u00B0)")
         else:
-            ax.set_ylabel(u"$\\theta_{%s}$ (\u00B0)" % ylabel_subscripts.get(key, key))
+            ax.set_ylabel("$\\theta_{%s}$ (\u00B0)" % ylabel_subscripts.get(key, key))
         ax.legend(loc="upper left")
 
     # Hide the empty 6th panel (row 2, col 1)
@@ -560,6 +765,7 @@ def plot_inverse_phase_agreement():
 # -----------------------------------------------------------------------
 # Main
 # -----------------------------------------------------------------------
+
 
 def main():
     setup_matplotlib()

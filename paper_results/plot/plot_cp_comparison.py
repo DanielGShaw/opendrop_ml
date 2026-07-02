@@ -175,7 +175,9 @@ def compute_for_image(img_path, model):
     )
     rmse = yl_errors.get("RMSE", np.nan) if isinstance(yl_errors, dict) else np.nan
 
-    pred_ds = prepare_for_model(img, input_len=50, n_surface=10, display=False, blur=True)
+    pred_ds = prepare_for_model(
+        img, input_len=50, n_surface=10, display=False, blur=True
+    )
     predictions, _ = experimental_pred(pred_ds, model, side="both")
     ml_angles = [float(predictions[0]), float(predictions[1])]
 
@@ -273,7 +275,9 @@ def _pad_width(xlims, ylims, target_width, side, img_width):
     return new_xlims, new_ylims
 
 
-def _draw_cp_zoom(ax, data, side, xlims, ylims, yl_tangent, ml_tangent, legend_fontsize=18):
+def _draw_cp_zoom(
+    ax, data, side, xlims, ylims, yl_tangent, ml_tangent, legend_fontsize=18
+):
     """Render the CP detail onto an existing axes."""
     img = data["img"]
     contour = data["contour"]
@@ -305,9 +309,7 @@ def _draw_cp_zoom(ax, data, side, xlims, ylims, yl_tangent, ml_tangent, legend_f
         linewidth=LINE_WIDTH,
         label="ML prediction - " + "{:.2f}°".format(ML_angles[idx]),
     )
-    ax.plot(
-        contour[:, 0], contour[:, 1], ".", color="magenta", label="Detected edge"
-    )
+    ax.plot(contour[:, 0], contour[:, 1], ".", color="magenta", label="Detected edge")
     ax.legend(
         loc="upper right" if side == "right" else "upper left",
         fontsize=legend_fontsize,
@@ -315,8 +317,6 @@ def _draw_cp_zoom(ax, data, side, xlims, ylims, yl_tangent, ml_tangent, legend_f
         handlelength=3,
         handleheight=1.2,
     )
-
-
 
 
 def _parse_synthetic_stem(stem):
@@ -346,8 +346,17 @@ def _parse_synthetic_stem(stem):
         return None
 
 
-def _draw_overview(ax, data, xlims_left, ylims_left, xlims_right, ylims_right,
-                   stem=None, panel_label=None, overlay_fontsize=None):
+def _draw_overview(
+    ax,
+    data,
+    xlims_left,
+    ylims_left,
+    xlims_right,
+    ylims_right,
+    stem=None,
+    panel_label=None,
+    overlay_fontsize=None,
+):
     """Render the overview onto an existing axes."""
     img = data["img"]
     contour = data["contour"]
@@ -375,9 +384,7 @@ def _draw_overview(ax, data, xlims_left, ylims_left, xlims_right, ylims_right,
     ax.imshow(img)
     ax.set_xticks([])
     ax.set_yticks([])
-    ax.plot(
-        contour[:, 0], contour[:, 1], ",", color="magenta", label="Detected edge"
-    )
+    ax.plot(contour[:, 0], contour[:, 1], ",", color="magenta", label="Detected edge")
     ax.plot(fit_YL[:, 0], fit_YL[:, 1], "-", color="cyan")
     ax.plot(x_left, y_left, "r")
     ax.plot(x_right, y_right, "r")
@@ -404,24 +411,28 @@ def _draw_overview(ax, data, xlims_left, ylims_left, xlims_right, ylims_right,
         overlay_fontsize = 18 * (OVERVIEW_FIGSIZE[0] / ZOOM_FIGSIZE[0])
     overlay_bbox = dict(facecolor="0.85", edgecolor="none", alpha=0.8, pad=6)
     ax.text(
-        0.5, 0.97,
+        0.5,
+        0.97,
         "\n".join(info_lines),
         transform=ax.transAxes,
-        ha="center", va="top",
-        fontsize=overlay_fontsize, color="black",
+        ha="center",
+        va="top",
+        fontsize=overlay_fontsize,
+        color="black",
         bbox=overlay_bbox,
     )
     if panel_label:
         ax.text(
-            0.03, 0.97,
+            0.03,
+            0.97,
             panel_label,
             transform=ax.transAxes,
-            ha="left", va="top",
-            fontsize=overlay_fontsize, color="black",
+            ha="left",
+            va="top",
+            fontsize=overlay_fontsize,
+            color="black",
             bbox=overlay_bbox,
         )
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -497,11 +508,17 @@ def prepare_batch(image_names, data_dir, model, labels=None):
     for e in entries:
         img_width = e["data"]["img"].shape[1]
         e["xlims_left"], e["ylims_left"] = _pad_width(
-            e["xlims_left"], e["ylims_left"], max_width, side="left",
+            e["xlims_left"],
+            e["ylims_left"],
+            max_width,
+            side="left",
             img_width=img_width,
         )
         e["xlims_right"], e["ylims_right"] = _pad_width(
-            e["xlims_right"], e["ylims_right"], max_width, side="right",
+            e["xlims_right"],
+            e["ylims_right"],
+            max_width,
+            side="right",
             img_width=img_width,
         )
     return entries
@@ -517,31 +534,44 @@ def compose_figure(entries, out_path, col_width=6.0, row_height=None):
         # Match the zoom aspect (1.4) so left/right panels fill their cell.
         row_height = col_width / 1.4
     fig, axes = plt.subplots(
-        n_rows, 3,
+        n_rows,
+        3,
         figsize=(3 * col_width, n_rows * row_height),
         squeeze=False,
     )
-    fig.subplots_adjust(left=0.005, right=0.995, bottom=0.005, top=0.995,
-                        wspace=0.02, hspace=0.02)
+    fig.subplots_adjust(
+        left=0.005, right=0.995, bottom=0.005, top=0.995, wspace=0.02, hspace=0.02
+    )
 
     for row, e in enumerate(entries):
         ax_left, ax_over, ax_right = axes[row]
         _draw_cp_zoom(
-            ax_left, e["data"], "left",
-            e["xlims_left"], e["ylims_left"],
-            e["yl_tangent"], e["ml_tangent"],
+            ax_left,
+            e["data"],
+            "left",
+            e["xlims_left"],
+            e["ylims_left"],
+            e["yl_tangent"],
+            e["ml_tangent"],
         )
         _draw_cp_zoom(
-            ax_right, e["data"], "right",
-            e["xlims_right"], e["ylims_right"],
-            e["yl_tangent"], e["ml_tangent"],
+            ax_right,
+            e["data"],
+            "right",
+            e["xlims_right"],
+            e["ylims_right"],
+            e["yl_tangent"],
+            e["ml_tangent"],
         )
         # Overview cell is the same figure-width as zoom cells, so the overlay
         # text should be the same size as the zoom legends (both at fontsize=18).
         _draw_overview(
-            ax_over, e["data"],
-            e["xlims_left"], e["ylims_left"],
-            e["xlims_right"], e["ylims_right"],
+            ax_over,
+            e["data"],
+            e["xlims_left"],
+            e["ylims_left"],
+            e["xlims_right"],
+            e["ylims_right"],
             stem=e["stem"],
             panel_label=e.get("panel_label"),
             overlay_fontsize=18,
@@ -561,21 +591,28 @@ def main():
 
     print("\nSynthetic images")
     syn_entries = prepare_batch(
-        SYNTHETIC_IMAGES, SYNTHETIC_DATA_DIR, model, labels=SYNTHETIC_LABELS,
+        SYNTHETIC_IMAGES,
+        SYNTHETIC_DATA_DIR,
+        model,
+        labels=SYNTHETIC_LABELS,
     )
     if syn_entries:
         compose_figure(
-            syn_entries, os.path.join(OUTPUT_ROOT, "synthetic_composite.png"),
+            syn_entries,
+            os.path.join(OUTPUT_ROOT, "synthetic_composite.png"),
         )
 
     print("\nExperimental images")
     exp_entries = prepare_batch(
-        EXPERIMENTAL_IMAGES, EXPERIMENTAL_DATA_DIR, model,
+        EXPERIMENTAL_IMAGES,
+        EXPERIMENTAL_DATA_DIR,
+        model,
         labels=EXPERIMENTAL_LABELS,
     )
     if exp_entries:
         compose_figure(
-            exp_entries, os.path.join(OUTPUT_ROOT, "experimental_composite.png"),
+            exp_entries,
+            os.path.join(OUTPUT_ROOT, "experimental_composite.png"),
         )
 
     print("\nDone.")

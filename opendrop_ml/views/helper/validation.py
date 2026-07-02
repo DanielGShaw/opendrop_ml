@@ -43,7 +43,7 @@ def validate_user_input_data_ift(user_input_data: ExperimentalSetup):
     required_fields = {
         "drop_density": "Drop Density",
         "needle_diameter_mm": "Needle Diameter",
-        'density_outer': "Continuous Density",
+        "density_outer": "Continuous Density",
         # 'pixel_mm': "Pixel to mm"
     }
 

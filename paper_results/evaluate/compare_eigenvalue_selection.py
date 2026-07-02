@@ -67,10 +67,7 @@ def extract_profile(contour, CPs):
 
 def select_images(image_dir, n_per_angle=2):
     """Select ~2 images per angle bucket, varied Bond/roughness."""
-    all_files = sorted(
-        f for f in os.listdir(image_dir)
-        if f.endswith(".png")
-    )
+    all_files = sorted(f for f in os.listdir(image_dir) if f.endswith(".png"))
 
     # Group by angle
     by_angle = {}
@@ -84,7 +81,9 @@ def select_images(image_dir, n_per_angle=2):
         # Pick first n_per_angle with different parameters
         # Prefer scale=1.0, varied Bond and roughness
         scale1 = [f for f in files if "_1.0_" in f.split("CPL")[0]]
-        chosen = scale1[:n_per_angle] if len(scale1) >= n_per_angle else files[:n_per_angle]
+        chosen = (
+            scale1[:n_per_angle] if len(scale1) >= n_per_angle else files[:n_per_angle]
+        )
         selected.extend(chosen)
 
     # Also add 2 scale=4.0 images for variety
@@ -145,19 +144,21 @@ def run_comparison(image_dir, selected_files):
         err_new = abs(avg_new - gt_angle)
         err_old = abs(avg_old - gt_angle)
 
-        results.append({
-            "image": fname,
-            "gt": gt_angle,
-            "new_L": left_new,
-            "new_R": right_new,
-            "new_avg": avg_new,
-            "new_err": err_new,
-            "old_L": left_old,
-            "old_R": right_old,
-            "old_avg": avg_old,
-            "old_err": err_old,
-            "same": np.isclose(avg_new, avg_old, atol=0.01),
-        })
+        results.append(
+            {
+                "image": fname,
+                "gt": gt_angle,
+                "new_L": left_new,
+                "new_R": right_new,
+                "new_avg": avg_new,
+                "new_err": err_new,
+                "old_L": left_old,
+                "old_R": right_old,
+                "old_avg": avg_old,
+                "old_err": err_old,
+                "same": np.isclose(avg_new, avg_old, atol=0.01),
+            }
+        )
 
     return results
 
@@ -165,7 +166,9 @@ def run_comparison(image_dir, selected_files):
 def print_results(results):
     """Print comparison table and summary statistics."""
     print()
-    print(f"{'GT':>6}  {'argmax(E)':>12}  {'argmax(|E|)':>12}  {'err_new':>8}  {'err_old':>8}  {'better':>7}")
+    print(
+        f"{'GT':>6}  {'argmax(E)':>12}  {'argmax(|E|)':>12}  {'err_new':>8}  {'err_old':>8}  {'better':>7}"
+    )
     print("-" * 70)
 
     n_better_new = 0
@@ -208,7 +211,9 @@ def print_results(results):
     print(f"MAE  argmax(|E|):  {np.nanmean(errs_old[valid]):.3f}°")
     print(f"Max  argmax(E):    {np.nanmax(errs_new[valid]):.3f}°")
     print(f"Max  argmax(|E|):  {np.nanmax(errs_old[valid]):.3f}°")
-    print(f"\nargmax(E) better: {n_better_new}  |  argmax(|E|) better: {n_better_old}  |  same: {n_same}")
+    print(
+        f"\nargmax(E) better: {n_better_new}  |  argmax(|E|) better: {n_better_old}  |  same: {n_same}"
+    )
     print(f"Total images: {len(results)} ({valid.sum()} with valid results)")
 
 

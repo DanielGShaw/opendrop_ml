@@ -28,14 +28,14 @@ from opendrop_ml.modules.preprocessing.preprocessing import linear_fit
 # (`BIMODAL_CP_FIX.md` § Cross-dataset validation).
 # ----------------------------------------------------------------------
 
-RESIDUAL_STD_THRESHOLD = 2.0   # px — bimodality trigger (signed perp residual std)
-LOCAL_ANGLE_N_PTS = 12         # contour points sampled above CP for local tangent
-LOCAL_ANGLE_MAX_DY = 25.0      # px — vertical search window above CP
-MIN_CLUSTER_MEMBERS = 3        # KMeans cluster minimum size to consider
-ANGLE_SEPARATION_MIN = 5.0     # deg — required gap in median |angle-90°|
-KEPT_X_RANGE_MIN = 20.0        # px — kept cluster x-span guard (case 5)
-CASE_11_MIN_CPS = 6            # below this, skip Fix B entirely (single-pass / static)
-CASE_9_NON_NAN_RATIO = 0.5     # min fraction of valid local angles per cluster
+RESIDUAL_STD_THRESHOLD = 2.0  # px — bimodality trigger (signed perp residual std)
+LOCAL_ANGLE_N_PTS = 12  # contour points sampled above CP for local tangent
+LOCAL_ANGLE_MAX_DY = 25.0  # px — vertical search window above CP
+MIN_CLUSTER_MEMBERS = 3  # KMeans cluster minimum size to consider
+ANGLE_SEPARATION_MIN = 5.0  # deg — required gap in median |angle-90°|
+KEPT_X_RANGE_MIN = 20.0  # px — kept cluster x-span guard (case 5)
+CASE_11_MIN_CPS = 6  # below this, skip Fix B entirely (single-pass / static)
+CASE_9_NON_NAN_RATIO = 0.5  # min fraction of valid local angles per cluster
 
 
 def fit_contact_line(cps, contours=None, side=None):
@@ -185,9 +185,7 @@ def local_contact_angle(contour, cp, side, n_pts=None, max_dy=None):
     if norm < 1e-9:
         return float("nan")
 
-    surface_inward = (
-        np.array([1.0, 0.0]) if side == "left" else np.array([-1.0, 0.0])
-    )
+    surface_inward = np.array([1.0, 0.0]) if side == "left" else np.array([-1.0, 0.0])
     cos_a = float(np.dot(surface_inward, direction) / norm)
     cos_a = max(-1.0, min(1.0, cos_a))
     return float(np.degrees(np.arccos(cos_a)))
@@ -196,6 +194,7 @@ def local_contact_angle(contour, cp, side, n_pts=None, max_dy=None):
 # ----------------------------------------------------------------------
 # Internals
 # ----------------------------------------------------------------------
+
 
 def _iqr_trim_odr(cps):
     """Run the legacy IQR-trim + ODR fit and return everything callers need.
@@ -254,9 +253,7 @@ def _build_stats(fit):
             "n_filtered": 0,
             "n_total": fit["n_total"],
         }
-    residuals = np.abs(
-        _perp_residuals(fit["cps_inrange"], fit["m"], fit["c"])
-    )
+    residuals = np.abs(_perp_residuals(fit["cps_inrange"], fit["m"], fit["c"]))
     r_q1 = np.percentile(residuals, 25)
     r_q3 = np.percentile(residuals, 75)
     return {
@@ -287,14 +284,13 @@ def _apply_fix_b(cps, contours, side, fit_orig):
         return line_orig, None
 
     labels = KMeans(
-        n_clusters=2, n_init=10, random_state=0,
+        n_clusters=2,
+        n_init=10,
+        random_state=0,
     ).fit_predict(cps[:, 1:2].astype(float))
 
     angles = np.array(
-        [
-            local_contact_angle(contours[i], cps[i], side)
-            for i in range(len(cps))
-        ],
+        [local_contact_angle(contours[i], cps[i], side) for i in range(len(cps))],
         dtype=float,
     )
 
@@ -312,9 +308,7 @@ def _apply_fix_b(cps, contours, side, fit_orig):
             {
                 "mask": mask,
                 "n": n,
-                "median_dev": float(
-                    np.median(np.abs(cluster_angles_valid - 90.0))
-                ),
+                "median_dev": float(np.median(np.abs(cluster_angles_valid - 90.0))),
             }
         )
     if len(valid) < 2:
@@ -377,6 +371,7 @@ def _perp_residuals(points, m, c):
 # Pass-2 contour-vs-line intercept utilities
 # ----------------------------------------------------------------------
 
+
 def find_first_intercept(contour, line_points):
     """Find the index of the first contour-line intersection.
 
@@ -394,9 +389,7 @@ def find_first_intercept(contour, line_points):
     n_points = len(contour)
 
     for i in range(n_points - 1):
-        intersection = _line_intersection(
-            contour[i], contour[i + 1], line_p1, line_p2
-        )
+        intersection = _line_intersection(contour[i], contour[i + 1], line_p1, line_p2)
         if intersection is not None:
             return i
     return -1
@@ -419,9 +412,7 @@ def find_last_intercept(contour, line_points, max_y=None):
     n_points = len(contour)
 
     for i in range(n_points - 2, -1, -1):
-        intersection = _line_intersection(
-            contour[i], contour[i + 1], line_p1, line_p2
-        )
+        intersection = _line_intersection(contour[i], contour[i + 1], line_p1, line_p2)
         if intersection is not None:
             if max_y is not None:
                 _, y_intercept = intersection

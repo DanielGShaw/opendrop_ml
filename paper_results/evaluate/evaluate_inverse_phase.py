@@ -104,7 +104,9 @@ def _check_resolution_drop(profile):
     if PROFILE_EMPIRICAL_MIN < profile_len < PROFILE_MAX_PLATEAU:
         try:
             circ_angles, _, _, _, _, _ = circular_fit(profile, display=False)
-            threshold = RESOLUTION_DROP_SLOPE * min(circ_angles) + RESOLUTION_DROP_INTERCEPT
+            threshold = (
+                RESOLUTION_DROP_SLOPE * min(circ_angles) + RESOLUTION_DROP_INTERCEPT
+            )
             if profile_len > threshold:
                 return True
         except Exception:
@@ -116,6 +118,7 @@ def _check_resolution_drop(profile):
 # -----------------------------------------------------------------------
 # Pass 1: Calibration — collect CPs to compute median contact lines
 # -----------------------------------------------------------------------
+
 
 def run_pass1(images, step=MEDIAN_STEP):
     """Run Pass 1: sample images, collect CPs for median contact line fitting.
@@ -154,21 +157,29 @@ def run_pass1(images, step=MEDIAN_STEP):
         except Exception:
             failures += 1
 
-    print("  Pass 1: {} sampled, {} succeeded, {} failed".format(
-        successes + failures, successes, failures))
+    print(
+        "  Pass 1: {} sampled, {} succeeded, {} failed".format(
+            successes + failures, successes, failures
+        )
+    )
 
     if successes < 3:
-        raise RuntimeError("Pass 1 failed: too few successful frames ({})".format(
-            successes))
+        raise RuntimeError(
+            "Pass 1 failed: too few successful frames ({})".format(successes)
+        )
 
     left_CPs_arr = np.array(left_CPs)
     right_CPs_arr = np.array(right_CPs)
 
     left_line = fit_contact_line(
-        left_CPs_arr, contours=contours_per_frame, side="left",
+        left_CPs_arr,
+        contours=contours_per_frame,
+        side="left",
     )
     right_line = fit_contact_line(
-        right_CPs_arr, contours=contours_per_frame, side="right",
+        right_CPs_arr,
+        contours=contours_per_frame,
+        side="right",
     )
 
     left_median = np.median(left_CPs_arr, axis=0)
@@ -183,9 +194,10 @@ def run_pass1(images, step=MEDIAN_STEP):
 # Pass 2: Full analysis using median contact lines
 # -----------------------------------------------------------------------
 
-def evaluate_image(img_path, model, frame_number,
-                   left_contact_line, right_contact_line,
-                   model_v03=None):
+
+def evaluate_image(
+    img_path, model, frame_number, left_contact_line, right_contact_line, model_v03=None
+):
     """Process a single image using median contact lines for stable CPs.
 
     Follows the reference Inverse_phase_analysis_executable.py:
@@ -242,9 +254,7 @@ def evaluate_image(img_path, model, frame_number,
             idx_left_orig, idx_right_orig = idx_right_orig, idx_left_orig
 
         # Split contour at midpoint (matching reference executable)
-        midpoint_idx = int(
-            idx_left_orig + (idx_right_orig - idx_left_orig) / 2
-        )
+        midpoint_idx = int(idx_left_orig + (idx_right_orig - idx_left_orig) / 2)
         left_half = contour[:midpoint_idx][::-1]  # reversed: apex → surface
         right_half = contour[midpoint_idx:]
 
@@ -277,13 +287,11 @@ def evaluate_image(img_path, model, frame_number,
         result["right_CP_y"] = int(contour[idx_rightCP, 1])
 
         # Extract profile between stable CPs
-        profile = contour[idx_leftCP: idx_rightCP + 1]
+        profile = contour[idx_leftCP : idx_rightCP + 1]
         result["profile_length"] = len(profile)
 
         # Diameter
-        distance = np.linalg.norm(
-            contour[idx_rightCP] - contour[idx_leftCP]
-        )
+        distance = np.linalg.norm(contour[idx_rightCP] - contour[idx_leftCP])
         result["diameter"] = distance
 
     except Exception as e:
@@ -358,9 +366,17 @@ def evaluate_image(img_path, model, frame_number,
 
     # --- Young-Laplace fit ---
     try:
-        yl_angles, bond, baseline_width, volume, fit_contour, baseline, errors, sym_errors, timings = yl_fit(
-            profile, display=False
-        )
+        (
+            yl_angles,
+            bond,
+            baseline_width,
+            volume,
+            fit_contour,
+            baseline,
+            errors,
+            sym_errors,
+            timings,
+        ) = yl_fit(profile, display=False)
         result["yl_left_angle"] = yl_angles[0]
         result["yl_right_angle"] = yl_angles[1]
         result["yl_bond_number"] = bond
@@ -381,9 +397,7 @@ def evaluate_image(img_path, model, frame_number,
         if needs_drop:
             result["resolution_dropped_for_ml"] = True
             img_small = resize_image(img, scale=0.5)
-            _, contour_ml, _, _ = isolate_contour(
-                img_small, DISPLAY=False, blur=True
-            )
+            _, contour_ml, _, _ = isolate_contour(img_small, DISPLAY=False, blur=True)
             CPs_ml = CPID(contour_ml, display=False)
             if CPs_ml is None or len(CPs_ml) < 2:
                 raise ValueError("CPID failed on resized image")
@@ -421,14 +435,14 @@ def evaluate_image(img_path, model, frame_number,
             left_side = contour_for_ml[:input_len]
         else:
             left_side = contour_for_ml[
-                idx_leftCP_ml - n_surface: idx_leftCP_ml + n_drop
+                idx_leftCP_ml - n_surface : idx_leftCP_ml + n_drop
             ]
 
         if idx_rightCP_ml > len(contour_for_ml) - n_surface:
             right_side = contour_for_ml[-input_len:]
         else:
             right_side = contour_for_ml[
-                idx_rightCP_ml - n_drop: idx_rightCP_ml + n_surface
+                idx_rightCP_ml - n_drop : idx_rightCP_ml + n_surface
             ]
 
         # Reverse and reflect left side (training convention)
@@ -440,9 +454,7 @@ def evaluate_image(img_path, model, frame_number,
         if len(left_side) >= 4 and len(right_side) >= 4:
             pred_ds = np.array([left_side, right_side])
             pred_ds = normalize_ds(pred_ds).astype(np.float32)
-            predictions, ml_timings = experimental_pred(
-                pred_ds, model, side="both"
-            )
+            predictions, ml_timings = experimental_pred(pred_ds, model, side="both")
             result["ml_left_angle"] = float(predictions[0])
             result["ml_right_angle"] = float(predictions[1])
             result["ml_preprocessing_time"] = ml_preprocess_time
@@ -450,7 +462,8 @@ def evaluate_image(img_path, model, frame_number,
             result["ml_analysis_time"] = ml_timings["analysis time"]
         else:
             result["ml_error"] = "ML window too short: L={}, R={}".format(
-                len(left_side), len(right_side))
+                len(left_side), len(right_side)
+            )
     except Exception as e:
         result["ml_error"] = str(e)
 
@@ -497,14 +510,20 @@ def main():
 
     # Collect images
     if not os.path.isdir(INVERSE_PHASE_DIR):
-        print("ERROR: Inverse phase data directory not found: {}".format(
-            INVERSE_PHASE_DIR))
+        print(
+            "ERROR: Inverse phase data directory not found: {}".format(
+                INVERSE_PHASE_DIR
+            )
+        )
         print("Please copy data to paper_results/data/video_analysis/inverse_phase/")
         sys.exit(1)
 
     images = sorted(
-        (f for f in os.listdir(INVERSE_PHASE_DIR)
-         if f.lower().endswith(IMAGE_EXTENSIONS)),
+        (
+            f
+            for f in os.listdir(INVERSE_PHASE_DIR)
+            if f.lower().endswith(IMAGE_EXTENSIONS)
+        ),
         key=natural_sort_key,
     )
     n_images = len(images)
@@ -545,7 +564,9 @@ def main():
 
         try:
             result = evaluate_image(
-                img_path, model, frame_number=i + 1,
+                img_path,
+                model,
+                frame_number=i + 1,
                 left_contact_line=left_contact_line,
                 right_contact_line=right_contact_line,
                 model_v03=model_v03,
@@ -584,7 +605,15 @@ def main():
     print("Saved to: {}".format(output_path))
     print()
 
-    for method in ["tangent", "polynomial", "circular", "ellipse", "yl", "ml", "v03_ml"]:
+    for method in [
+        "tangent",
+        "polynomial",
+        "circular",
+        "ellipse",
+        "yl",
+        "ml",
+        "v03_ml",
+    ]:
         left_col = "{}_left_angle".format(method)
         if left_col in df.columns:
             valid = df[left_col].notna().sum()

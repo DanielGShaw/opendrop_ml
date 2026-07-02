@@ -42,10 +42,8 @@ def test_circular_fit(sample_circle):
     """Test whether circular_fit correctly fits the circular data"""
     CA, center, R, intercepts, errors, timings = circular_fit(sample_circle)
 
-    assert np.isclose(
-        center[0], 50, atol=2), f"Expected center x≈50, got {center[0]}"
-    assert np.isclose(
-        center[1], 50, atol=2), f"Expected center y≈50, got {center[1]}"
+    assert np.isclose(center[0], 50, atol=2), f"Expected center x≈50, got {center[0]}"
+    assert np.isclose(center[1], 50, atol=2), f"Expected center y≈50, got {center[1]}"
     assert np.isclose(R, 20, atol=2), f"Expected radius ≈20, got {R}"
 
 
@@ -57,10 +55,8 @@ def test_circular_fit_img(mock_preprocess, sample_image, sample_circle):
 
     CA, center, R, intercepts, errors, timings = circular_fit_img(sample_image)
 
-    assert np.isclose(
-        center[0], 50, atol=2), f"Expected center x≈50, got {center[0]}"
-    assert np.isclose(
-        center[1], 50, atol=2), f"Expected center y≈50, got {center[1]}"
+    assert np.isclose(center[0], 50, atol=2), f"Expected center x≈50, got {center[0]}"
+    assert np.isclose(center[1], 50, atol=2), f"Expected center y≈50, got {center[1]}"
     assert np.isclose(R, 20, atol=2), f"Expected radius ≈20, got {R}"
 
 

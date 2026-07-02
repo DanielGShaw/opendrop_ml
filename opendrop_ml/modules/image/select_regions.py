@@ -28,6 +28,7 @@ import sys
 import ctypes
 import platform
 import warnings
+
 if platform.system() == "Windows":
     try:
         import win32gui
@@ -64,8 +65,7 @@ def get_ift_regions(
     # Applying 7x7 Gaussian Blur
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
     # 1) rough mask via inverted Otsu + largest CC
-    threshold = cv2.threshold(
-        gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+    threshold = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
     analysis = cv2.connectedComponentsWithStats(threshold, 8)
     (totalLabels, label_ids, stats, centroids) = analysis
     if totalLabels <= 1:
@@ -103,8 +103,8 @@ def get_ift_regions(
 
     x, y, bw, bh, _ = stats[blob]
     # print(f"Blob ID: {blob}, Area: {stats[blob, cv2.CC_STAT_AREA]}, Bounding box: (x= {x}, y= {y}) - (w= {bw}, h= {bh})")
-    roi = gray[y: y + bh, x: x + bw]
-    roi_mask = (label_ids[y: y + bh, x: x + bw] == blob).astype(np.uint8) * 255
+    roi = gray[y : y + bh, x : x + bw]
+    roi_mask = (label_ids[y : y + bh, x : x + bw] == blob).astype(np.uint8) * 255
 
     # 2) Scharr→adaptiveThresh→Canny inside ROI
     blur = cv2.GaussianBlur(roi, (scharr_block, scharr_block), 0)
@@ -167,8 +167,7 @@ def get_ift_regions(
     for current_row in range(search_start_row, bh):
         # Add small absolute diff
         if (
-            blob_widths_at_each_row[current_row] > expansion_factor *
-                avg_needle_width
+            blob_widths_at_each_row[current_row] > expansion_factor * avg_needle_width
             and blob_widths_at_each_row[current_row] > avg_needle_width + 2
         ):
             calculated_row_thresh = current_row
@@ -233,7 +232,7 @@ def get_ift_regions(
             )
             # Crop the original image using the final absolute bounding box coordinates
             crop = original[
-                needle_y1_roi:needle_y2_roi, x + needle_x1_roi: x + needle_x2_roi
+                needle_y1_roi:needle_y2_roi, x + needle_x1_roi : x + needle_x2_roi
             ]
             needle_rect = Rect2(
                 (x + needle_x1_roi, y + needle_y1_roi),
@@ -281,8 +280,7 @@ def get_ift_regions(
                 (x + drop_x1_roi, y + drop_y1_roi), (x + drop_x2_roi, y + drop_y2_roi)
             )
 
-        crop = original[drop_y1_roi:drop_y2_roi,
-                        x + drop_x1_roi: x + drop_x2_roi]
+        crop = original[drop_y1_roi:drop_y2_roi, x + drop_x1_roi : x + drop_x2_roi]
         return drop_rect, needle_rect
 
 
@@ -333,6 +331,7 @@ def set_drop_region(
             plt.show()
             plt.close(fig)
         experimental_setup.drop_region = [(left, top), (right, bottom)]
+        experimental_drop.crop_offset = (left, top)
     elif experimental_setup.drop_id_method == RegionSelect.USER_SELECTED:
         experimental_setup.drop_region, experimental_drop.cropped_image = (
             user_select_region(
@@ -342,6 +341,7 @@ def set_drop_region(
                 screen_position,
             )
         )
+        experimental_drop.crop_offset = tuple(experimental_setup.drop_region[0])
 
 
 def find_image_edge(img: np.ndarray, low=50, high=150, apertureSize=3):
@@ -436,8 +436,7 @@ def set_needle_region(
 
                     # Height similarity
                     height_diff = abs(
-                        (l1["y_max"] - l1["y_min"]) -
-                        (l2["y_max"] - l2["y_min"])
+                        (l1["y_max"] - l1["y_min"]) - (l2["y_max"] - l2["y_min"])
                     )
                     if height_diff > 20:
                         continue
@@ -505,7 +504,7 @@ def crop_needle(img: np.ndarray) -> np.ndarray:
     h, w = img.shape[:2]
     top = int(h * vertical_pct)
     side_margin = int((w * (1 - horizontal_pct)) / 2)
-    img = img[:top, side_margin: w - side_margin]
+    img = img[:top, side_margin : w - side_margin]
 
     # a veriable used to eliminate the vertical lines that exist in the bottom half of the image
     bottom_verticals_threshold = 0.7
@@ -539,8 +538,7 @@ def crop_needle(img: np.ndarray) -> np.ndarray:
     # A line (x1,y1,x2,y2) is in the top half if both y1 and y2 are less than y_midpoint
 
     y_midpoint = abs(h * bottom_verticals_threshold)
-    top_half_mask = (vertical[:, 0, 1] < y_midpoint) & (
-        vertical[:, 0, 3] < y_midpoint)
+    top_half_mask = (vertical[:, 0, 1] < y_midpoint) & (vertical[:, 0, 3] < y_midpoint)
     vertical = vertical[top_half_mask]
 
     if vertical.shape[0] < 2:
@@ -564,7 +562,7 @@ def crop_needle(img: np.ndarray) -> np.ndarray:
     # find the longest pair whose centers are >= min_dist apart
     for i, l1 in enumerate(sorted_lines):
         x1 = (l1[0] + l1[2]) // 2
-        for l2 in sorted_lines[i + 1:]:
+        for l2 in sorted_lines[i + 1 :]:
             x2 = (l2[0] + l2[2]) // 2
             if abs(x2 - x1) >= min_dist:
                 # we found a valid pair
@@ -600,7 +598,7 @@ def crop_needle(img: np.ndarray) -> np.ndarray:
 def image_crop(image: np.ndarray, points):
     # return image[min(y):max(y), min(x),max(x)]
     return image[
-        int(points[0][1]): int(points[1][1]), int(points[0][0]): int(points[1][0])
+        int(points[0][1]) : int(points[1][1]), int(points[0][0]) : int(points[1][0])
     ]
 
 
@@ -640,9 +638,13 @@ def set_surface_line(
         if idx_leftCP > idx_rightCP:
             # The raw contour traverses right-to-left between the CPs; reverse the
             # slice so profile[0] is always the left CP and profile[-1] is the right CP.
-            experimental_drop.drop_contour = longest_contour[idx_rightCP:idx_leftCP + 1][::-1]
+            experimental_drop.drop_contour = longest_contour[
+                idx_rightCP : idx_leftCP + 1
+            ][::-1]
         else:
-            experimental_drop.drop_contour = longest_contour[idx_leftCP:idx_rightCP + 1]
+            experimental_drop.drop_contour = longest_contour[
+                idx_leftCP : idx_rightCP + 1
+            ]
         experimental_drop.contact_points = CPs_chosen
     elif experimental_setup.baseline_method == ThresholdSelect.USER_SELECTED:
         user_line(experimental_drop, experimental_setup)
@@ -673,7 +675,8 @@ def disable_close_button(window_title: str):
         if hwnd:
             style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
             win32gui.SetWindowLong(
-                hwnd, win32con.GWL_STYLE, style & ~win32con.WS_SYSMENU)
+                hwnd, win32con.GWL_STYLE, style & ~win32con.WS_SYSMENU
+            )
 
 
 def user_roi(
@@ -783,9 +786,7 @@ def _user_line_compute_overlays(
     if len(drop) < 10:
         return None, "no fit available — adjust baseline"
 
-    any_method = any(
-        methods_boole[m] for m, _, _ in _USER_LINE_METHODS
-    )
+    any_method = any(methods_boole[m] for m, _, _ in _USER_LINE_METHODS)
     if not any_method:
         return {"angles": []}, None
 
@@ -867,13 +868,15 @@ def _draw_user_line_overlays(img, overlays):
             img,
             (int(lines[0][0][0]), int(lines[0][0][1])),
             (int(lines[0][1][0]), int(lines[0][1][1])),
-            (0, 0, 255), 2,
+            (0, 0, 255),
+            2,
         )
         cv2.line(
             img,
             (int(lines[1][0][0]), int(lines[1][0][1])),
             (int(lines[1][1][0]), int(lines[1][1][1])),
-            (0, 0, 255), 2,
+            (0, 0, 255),
+            2,
         )
     if "polynomial_lines" in overlays:
         lines = overlays["polynomial_lines"]
@@ -909,8 +912,14 @@ def _draw_user_line_text_block(img, lines, anchor):
         return
     for i, s in enumerate(lines):
         cv2.putText(
-            img, s, (x0, y0 + i * line_h),
-            font, scale, (255, 255, 255), thickness, cv2.LINE_AA,
+            img,
+            s,
+            (x0, y0 + i * line_h),
+            font,
+            scale,
+            (255, 255, 255),
+            thickness,
+            cv2.LINE_AA,
         )
 
 
@@ -923,13 +932,21 @@ def _draw_user_line_help(img):
         img,
         "W/S move  A/D rot 1deg  Q/E rot 0.1deg  O reset",
         (10, canvas_h - 21),
-        font, 0.5, (255, 255, 255), 1, cv2.LINE_AA,
+        font,
+        0.5,
+        (255, 255, 255),
+        1,
+        cv2.LINE_AA,
     )
     cv2.putText(
         img,
         "V debug  ENTER confirm  ESC cancel",
         (10, canvas_h - 5),
-        font, 0.5, (255, 255, 255), 1, cv2.LINE_AA,
+        font,
+        0.5,
+        (255, 255, 255),
+        1,
+        cv2.LINE_AA,
     )
 
 
@@ -937,8 +954,14 @@ def _draw_user_line_failure(img, msg):
     canvas_h = img.shape[0]
     # canvas_h - 41 sits clear of both help-text lines (canvas_h - 21 and -5).
     cv2.putText(
-        img, msg, (10, canvas_h - 41),
-        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA,
+        img,
+        msg,
+        (10, canvas_h - 41),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.5,
+        (0, 0, 255),
+        1,
+        cv2.LINE_AA,
     )
 
 
@@ -962,7 +985,9 @@ def _draw_user_line_debug_panel(
     if n_arc > 0:
         cp0 = drop_arc[0]
         cp1 = drop_arc[-1]
-        lines.append(f"CP0 ({cp0[0]:.0f},{cp0[1]:.0f})  CP1 ({cp1[0]:.0f},{cp1[1]:.0f})")
+        lines.append(
+            f"CP0 ({cp0[0]:.0f},{cp0[1]:.0f})  CP1 ({cp1[0]:.0f},{cp1[1]:.0f})"
+        )
     if overlays:
         for label, txt in overlays.get("angles", []):
             lines.append(f"{label}: {txt}")
@@ -974,21 +999,22 @@ def _draw_user_line_debug_panel(
     _draw_user_line_text_block(img, lines, anchor="tl")
 
 
-def _dump_user_line_state_log(
-    experimental_drop, experimental_setup, ix, iy, fx, fy
-):
+def _dump_user_line_state_log(experimental_drop, experimental_setup, ix, iy, fx, fy):
     """On confirm, write a JSON snapshot of the final baseline state."""
     payload = {
         "baseline": [int(ix), int(iy), int(fx), int(fy)],
         "drop_contour_length": (
             int(len(experimental_drop.drop_contour))
-            if experimental_drop.drop_contour is not None else 0
+            if experimental_drop.drop_contour is not None
+            else 0
         ),
         "contact_points": (
             {
                 "0": [float(c) for c in experimental_drop.contact_points[0]],
                 "1": [float(c) for c in experimental_drop.contact_points[1]],
-            } if experimental_drop.contact_points else None
+            }
+            if experimental_drop.contact_points
+            else None
         ),
         "source_image": getattr(experimental_setup, "filename", None),
         "angles": {},
@@ -1079,7 +1105,13 @@ def user_line(
         state = (ix, iy, fx, fy)
         if state != last_state:
             cached_overlays, failure_msg = _user_line_compute_overlays(
-                experimental_drop, drop_data, ix, iy, fx, fy, methods_boole,
+                experimental_drop,
+                drop_data,
+                ix,
+                iy,
+                fx,
+                fy,
+                methods_boole,
             )
             last_state = state
 
@@ -1106,8 +1138,15 @@ def user_line(
             _draw_user_line_failure(img, failure_msg)
         if show_debug_panel:
             _draw_user_line_debug_panel(
-                img, ix, iy, fx, fy, drop_data,
-                experimental_drop.drop_contour, cached_overlays, frame_idx,
+                img,
+                ix,
+                iy,
+                fx,
+                fy,
+                drop_data,
+                experimental_drop.drop_contour,
+                cached_overlays,
+                frame_idx,
             )
         _draw_user_line_help(img)
 
@@ -1115,7 +1154,8 @@ def user_line(
 
         if debug_enabled:
             cv2.imwrite(
-                os.path.join(_USER_LINE_DEBUG_DIR, f"{frame_idx:04d}.png"), img,
+                os.path.join(_USER_LINE_DEBUG_DIR, f"{frame_idx:04d}.png"),
+                img,
             )
         frame_idx += 1
 
@@ -1140,7 +1180,12 @@ def user_line(
                 continue
             if debug_enabled:
                 _dump_user_line_state_log(
-                    experimental_drop, experimental_setup, ix, iy, fx, fy,
+                    experimental_drop,
+                    experimental_setup,
+                    ix,
+                    iy,
+                    fx,
+                    fy,
                 )
             break
         elif k == 27:  # ESC
@@ -1285,5 +1330,3 @@ def intersection(center, radius, p1, p2):
     t2 = (-b - discriminant**0.5) / (2 * a)
 
     return (dx * t1 + p1[0], dy * t1 + p1[1]), (dx * t2 + p1[0], dy * t2 + p1[1])
-
-

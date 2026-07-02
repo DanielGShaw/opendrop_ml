@@ -62,8 +62,15 @@ def plot_agreement(df):
     bottom row is a wide delta plot (v05 - v03 vs GT)."""
     fig = plt.figure(figsize=(12, 10))
     gs = fig.add_gridspec(
-        2, 2, height_ratios=[2, 1], hspace=0.35, wspace=0.3,
-        left=0.08, right=0.97, top=0.95, bottom=0.06,
+        2,
+        2,
+        height_ratios=[2, 1],
+        hspace=0.35,
+        wspace=0.3,
+        left=0.08,
+        right=0.97,
+        top=0.95,
+        bottom=0.06,
     )
 
     # --- Top row: agreement scatter ---
@@ -84,22 +91,31 @@ def plot_agreement(df):
         x_all = np.concatenate([gt, gt])
         y_all = np.concatenate([df[y_l_col].values, df[y_r_col].values])
         ax.scatter(
-            x_all, y_all, marker=marker, s=MARKER_SIZE,
-            facecolor="none", edgecolor=color, label=model_name,
+            x_all,
+            y_all,
+            marker=marker,
+            s=MARKER_SIZE,
+            facecolor="none",
+            edgecolor=color,
+            label=model_name,
         )
 
         add_agreement_line(ax, lims=lims)
         ax.set_xlim(lims)
         ax.set_ylim(lims)
         ax.set_aspect("equal")
-        ax.set_xlabel(u"$\\theta_{True}$ (\u00B0)")
-        ax.set_ylabel(u"$\\theta_{ML}$ (\u00B0)")
+        ax.set_xlabel("$\\theta_{True}$ (\u00B0)")
+        ax.set_ylabel("$\\theta_{ML}$ (\u00B0)")
         ax.legend(loc="upper left")
 
         label_char = chr(ord("a") + col_idx)
         ax.text(
-            0.01, 1.02, "{})".format(label_char),
-            transform=ax.transAxes, fontsize=16, fontweight="bold",
+            0.01,
+            1.02,
+            "{})".format(label_char),
+            transform=ax.transAxes,
+            fontsize=16,
+            fontweight="bold",
         )
 
     # --- Bottom row: delta plot spanning both columns ---
@@ -111,16 +127,24 @@ def plot_agreement(df):
     x_all = np.concatenate([gt, gt])
     delta_all = np.concatenate([delta_l, delta_r])
     ax_c.scatter(
-        x_all, delta_all, marker=marker, s=MARKER_SIZE,
-        facecolor="none", edgecolor=color,
+        x_all,
+        delta_all,
+        marker=marker,
+        s=MARKER_SIZE,
+        facecolor="none",
+        edgecolor=color,
     )
     ax_c.axhline(0, color="black", linewidth=0.8, zorder=0)
-    ax_c.set_xlabel(u"$\\theta_{True}$ (\u00B0)")
-    ax_c.set_ylabel(u"$\\theta_{This\\ work}$ \u2212 $\\theta_{Conan\\ 2024}$ (\u00B0)")
+    ax_c.set_xlabel("$\\theta_{True}$ (\u00B0)")
+    ax_c.set_ylabel("$\\theta_{This\\ work}$ \u2212 $\\theta_{Conan\\ 2024}$ (\u00B0)")
     ax_c.set_xlim(lims)
     ax_c.text(
-        0.005, 1.05, "c)", transform=ax_c.transAxes,
-        fontsize=16, fontweight="bold",
+        0.005,
+        1.05,
+        "c)",
+        transform=ax_c.transAxes,
+        fontsize=16,
+        fontweight="bold",
     )
 
     save_figure(fig, SUBDIR, "sensitivity_agreement.png")

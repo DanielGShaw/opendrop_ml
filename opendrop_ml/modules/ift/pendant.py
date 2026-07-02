@@ -15,8 +15,7 @@ __all__ = ("PendantFeatures", "extract_pendant_features", "find_pendant_apex")
 # Math constants.
 PI = math.pi
 
-RotatedRect = Tuple[Vector2[float],
-                    Vector2[float], Vector2[float], Vector2[float]]
+RotatedRect = Tuple[Vector2[float], Vector2[float], Vector2[float], Vector2[float]]
 
 
 class PendantFeatures(NamedTuple):
@@ -71,7 +70,7 @@ def extract_pendant_features(
 
     if drop_region is not None:
         drop_image = image[
-            drop_region.y0: drop_region.y1 + 1, drop_region.x0: drop_region.x1 + 1
+            drop_region.y0 : drop_region.y1 + 1, drop_region.x0 : drop_region.x1 + 1
         ]
         print(
             f"Drop region: {drop_region.x0}, {drop_region.y0}, {drop_region.x1}, {drop_region.y1}"
@@ -80,8 +79,8 @@ def extract_pendant_features(
 
     if needle_region is not None:
         needle_image = image[
-            needle_region.y0: needle_region.y1 + 1,
-            needle_region.x0: needle_region.x1 + 1,
+            needle_region.y0 : needle_region.y1 + 1,
+            needle_region.x0 : needle_region.x1 + 1,
         ]
 
     drop_points = np.empty((2, 0), dtype=int)
@@ -141,8 +140,7 @@ def extract_pendant_features(
                     (needle_edges.shape[1] - 1)
                     - np.argmax(needle_edges[:, ::-1], axis=1),
                 ],
-                [np.arange(needle_edges.shape[0]),
-                 np.arange(needle_edges.shape[0])],
+                [np.arange(needle_edges.shape[0]), np.arange(needle_edges.shape[0])],
             ]
         )
 
@@ -175,10 +173,8 @@ def extract_pendant_features(
                 needle_perp = needle_rotation_mat @ [1, 0]
                 needle_lpoints_z = (needle_rotation_mat.T @ needle_lpoints)[1]
                 needle_rpoints_z = (needle_rotation_mat.T @ needle_rpoints)[1]
-                needle_min_z = min(needle_lpoints_z.min(),
-                                   needle_rpoints_z.min())
-                needle_max_z = max(needle_lpoints_z.max(),
-                                   needle_rpoints_z.max())
+                needle_min_z = min(needle_lpoints_z.min(), needle_rpoints_z.min())
+                needle_max_z = max(needle_lpoints_z.max(), needle_rpoints_z.max())
                 needle_tip1 = needle_rotation_mat @ [needle_rho, needle_min_z]
                 needle_tip2 = needle_rotation_mat @ [needle_rho, needle_max_z]
 
@@ -255,11 +251,9 @@ def _largest_connected_component(gray: np.ndarray) -> np.ndarray:
     mask: np.ndarray
 
     # Values returned are n_labels, labels, stats, centroids.
-    _, labels, stats, _ = cv2.connectedComponentsWithStats(
-        gray, connectivity=4)
+    _, labels, stats, _ = cv2.connectedComponentsWithStats(gray, connectivity=4)
 
-    ix = np.argsort(stats[:, cv2.CC_STAT_WIDTH] *
-                    stats[:, cv2.CC_STAT_HEIGHT])[::-1]
+    ix = np.argsort(stats[:, cv2.CC_STAT_WIDTH] * stats[:, cv2.CC_STAT_HEIGHT])[::-1]
     if len(ix) > 1:
         if ix[0] == 0:
             # Label 0 is the background.
@@ -328,12 +322,10 @@ def find_pendant_apex(data: Tuple[np.ndarray, np.ndarray]) -> Optional[tuple]:
     ma_kernel = np.ones(max(1, len(bowl_r) // 10))
     ma_kernel /= len(ma_kernel)
     asymm_r = (
-        np.convolve((bowl_z - bowl_z.mean())
-                    [bowl_r_ix], ma_kernel, mode="valid") ** 2
+        np.convolve((bowl_z - bowl_z.mean())[bowl_r_ix], ma_kernel, mode="valid") ** 2
     ).sum()
     asymm_z = (
-        np.convolve((bowl_r - bowl_r.mean())
-                    [bowl_z_ix], ma_kernel, mode="valid") ** 2
+        np.convolve((bowl_r - bowl_r.mean())[bowl_z_ix], ma_kernel, mode="valid") ** 2
     ).sum()
     if asymm_z > asymm_r:
         # Swap axes so z is the symmetry axis.
@@ -463,8 +455,7 @@ def auto_crop(
     # Applying 7x7 Gaussian Blur
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
     # 1) rough mask via inverted Otsu + largest CC
-    threshold = cv2.threshold(
-        gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+    threshold = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
     # n_labels, labels, stats, _ = cv2.connectedComponentsWithStats(thr, 8)
 
     analysis = cv2.connectedComponentsWithStats(threshold, 8)
@@ -504,8 +495,8 @@ def auto_crop(
 
     x, y, bw, bh, _ = stats[blob]
     # print(f"Blob ID: {blob}, Area: {stats[blob, cv2.CC_STAT_AREA]}, Bounding box: (x= {x}, y= {y}) - (w= {bw}, h= {bh})")
-    roi = gray[y: y + bh, x: x + bw]
-    roi_mask = (label_ids[y: y + bh, x: x + bw] == blob).astype(np.uint8) * 255
+    roi = gray[y : y + bh, x : x + bw]
+    roi_mask = (label_ids[y : y + bh, x : x + bw] == blob).astype(np.uint8) * 255
 
     # 2) Scharr→adaptiveThresh→Canny inside ROI
     blur = cv2.GaussianBlur(roi, (scharr_block, scharr_block), 0)
@@ -568,8 +559,7 @@ def auto_crop(
     for current_row in range(search_start_row, bh):
         # Add small absolute diff
         if (
-            blob_widths_at_each_row[current_row] > expansion_factor *
-                avg_needle_width
+            blob_widths_at_each_row[current_row] > expansion_factor * avg_needle_width
             and blob_widths_at_each_row[current_row] > avg_needle_width + 2
         ):
             calculated_row_thresh = current_row
@@ -634,7 +624,7 @@ def auto_crop(
             )
             # Crop the original image using the final absolute bounding box coordinates
             crop = original[
-                needle_y1_roi:needle_y2_roi, x + needle_x1_roi: x + needle_x2_roi
+                needle_y1_roi:needle_y2_roi, x + needle_x1_roi : x + needle_x2_roi
             ]
             needle_rect = Rect2(
                 (x + needle_x1_roi, y + needle_y1_roi),
@@ -682,6 +672,5 @@ def auto_crop(
                 (x + drop_x1_roi, y + drop_y1_roi), (x + drop_x2_roi, y + drop_y2_roi)
             )
 
-        crop = original[drop_y1_roi:drop_y2_roi,
-                        x + drop_x1_roi: x + drop_x2_roi]
+        crop = original[drop_y1_roi:drop_y2_roi, x + drop_x1_roi : x + drop_x2_roi]
         return drop_rect, needle_rect

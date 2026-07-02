@@ -106,8 +106,7 @@ def test_image_from_harddrive(mock_experimental_drop, mock_experimental_setup):
     with patch(
         "cv2.imread", return_value=np.zeros((100, 100, 3), dtype=np.uint8)
     ) as mock_imread:
-        image_from_harddrive(mock_experimental_drop,
-                             mock_experimental_setup, 0)
+        image_from_harddrive(mock_experimental_drop, mock_experimental_setup, 0)
         mock_imread.assert_called_once_with("test_image.png", 1)
 
 
@@ -139,8 +138,7 @@ def test_image_from_camera(mock_grabanimage, mock_experimental_drop):
 def test_grabanimage(mock_VideoCapture):
     mock_camera = MagicMock()
     mock_VideoCapture.return_value = mock_camera
-    mock_camera.read.return_value = (
-        True, np.zeros((100, 100, 3), dtype=np.uint8))
+    mock_camera.read.return_value = (True, np.zeros((100, 100, 3), dtype=np.uint8))
     with patch("cv2.imwrite") as mock_imwrite:
         grabanimage()
         mock_camera.read.assert_called()

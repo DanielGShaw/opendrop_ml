@@ -6,9 +6,7 @@ import cv2
 import numpy as np
 import pytest
 
-sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
-)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
 from opendrop_ml.modules.image import tilt_correction as tc
 from opendrop_ml.modules.image.tilt_correction import (

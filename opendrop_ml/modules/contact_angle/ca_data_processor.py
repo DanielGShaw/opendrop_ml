@@ -1,4 +1,8 @@
-from opendrop_ml.modules.core.classes import ExperimentalDrop, ExperimentalSetup, DropData
+from opendrop_ml.modules.core.classes import (
+    ExperimentalDrop,
+    ExperimentalSetup,
+    DropData,
+)
 from opendrop_ml.modules.image.read_image import get_image
 from opendrop_ml.modules.image.select_regions import (
     set_drop_region,
@@ -8,7 +12,7 @@ from opendrop_ml.modules.image.select_regions import (
 from opendrop_ml.modules.contact_angle.extract_profile import extract_drop_profile
 from opendrop_ml.modules.fitting.fits import perform_fits
 from opendrop_ml.utils.enums import FittingMethod, ThresholdSelect
-from opendrop_ml.utils.config import LEFT_ANGLE, RIGHT_ANGLE
+from opendrop_ml.utils.config import LEFT_ANGLE, RIGHT_ANGLE, CONTACT_POINTS
 from opendrop_ml.utils.os import resource_path
 
 from typing import Callable, Dict, Optional
@@ -40,9 +44,7 @@ class UnifiedCsvWriter:
     def __init__(self, path: str, user_input_data: ExperimentalSetup):
         self.path = path
         self._methods = [
-            m
-            for m, enabled in user_input_data.analysis_methods_ca.items()
-            if enabled
+            m for m, enabled in user_input_data.analysis_methods_ca.items() if enabled
         ]
         method_columns = []
         for method in self._methods:
@@ -125,6 +127,7 @@ def _auto_two_pass(
     from opendrop_ml.modules.contact_angle.video_two_pass import (
         _auto_two_pass as _impl,
     )
+
     return _impl(user_input_data, writer, progress, cancel)
 
 
@@ -139,6 +142,7 @@ def _needle_in_two_pass(
     from opendrop_ml.modules.contact_angle.video_two_pass_needle_in import (
         _needle_in_two_pass as _impl,
     )
+
     return _impl(user_input_data, writer, progress, cancel)
 
 
@@ -156,12 +160,17 @@ def _single_pass_with_tilt(
         _USE_TWO_PASS_TILTED,
         _single_pass_with_tilt as _impl,
     )
+
     if _USE_TWO_PASS_TILTED:
         from opendrop_ml.modules.contact_angle.video_two_pass_tilted import (
             _auto_two_pass_with_tilt_correction,
         )
+
         return _auto_two_pass_with_tilt_correction(
-            user_input_data, writer, progress, cancel,
+            user_input_data,
+            writer,
+            progress,
+            cancel,
         )
     return _impl(user_input_data, writer, progress, cancel)
 
@@ -238,7 +247,9 @@ class CaDataProcessor:
                         model = tf.keras.models.load_model(model_path)
 
                         try:
-                            pred_ds = prepare_for_model(raw_experiment.image)
+                            pred_ds, ml_contact_points = prepare_for_model(
+                                raw_experiment.image, return_cps=True
+                            )
                         except ValueError as e:
                             print(f"ML preprocessing failed: {e}")
                             raw_experiment.contact_angles[FittingMethod.ML_MODEL] = {}
@@ -260,6 +271,9 @@ class CaDataProcessor:
                             raw_experiment.contact_angles[FittingMethod.ML_MODEL][
                                 RIGHT_ANGLE
                             ] = ML_predictions[1, 0]
+                            raw_experiment.contact_angles[FittingMethod.ML_MODEL][
+                                CONTACT_POINTS
+                            ] = list(ml_contact_points)
                             raw_experiment.contact_angles[FittingMethod.ML_MODEL][
                                 "timings"
                             ] = timings

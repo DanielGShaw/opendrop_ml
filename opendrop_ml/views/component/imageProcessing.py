@@ -67,8 +67,7 @@ class ImageApp(ctk.CTkFrame):
         display_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
 
         # --- Configure display_frame's internal grid ---
-        display_frame.grid_columnconfigure(
-            0, weight=1)  # Single column, expandable
+        display_frame.grid_columnconfigure(0, weight=1)  # Single column, expandable
         # Row for filename (fixed height)
         display_frame.grid_rowconfigure(0, weight=0)
         # Row for image_label (expandable)
@@ -79,14 +78,12 @@ class ImageApp(ctk.CTkFrame):
         # Create a label to display the current image's filename
         filename_text = ""
         if self.image_paths:
-            filename_text = os.path.basename(
-                self.image_paths[self.current_index])
+            filename_text = os.path.basename(self.image_paths[self.current_index])
         self.name_label = ctk.CTkLabel(display_frame, text=filename_text)
         # Place in display_frame's grid, row 0, centered
         self.name_label.grid(row=0, column=0, padx=10, pady=10, sticky="")
 
-        self.image_label = ctk.CTkLabel(
-            display_frame, text="", fg_color="lightgrey")
+        self.image_label = ctk.CTkLabel(display_frame, text="", fg_color="lightgrey")
         # Place in display_frame's grid, row 1, fill the cell with equal padding
         self.image_label.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
 
@@ -94,8 +91,7 @@ class ImageApp(ctk.CTkFrame):
         self.image_navigation_frame = ctk.CTkFrame(display_frame)
         # Place in display_frame's grid, row 2, centered
         set_light_only_color(self.image_navigation_frame, "entry")
-        self.image_navigation_frame.grid(
-            row=2, column=0, padx=10, pady=10, sticky="")
+        self.image_navigation_frame.grid(row=2, column=0, padx=10, pady=10, sticky="")
 
         # --- Navigation controls inside image_navigation_frame ---
         # (Layout within this frame remains the same)
@@ -109,8 +105,7 @@ class ImageApp(ctk.CTkFrame):
 
         self.index_entry = ctk.CTkEntry(self.image_navigation_frame, width=5)
         self.index_entry.grid(row=0, column=1, padx=5, pady=5)
-        self.index_entry.bind(
-            "<Return>", lambda event: self.update_index_from_entry())
+        self.index_entry.bind("<Return>", lambda event: self.update_index_from_entry())
         if self.image_paths:
             self.index_entry.insert(0, str(self.current_index + 1))
 
@@ -118,8 +113,7 @@ class ImageApp(ctk.CTkFrame):
         if self.image_paths:
             navigation_text = f" of {len(self.image_paths)}"
         self.navigation_label = ctk.CTkLabel(
-            self.image_navigation_frame, text=navigation_text, font=(
-                "Arial", 12)
+            self.image_navigation_frame, text=navigation_text, font=("Arial", 12)
         )
         self.navigation_label.grid(row=0, column=2, padx=5, pady=5)
 
@@ -212,15 +206,13 @@ class ImageApp(ctk.CTkFrame):
             )
 
             if hasattr(self, "image_label"):
-                self.image_label.configure(
-                    image=self.tk_image, text="")  # Update label
+                self.image_label.configure(image=self.tk_image, text="")  # Update label
                 self.image_label.image = self.tk_image  # Keep reference
 
         except Exception as e:
             print(f"Error creating/displaying fixed size CTkImage: {e}")
             if hasattr(self, "image_label"):
-                self.image_label.configure(
-                    image=None, text="Error displaying image")
+                self.image_label.configure(image=None, text="Error displaying image")
 
     def change_image(self, direction):
         """Change the currently displayed image based on the direction."""
@@ -245,8 +237,7 @@ class ImageApp(ctk.CTkFrame):
                     self.current_index = new_index
                     # load_image will now handle displaying the fixed size image
                     self.load_image(self.image_paths[self.current_index])
-                    file_name = os.path.basename(
-                        self.image_paths[self.current_index])
+                    file_name = os.path.basename(self.image_paths[self.current_index])
                     self.name_label.configure(text=file_name)
             else:
                 print("Index out of range.")

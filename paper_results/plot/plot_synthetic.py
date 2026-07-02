@@ -23,8 +23,14 @@ sys.path.insert(0, SCRIPT_DIR)
 
 from config import RESULTS_DIR
 from plot_utils import (
-    setup_matplotlib, save_figure, add_agreement_line, scatter_lr,
-    COLORS, MARKERS, LABELS, MARKER_SIZE,
+    setup_matplotlib,
+    save_figure,
+    add_agreement_line,
+    scatter_lr,
+    COLORS,
+    MARKERS,
+    LABELS,
+    MARKER_SIZE,
     FIGURE_METHODS,
 )
 
@@ -49,15 +55,14 @@ def plot_agreement_5panel(df):
 
     # LaTeX y-axis labels per method (matching legacy)
     ylabel_latex = {
-        "tangent": u"$\\theta_{Tangent}$ (\u00B0)",
-        "circular": u"$\\theta_{Circle}$ (\u00B0)",
-        "ellipse": u"$\\theta_{Ellipse}$ (\u00B0)",
-        "yl": u"$\\theta_{YL}$ (\u00B0)",
-        "ml": u"$\\theta_{ML}$ (\u00B0)",
+        "tangent": "$\\theta_{Tangent}$ (\u00B0)",
+        "circular": "$\\theta_{Circle}$ (\u00B0)",
+        "ellipse": "$\\theta_{Ellipse}$ (\u00B0)",
+        "yl": "$\\theta_{YL}$ (\u00B0)",
+        "ml": "$\\theta_{ML}$ (\u00B0)",
     }
 
-    fig, axes = plt.subplots(3, 2, figsize=(10, 14),
-                             constrained_layout=True)
+    fig, axes = plt.subplots(3, 2, figsize=(10, 14), constrained_layout=True)
     axes = axes.flatten()
 
     for idx, method in enumerate(FIGURE_METHODS):
@@ -70,7 +75,7 @@ def plot_agreement_5panel(df):
 
         ax.set_xlim(lims)
         ax.set_ylim(lims)
-        ax.set_xlabel(u"$\\theta_{True}$ (\u00B0)")
+        ax.set_xlabel("$\\theta_{True}$ (\u00B0)")
         ax.set_ylabel(ylabel_latex[method])
         ax.legend(loc="upper left")
 
@@ -95,66 +100,94 @@ def plot_bias_and_disagreement(df):
     gt_doubled = np.concatenate([gt, gt])
 
     # YL measured angles (x-axis for right panel)
-    yl_x = np.concatenate([
-        df["yl_left_angle"].values,
-        df["yl_right_angle"].values,
-    ])
+    yl_x = np.concatenate(
+        [
+            df["yl_left_angle"].values,
+            df["yl_right_angle"].values,
+        ]
+    )
 
     # Bias = measured - true, for both left and right sides
-    yl_bias = np.concatenate([
-        df["yl_left_angle"].values - gt,
-        df["yl_right_angle"].values - gt,
-    ])
-    ml_bias = np.concatenate([
-        df["ml_left_angle"].values - gt,
-        df["ml_right_angle"].values - gt,
-    ])
+    yl_bias = np.concatenate(
+        [
+            df["yl_left_angle"].values - gt,
+            df["yl_right_angle"].values - gt,
+        ]
+    )
+    ml_bias = np.concatenate(
+        [
+            df["ml_left_angle"].values - gt,
+            df["ml_right_angle"].values - gt,
+        ]
+    )
 
     # Disagreement = ML - YL, for both left and right sides
-    disagree = np.concatenate([
-        df["ml_left_angle"].values - df["yl_left_angle"].values,
-        df["ml_right_angle"].values - df["yl_right_angle"].values,
-    ])
+    disagree = np.concatenate(
+        [
+            df["ml_left_angle"].values - df["yl_left_angle"].values,
+            df["ml_right_angle"].values - df["yl_right_angle"].values,
+        ]
+    )
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 5), constrained_layout=True)
 
     # Left panel: bias vs true angle
-    axes[0].scatter(gt_doubled, yl_bias, edgecolor=COLORS["yl"],
-                    facecolor="None", marker=MARKERS["yl"],
-                    s=MARKER_SIZE, label=LABELS["yl"])
-    axes[0].scatter(gt_doubled, ml_bias, edgecolor=COLORS["ml"],
-                    facecolor="None", marker=MARKERS["ml"],
-                    s=MARKER_SIZE, label=LABELS["ml"])
+    axes[0].scatter(
+        gt_doubled,
+        yl_bias,
+        edgecolor=COLORS["yl"],
+        facecolor="None",
+        marker=MARKERS["yl"],
+        s=MARKER_SIZE,
+        label=LABELS["yl"],
+    )
+    axes[0].scatter(
+        gt_doubled,
+        ml_bias,
+        edgecolor=COLORS["ml"],
+        facecolor="None",
+        marker=MARKERS["ml"],
+        s=MARKER_SIZE,
+        label=LABELS["ml"],
+    )
     axes[0].axhline(0, color="gray", linewidth=0.5, linestyle="--")
-    axes[0].set_xlabel(u"$\\theta_{True}$ (\u00B0)")
-    axes[0].set_ylabel(u"Bias (\u00B0)")
-    axes[0].text(0.01, 1.02, "a)", transform=axes[0].transAxes,
-                 fontsize=16, fontweight="bold")
+    axes[0].set_xlabel("$\\theta_{True}$ (\u00B0)")
+    axes[0].set_ylabel("Bias (\u00B0)")
+    axes[0].text(
+        0.01, 1.02, "a)", transform=axes[0].transAxes, fontsize=16, fontweight="bold"
+    )
     axes[0].legend()
 
     # Right panel: ML - YL disagreement vs YL angle
-    axes[1].scatter(yl_x, disagree, edgecolor=COLORS["ml"],
-                    facecolor="None", marker=MARKERS["ml"],
-                    s=MARKER_SIZE,
-                    label=u"$\\theta_{ML} - \\theta_{YL}$")
+    axes[1].scatter(
+        yl_x,
+        disagree,
+        edgecolor=COLORS["ml"],
+        facecolor="None",
+        marker=MARKERS["ml"],
+        s=MARKER_SIZE,
+        label="$\\theta_{ML} - \\theta_{YL}$",
+    )
     axes[1].axhline(0, color="gray", linewidth=0.5, linestyle="--")
-    axes[1].set_xlabel(u"$\\theta_{YL}$ (\u00B0)")
-    axes[1].set_ylabel(u"$\\theta_{ML} - \\theta_{YL}$ (\u00B0)")
-    axes[1].text(0.01, 1.02, "b)", transform=axes[1].transAxes,
-                 fontsize=16, fontweight="bold")
+    axes[1].set_xlabel("$\\theta_{YL}$ (\u00B0)")
+    axes[1].set_ylabel("$\\theta_{ML} - \\theta_{YL}$ (\u00B0)")
+    axes[1].text(
+        0.01, 1.02, "b)", transform=axes[1].transAxes, fontsize=16, fontweight="bold"
+    )
     axes[1].legend()
 
     # i)-iv) annotations linking to the curated systems shown in
     # figures/CA_tangent_plots/synthetic_composite.png
     composite_systems = [
-        ("i)", "20.0_0.6000000000000001_4.0_0.006_CPL_302_461_CPR_442_461_.png",
-         "left", (0, 10)),
-        ("ii)", "100.0_0.8_4.0_0.0_CPL_303_461_CPR_441_461_.png",
-         "left", (-6, -26)),
-        ("iii)", "160.0_0.8_4.0_-0.03_CPL_331_447_CPR_413_447_.png",
-         "left", (-6, 10)),
-        ("iv)", "180.0_1.0_1.0_0.006_CPL_234_461_CPR_510_461_.png",
-         "left", (12, -14)),
+        (
+            "i)",
+            "20.0_0.6000000000000001_4.0_0.006_CPL_302_461_CPR_442_461_.png",
+            "left",
+            (0, 10),
+        ),
+        ("ii)", "100.0_0.8_4.0_0.0_CPL_303_461_CPR_441_461_.png", "left", (-6, -26)),
+        ("iii)", "160.0_0.8_4.0_-0.03_CPL_331_447_CPR_413_447_.png", "left", (-6, 10)),
+        ("iv)", "180.0_1.0_1.0_0.006_CPL_234_461_CPR_510_461_.png", "left", (12, -14)),
     ]
     for label, image_name, side, offset_b in composite_systems:
         row = df.loc[df["image_name"] == image_name]
@@ -165,9 +198,15 @@ def plot_bias_and_disagreement(df):
         ml_angle = row[f"ml_{side}_angle"]
 
         # Panel b): (theta_ML - theta_YL) vs theta_YL
-        axes[1].annotate(label, xy=(yl_angle, ml_angle - yl_angle),
-                          xytext=offset_b, textcoords="offset points",
-                          ha="center", fontsize=12, fontweight="bold")
+        axes[1].annotate(
+            label,
+            xy=(yl_angle, ml_angle - yl_angle),
+            xytext=offset_b,
+            textcoords="offset points",
+            ha="center",
+            fontsize=12,
+            fontweight="bold",
+        )
 
     save_figure(fig, SUBDIR, "synthetic_bias_and_disagreement.png")
 
@@ -175,6 +214,7 @@ def plot_bias_and_disagreement(df):
 # -----------------------------------------------------------------------
 # Main
 # -----------------------------------------------------------------------
+
 
 def main():
     setup_matplotlib()

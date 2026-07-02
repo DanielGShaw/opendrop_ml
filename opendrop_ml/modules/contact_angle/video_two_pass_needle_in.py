@@ -77,10 +77,10 @@ _HOUGH_THRESHOLD = 40
 _DISTANCE_THRESHOLD_BASE = 5.0
 _DISTANCE_THRESHOLD_MAX = 10
 _BASELINE_EXTRA_CLEAR = 30  # ``dt + 30`` — not ``dt + 5``; needle-in-specific
-_MIN_DROP_TOP_RATIO = 0.2   # Cleaned drop contour's topmost y must be below
-                            # ``crop_value * _MIN_DROP_TOP_RATIO``.
-_CLUSTER_XI = 0.8           # OPTICS reachability steepness (initial clean).
-_CLUSTER_EPS = 2            # DBSCAN radius (isolated re-cluster).
+_MIN_DROP_TOP_RATIO = 0.2  # Cleaned drop contour's topmost y must be below
+# ``crop_value * _MIN_DROP_TOP_RATIO``.
+_CLUSTER_XI = 0.8  # OPTICS reachability steepness (initial clean).
+_CLUSTER_EPS = 2  # DBSCAN radius (isolated re-cluster).
 
 # Polynomial / tangent fit parameters applied to each Pass 2 profile.
 POLYNOMIAL_DEGREE_TANGENT = 1
@@ -103,8 +103,9 @@ ProgressCb = Callable[[int, int, str], None]
 CancelCb = Callable[[], bool]
 
 
-def _needle_in_two_pass(user_input_data, writer, progress: ProgressCb,
-                        cancel: CancelCb) -> dict:
+def _needle_in_two_pass(
+    user_input_data, writer, progress: ProgressCb, cancel: CancelCb
+) -> dict:
     """Run the needle-in two-pass pipeline.
 
     Reads ``import_files[0]`` (a video file or image directory path)
@@ -155,8 +156,15 @@ def _needle_in_two_pass(user_input_data, writer, progress: ProgressCb,
             "left_needle_x": None,
             "right_needle_x": None,
         }
-    (left_line, right_line, left_needle_int, right_needle_int,
-     left_cps, right_cps, crop_for_pass2) = pass1
+    (
+        left_line,
+        right_line,
+        left_needle_int,
+        right_needle_int,
+        left_cps,
+        right_cps,
+        crop_for_pass2,
+    ) = pass1
 
     ml_model = _load_ml_model() if FittingMethod.ML_MODEL in enabled else None
 
@@ -198,6 +206,7 @@ def _needle_in_two_pass(user_input_data, writer, progress: ProgressCb,
 # clustering was skipped.
 # ---------------------------------------------------------------------------
 
+
 def _largest_cluster(groups: Union[dict, np.ndarray]) -> np.ndarray:
     """Return the cluster with the most points (ndarray passthrough)."""
     if isinstance(groups, np.ndarray):
@@ -231,9 +240,7 @@ def _leftmost_cluster(groups: Union[dict, np.ndarray]) -> np.ndarray:
     return np.array(groups[key])
 
 
-def _create_edge_image(
-    left: np.ndarray, right: np.ndarray, shape: tuple
-) -> np.ndarray:
+def _create_edge_image(left: np.ndarray, right: np.ndarray, shape: tuple) -> np.ndarray:
     """Rasterise left + right contour points into a binary edge image.
 
     ``shape`` is ``(h, w)`` or any tuple where the first two entries are
@@ -256,6 +263,7 @@ def _create_edge_image(
 # Pass 1 — calibrate median contact lines and median needle points
 # ---------------------------------------------------------------------------
 
+
 def _isolate_drop_side(
     side_contour: np.ndarray,
     lines_all: list,
@@ -277,7 +285,10 @@ def _isolate_drop_side(
     isolated = None
     while dt <= _DISTANCE_THRESHOLD_MAX:
         candidate = remove_points_near_lines(side_contour, lines_all, dt)
-        if len(candidate) > 0 and min(candidate[:, 1]) > crop_value * _MIN_DROP_TOP_RATIO:
+        if (
+            len(candidate) > 0
+            and min(candidate[:, 1]) > crop_value * _MIN_DROP_TOP_RATIO
+        ):
             isolated = candidate
             break
         dt += 1
@@ -452,8 +463,15 @@ def derive_auto_crop(baselines: list) -> Optional[int]:
 
 def compute_pass1_calibration(
     pass1_results: list,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
-           np.ndarray, np.ndarray, Optional[int]]:
+) -> Tuple[
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    Optional[int],
+]:
     """Reduce Pass-1 per-frame results into median contact lines + needle points.
 
     ``pass1_results`` is a list of non-``None`` dicts returned by
@@ -471,45 +489,45 @@ def compute_pass1_calibration(
     if len(pass1_results) < _MIN_PASS1_SUCCESSES:
         raise RuntimeError(
             "Pass 1 calibration failed: {} successful samples "
-            "(need at least {}).".format(
-                len(pass1_results), _MIN_PASS1_SUCCESSES
-            )
+            "(need at least {}).".format(len(pass1_results), _MIN_PASS1_SUCCESSES)
         )
 
-    left_cps_arr = np.array([
-        np.asarray(r["left_CP"]) for r in pass1_results
-    ])
-    right_cps_arr = np.array([
-        np.asarray(r["right_CP"]) for r in pass1_results
-    ])
-    left_ints_arr = np.array([
-        np.asarray(r["left_needle_int"]) for r in pass1_results
-    ])
-    right_ints_arr = np.array([
-        np.asarray(r["right_needle_int"]) for r in pass1_results
-    ])
+    left_cps_arr = np.array([np.asarray(r["left_CP"]) for r in pass1_results])
+    right_cps_arr = np.array([np.asarray(r["right_CP"]) for r in pass1_results])
+    left_ints_arr = np.array([np.asarray(r["left_needle_int"]) for r in pass1_results])
+    right_ints_arr = np.array(
+        [np.asarray(r["right_needle_int"]) for r in pass1_results]
+    )
     baselines = [r["baseline"] for r in pass1_results]
     left_contours = [np.asarray(r["left_contour"]) for r in pass1_results]
     right_contours = [np.asarray(r["right_contour"]) for r in pass1_results]
 
     left_line = fit_contact_line(
-        left_cps_arr, contours=left_contours, side="left",
+        left_cps_arr,
+        contours=left_contours,
+        side="left",
     )
     right_line = fit_contact_line(
-        right_cps_arr, contours=right_contours, side="right",
+        right_cps_arr,
+        contours=right_contours,
+        side="right",
     )
 
     # Median needle intercept point per side (x, y). The needle is
     # narrow and easily bent; a robust median point with buffer room
     # beats an ODR line fit across a handful of noisy intercepts.
-    left_needle_int = np.array([
-        float(np.median(left_ints_arr[:, 0])),
-        float(np.median(left_ints_arr[:, 1])),
-    ])
-    right_needle_int = np.array([
-        float(np.median(right_ints_arr[:, 0])),
-        float(np.median(right_ints_arr[:, 1])),
-    ])
+    left_needle_int = np.array(
+        [
+            float(np.median(left_ints_arr[:, 0])),
+            float(np.median(left_ints_arr[:, 1])),
+        ]
+    )
+    right_needle_int = np.array(
+        [
+            float(np.median(right_ints_arr[:, 0])),
+            float(np.median(right_ints_arr[:, 1])),
+        ]
+    )
 
     auto_crop = None
     if _USE_AUTO_CROP:
@@ -517,8 +535,15 @@ def compute_pass1_calibration(
         if auto is not None and auto > 0:
             auto_crop = auto
 
-    return (left_line, right_line, left_needle_int, right_needle_int,
-            left_cps_arr, right_cps_arr, auto_crop)
+    return (
+        left_line,
+        right_line,
+        left_needle_int,
+        right_needle_int,
+        left_cps_arr,
+        right_cps_arr,
+        auto_crop,
+    )
 
 
 def _pass1_calibrate(
@@ -528,8 +553,9 @@ def _pass1_calibrate(
     progress: ProgressCb,
     cancel: CancelCb,
     crop_value: int = _DEFAULT_CROP_VALUE,
-) -> Optional[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
-                    np.ndarray, np.ndarray, int]]:
+) -> Optional[
+    Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, int]
+]:
     """Calibrate median contact lines + median needle-intercept points.
 
     Samples every ``skip``-th frame. Returns
@@ -557,18 +583,33 @@ def _pass1_calibrate(
 
         progress(sample_idx, pass1_total, "Pass 1")
 
-    (left_line, right_line, left_needle_int, right_needle_int,
-     left_cps_arr, right_cps_arr, auto_crop) = compute_pass1_calibration(results)
+    (
+        left_line,
+        right_line,
+        left_needle_int,
+        right_needle_int,
+        left_cps_arr,
+        right_cps_arr,
+        auto_crop,
+    ) = compute_pass1_calibration(results)
 
     crop_for_pass2 = auto_crop if auto_crop is not None else crop_value
 
-    return (left_line, right_line, left_needle_int, right_needle_int,
-            left_cps_arr, right_cps_arr, crop_for_pass2)
+    return (
+        left_line,
+        right_line,
+        left_needle_int,
+        right_needle_int,
+        left_cps_arr,
+        right_cps_arr,
+        crop_for_pass2,
+    )
 
 
 # ---------------------------------------------------------------------------
 # Pass 2 — per-frame analysis
 # ---------------------------------------------------------------------------
+
 
 def _preprocess_pass2(
     frame: np.ndarray, crop_value: int
@@ -693,14 +734,18 @@ def _pass2_state(
         return None, "contour_short"
 
     # Vertical needle lines through the median needle-intercept x, per side.
-    left_needle_line = np.array([
-        [left_needle_int[0], 0],
-        [left_needle_int[0], crop_value],
-    ])
-    right_needle_line = np.array([
-        [right_needle_int[0], 0],
-        [right_needle_int[0], crop_value],
-    ])
+    left_needle_line = np.array(
+        [
+            [left_needle_int[0], 0],
+            [left_needle_int[0], crop_value],
+        ]
+    )
+    right_needle_line = np.array(
+        [
+            [right_needle_int[0], 0],
+            [right_needle_int[0], crop_value],
+        ]
+    )
 
     left_cp_pt = left[left_cp_idx]
     right_cp_pt = right[right_cp_idx]
@@ -708,16 +753,15 @@ def _pass2_state(
     # needle-top row and the contact-line row (matches reference
     # line 475-478).
     approx_mid_y = max(left_needle_int[1], right_needle_int[1]) + (
-        (max(left_cp_pt[1], right_cp_pt[1])
-         - max(left_needle_int[1], right_needle_int[1])) / 2
+        (
+            max(left_cp_pt[1], right_cp_pt[1])
+            - max(left_needle_int[1], right_needle_int[1])
+        )
+        / 2
     )
 
-    left_start_idx = find_last_intercept(
-        left, left_needle_line, max_y=approx_mid_y
-    )
-    right_start_idx = find_last_intercept(
-        right, right_needle_line, max_y=approx_mid_y
-    )
+    left_start_idx = find_last_intercept(left, left_needle_line, max_y=approx_mid_y)
+    right_start_idx = find_last_intercept(right, right_needle_line, max_y=approx_mid_y)
 
     # Fallback ladder (per reference): single-side failure borrows from
     # the other; dual failure falls back to frame start.
@@ -733,8 +777,8 @@ def _pass2_state(
     if left_start_idx >= left_cp_idx or right_start_idx >= right_cp_idx:
         return None, "needle_above_cp"
 
-    left_drop = left[left_start_idx:left_cp_idx + 1]
-    right_drop = right[right_start_idx:right_cp_idx + 1]
+    left_drop = left[left_start_idx : left_cp_idx + 1]
+    right_drop = right[right_start_idx : right_cp_idx + 1]
     if len(left_drop) < 5 or len(right_drop) < 5:
         return None, "drop_too_short"
 
@@ -772,8 +816,12 @@ def extract_pass2_frame(
     ``_pass2_state`` directly.
     """
     state, _err = _pass2_state(
-        frame, crop_value, left_line, right_line,
-        left_needle_int, right_needle_int,
+        frame,
+        crop_value,
+        left_line,
+        right_line,
+        left_needle_int,
+        right_needle_int,
     )
     return state
 
@@ -790,8 +838,12 @@ def _analyze_frame_needle_in(
 ) -> Tuple[dict, str]:
     """Per-frame Pass 2 analysis. Returns ``(contact_angles, error_status)``."""
     state, err = _pass2_state(
-        frame, crop_value, left_line, right_line,
-        left_needle_int, right_needle_int,
+        frame,
+        crop_value,
+        left_line,
+        right_line,
+        left_needle_int,
+        right_needle_int,
     )
     if state is None:
         return {}, err
@@ -805,13 +857,17 @@ def _analyze_frame_needle_in(
     contact_angles: dict = {}
     if FittingMethod.TANGENT_FIT in enabled_methods:
         _try_polynomial(
-            contact_angles, FittingMethod.TANGENT_FIT,
-            profile, POLYNOMIAL_DEGREE_TANGENT,
+            contact_angles,
+            FittingMethod.TANGENT_FIT,
+            profile,
+            POLYNOMIAL_DEGREE_TANGENT,
         )
     if FittingMethod.POLYNOMIAL_FIT in enabled_methods:
         _try_polynomial(
-            contact_angles, FittingMethod.POLYNOMIAL_FIT,
-            profile, POLYNOMIAL_DEGREE_POLY,
+            contact_angles,
+            FittingMethod.POLYNOMIAL_FIT,
+            profile,
+            POLYNOMIAL_DEGREE_POLY,
         )
     if FittingMethod.CIRCLE_FIT in enabled_methods:
         _try_circular(contact_angles, profile)
@@ -821,8 +877,12 @@ def _analyze_frame_needle_in(
         _try_yl(contact_angles, profile)
     if FittingMethod.ML_MODEL in enabled_methods and ml_model is not None:
         _try_ml_needle_in(
-            contact_angles, left, right,
-            left_cp_idx, right_cp_idx, ml_model,
+            contact_angles,
+            left,
+            right,
+            left_cp_idx,
+            right_cp_idx,
+            ml_model,
         )
 
     return contact_angles, ""
@@ -857,9 +917,14 @@ def _pass2_analyze(
         timestamp_s = _frame_timestamp(frame_number, meta)
 
         contact_angles, error_status = _analyze_frame_needle_in(
-            frame, left_line, right_line,
-            left_needle_int, right_needle_int,
-            enabled_methods, ml_model, crop_value,
+            frame,
+            left_line,
+            right_line,
+            left_needle_int,
+            right_needle_int,
+            enabled_methods,
+            ml_model,
+            crop_value,
         )
 
         writer.write_row(

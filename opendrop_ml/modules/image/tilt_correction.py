@@ -118,7 +118,11 @@ def touches_border(contour, img_shape, margin=2):
     x = contour[:, 0]
     y = contour[:, 1]
 
-    if (np.any(x <= margin) or np.any(x >= w - 1 - margin) or
-            np.any(y <= margin) or np.any(y >= h - 1 - margin)):
+    if (
+        np.any(x <= margin)
+        or np.any(x >= w - 1 - margin)
+        or np.any(y <= margin)
+        or np.any(y >= h - 1 - margin)
+    ):
         return True
     return False

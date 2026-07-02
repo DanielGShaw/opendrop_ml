@@ -41,8 +41,7 @@ class IftPreparation(ctk.CTkFrame):
         )  # Left side for input fields
 
         # Ensure that the parent frame (input_fields_frame) resizes properly
-        self.input_fields_frame.grid_rowconfigure(
-            0, weight=1)  # Ensure row 0 expands
+        self.input_fields_frame.grid_rowconfigure(0, weight=1)  # Ensure row 0 expands
         self.input_fields_frame.grid_columnconfigure(
             0, weight=1
         )  # Ensure column 0 expands
@@ -73,8 +72,7 @@ class IftPreparation(ctk.CTkFrame):
         user_input_frame = create_user_input_fields_ift(
             self, parent_frame, self.user_input_data
         )
-        user_input_frame.grid(
-            row=0, column=0, sticky="nsew", pady=(10, 0))  # Use row 0
+        user_input_frame.grid(row=0, column=0, sticky="nsew", pady=(10, 0))  # Use row 0
         # user_input_frame.pack(fill="x", expand=True, pady=(10, 0))  # Adjust as needed for your layout
 
     def create_analysis_method_fields(self, parent_frame):
@@ -89,5 +87,4 @@ class IftPreparation(ctk.CTkFrame):
         fitting_view_frame = create_plotting_checklist(
             self, parent_frame, self.user_input_data
         )
-        fitting_view_frame.grid(
-            row=2, column=0, sticky="nsew", pady=10)  # Use row 1
+        fitting_view_frame.grid(row=2, column=0, sticky="nsew", pady=10)  # Use row 1

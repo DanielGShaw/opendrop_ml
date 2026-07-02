@@ -40,7 +40,6 @@ class ExperimentalSetup(object):
         self.needle_region_method: RegionSelect = RegionSelect.AUTOMATED
         self.baseline_method: ThresholdSelect = ThresholdSelect.AUTOMATED
         self.threshold_val = None
-        self.edgefinder = None
 
         self.original_boole: bool = False
         self.cropped_boole: bool = False
@@ -123,12 +122,9 @@ class ExperimentalSetup(object):
 
                     setattr(self, key, value)
 
-
     def save_analysis_methods(self, yaml_path):
         """Write current analysis_methods_ca back to the yaml, preserving comments."""
-        method_values = {
-            m.name: v for m, v in self.analysis_methods_ca.items()
-        }
+        method_values = {m.name: v for m, v in self.analysis_methods_ca.items()}
         with open(yaml_path, "r") as f:
             lines = f.readlines()
 
@@ -158,6 +154,11 @@ class ExperimentalDrop(object):
         self.drop_contour = None
         self.contact_points = None
         self.contact_angles = {}
+        # (x, y) offset of cropped_image's origin within the full image — fit
+        # geometry (contact points, tangent lines, etc.) is computed in full-image
+        # coordinates and must be translated by this offset before being drawn
+        # onto cropped_image.
+        self.crop_offset = None
         self.needle_data = None
         self.surface_data = None
         self.ret = None

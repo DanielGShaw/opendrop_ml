@@ -187,14 +187,13 @@ def evaluate_frame(frame_data, profile, img, model):
         if len(ml_left) == 50 and len(ml_right) == 50:
             pred_ds = np.array([ml_left, ml_right])
             pred_ds = normalize_ds(pred_ds)
-            predictions, ml_timings = experimental_pred(
-                pred_ds, model, side="both"
-            )
+            predictions, ml_timings = experimental_pred(pred_ds, model, side="both")
             result["ml_left_angle"] = float(predictions[0])
             result["ml_right_angle"] = float(predictions[1])
         else:
             result["ml_error"] = "Insufficient ML window points: L={}, R={}".format(
-                len(ml_left), len(ml_right))
+                len(ml_left), len(ml_right)
+            )
     except Exception as e:
         result["ml_error"] = str(e)
 
@@ -247,35 +246,37 @@ def process_dataset(dataset_name, dataset_dir, config, model):
             if len(pass1_results) == 0:
                 print("    Pass 1 frame {} error: {}".format(frame_num, e))
 
-    print("  Pass 1: {} frames processed, {} failures".format(
-        len(pass1_results), failures_p1))
+    print(
+        "  Pass 1: {} frames processed, {} failures".format(
+            len(pass1_results), failures_p1
+        )
+    )
 
     if len(pass1_results) < 3:
         print("  ERROR: Too few successful frames in Pass 1")
         return None
 
-    (left_line, right_line,
-     left_needle_int, right_needle_int,
-     left_cps, right_cps,
-     auto_crop) = compute_pass1_calibration(pass1_results)
+    (
+        left_line,
+        right_line,
+        left_needle_int,
+        right_needle_int,
+        left_cps,
+        right_cps,
+        auto_crop,
+    ) = compute_pass1_calibration(pass1_results)
 
     if auto_crop is None:
         print("  ERROR: auto-crop derivation failed; Isaac runs require it.")
         return None
     crop_for_pass2 = auto_crop
 
-    left_median_CP = np.array([
-        np.median(left_cps[:, 0]), np.median(left_cps[:, 1])
-    ])
-    right_median_CP = np.array([
-        np.median(right_cps[:, 0]), np.median(right_cps[:, 1])
-    ])
+    left_median_CP = np.array([np.median(left_cps[:, 0]), np.median(left_cps[:, 1])])
+    right_median_CP = np.array([np.median(right_cps[:, 0]), np.median(right_cps[:, 1])])
     print("  Left median CP:  ({:.1f}, {:.1f})".format(*left_median_CP))
     print("  Right median CP: ({:.1f}, {:.1f})".format(*right_median_CP))
-    print("  Left median needle intercept:  ({:.1f}, {:.1f})".format(
-        *left_needle_int))
-    print("  Right median needle intercept: ({:.1f}, {:.1f})".format(
-        *right_needle_int))
+    print("  Left median needle intercept:  ({:.1f}, {:.1f})".format(*left_needle_int))
+    print("  Right median needle intercept: ({:.1f}, {:.1f})".format(*right_needle_int))
     print("  Auto-crop for Pass 2: {}".format(crop_for_pass2))
     print("  Pass 1 completed in {:.1f}s".format(time.time() - t0))
 
@@ -296,8 +297,11 @@ def process_dataset(dataset_name, dataset_dir, config, model):
         frame_count += 1
         if frame_count % 50 == 0:
             elapsed = time.time() - t0
-            print("    Frame {} processed ({:.0f}s elapsed)...".format(
-                frame_count, elapsed))
+            print(
+                "    Frame {} processed ({:.0f}s elapsed)...".format(
+                    frame_count, elapsed
+                )
+            )
 
         row = {
             "dataset": dataset_name,
@@ -306,9 +310,12 @@ def process_dataset(dataset_name, dataset_dir, config, model):
 
         try:
             frame_data = extract_pass2_frame(
-                frame, crop_for_pass2,
-                left_line, right_line,
-                left_needle_int, right_needle_int,
+                frame,
+                crop_for_pass2,
+                left_line,
+                right_line,
+                left_needle_int,
+                right_needle_int,
             )
 
             if frame_data is None:
@@ -323,9 +330,9 @@ def process_dataset(dataset_name, dataset_dir, config, model):
             row["left_CP_y"] = float(frame_data["left_CP"][1])
             row["right_CP_x"] = float(frame_data["right_CP"][0])
             row["right_CP_y"] = float(frame_data["right_CP"][1])
-            row["diameter"] = float(np.linalg.norm(
-                frame_data["right_CP"] - frame_data["left_CP"]
-            ))
+            row["diameter"] = float(
+                np.linalg.norm(frame_data["right_CP"] - frame_data["left_CP"])
+            )
 
             fit_results = evaluate_frame(frame_data, profile, frame, model)
             row.update(fit_results)
@@ -337,8 +344,11 @@ def process_dataset(dataset_name, dataset_dir, config, model):
         results.append(row)
 
     total_time = time.time() - t0
-    print("  Pass 2: {} frames, {} failures, {:.1f}s".format(
-        frame_count, failures_p2, total_time))
+    print(
+        "  Pass 2: {} frames, {} failures, {:.1f}s".format(
+            frame_count, failures_p2, total_time
+        )
+    )
 
     df = pd.DataFrame(results)
     return df

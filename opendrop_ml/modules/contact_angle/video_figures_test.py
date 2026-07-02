@@ -166,9 +166,7 @@ class TestGenerateTimeseriesFigure:
         self, sample_csv, tmp_path, capture_axes
     ):
         output = str(tmp_path / "timeseries_nan.png")
-        generate_timeseries_figure(
-            sample_csv, output, median_tilt_angle=float("nan")
-        )
+        generate_timeseries_figure(sample_csv, output, median_tilt_angle=float("nan"))
 
         title = capture_axes["axes"][0].get_title()
         assert "median tilt" not in title

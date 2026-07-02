@@ -40,8 +40,7 @@ class MainWindow(ctk.CTk):
         self.protocol("WM_DELETE_WINDOW", self.close_window)
 
         # Display title
-        title_label = ctk.CTkLabel(
-            self, text="opendrop_ml", font=("Helvetica", 48))
+        title_label = ctk.CTkLabel(self, text="opendrop_ml", font=("Helvetica", 48))
         title_label.pack(pady=90)
         # self.display_image("views/assets/banner.png")
 
