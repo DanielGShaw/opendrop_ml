@@ -109,7 +109,6 @@ def ell_parameters(a):
     Hence, an easy way to write down how to get t
     """
     RAD = 180.0 / np.pi
-    DEGREE = 1.0 / RAD
 
     A = np.array([[a[0], a[1] / 2.0], [a[1] / 2.0, a[2]]])
     b = np.array([a[3], a[4]])
@@ -434,7 +433,6 @@ def ellipse_fit_img(img, display=False):
     rise = CPs[1][1] - CPs[0][1]
     run = CPs[1][0] - CPs[0][0]
     slope = rise / run
-    baseline = [(CPs[0][0], CPs[0][1]), slope]
     c = CPs[0][1] - (slope * CPs[0][0])
     baseline_x = np.linspace(1, img.shape[1], 100)
     baseline_y = slope * baseline_x + c
@@ -534,7 +532,6 @@ def ellipse_fit_img(img, display=False):
     else:
         left, right = list(sorted(outputs, key=lambda x: x[0]))
 
-    m_left, m_right = left[2], right[2]
     intercepts = [[left[0], left[1]], [right[0], right[1]]]
 
     CA = []
@@ -589,16 +586,9 @@ def ellipse_fit(drop, display=False):
     rise = CPs[1][1] - CPs[0][1]
     run = CPs[1][0] - CPs[0][0]
     slope = rise / run
-    baseline = [(CPs[0][0], CPs[0][1]), slope]
     c = CPs[0][1] - (slope * CPs[0][0])
     baseline_x = np.linspace(1, max(drop[:, 0]), 100)
     baseline_y = slope * baseline_x + c
-
-    # Center estimates - it doesn't even take these
-    # x estimate is where between the lowest and highest points of the top section for a hydrophobic drop
-    x_m = min(x) + (max(x) - min(x)) / 2
-    # for full contour, y estimate is the halfway between max y and min y
-    y_m = min(y) + ((max(y) - min(y)) / 2)
 
     # fit
     avec = fit_ellipse(x, y)
@@ -697,7 +687,6 @@ def ellipse_fit(drop, display=False):
     else:
         left, right = list(sorted(outputs, key=lambda x: x[0]))
 
-    m_left, m_right = left[2], right[2]
     intercepts = [[left[0], left[1]], [right[0], right[1]]]
 
     CA = []

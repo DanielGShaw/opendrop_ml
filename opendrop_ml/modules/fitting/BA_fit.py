@@ -502,8 +502,6 @@ def analyze_frame(img, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
 
     # now fit the circle, this will be used as a starting point for the BA fit
     if fit_type in FitType:
-        width = max(profile[:, 0])
-
         res = fit_circle_leastsq(circle)
         *z, r = res
 
@@ -714,8 +712,6 @@ def yl_fit(profile, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
 
     # now fit the circle, this will be used as a starting point for the BA fit
     if fit_type in FitType:
-        width = max(profile[:, 0])
-
         res = fit_circle_leastsq(circle)
         *z, r = res
 
