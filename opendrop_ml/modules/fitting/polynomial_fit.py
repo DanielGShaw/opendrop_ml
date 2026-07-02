@@ -238,7 +238,7 @@ def polynomial_fit_img(img, num_points=15, polynomial_degree=2, display=False):
         m2 = fit_local2[0]
 
     if display:
-        plt.plot(edges_pts[:, 0], edges_pts[:, 1], "o", color="pink")
+        plt.plot(longest_contour[:, 0], longest_contour[:, 1], "o", color="pink")
         plt.plot(pts1[:, 0], pts1[:, 1], "ro")
         plt.plot(pts1[:, 0], line_local1(pts1[:, 0]), "y-")
         plt.imshow(img)
@@ -250,7 +250,7 @@ def polynomial_fit_img(img, num_points=15, polynomial_degree=2, display=False):
         plt.show()
         plt.close()
 
-        plt.plot(edges_pts[:, 0], edges_pts[:, 1], "o", color="pink")
+        plt.plot(longest_contour[:, 0], longest_contour[:, 1], "o", color="pink")
         plt.plot(pts2[:, 0], pts2[:, 1], "ro")
         plt.plot(pts2[:, 0], line_local2(pts2[:, 0]), "y-")
         plt.imshow(img)

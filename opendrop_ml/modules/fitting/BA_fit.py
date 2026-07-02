@@ -555,6 +555,7 @@ def analyze_frame(img, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
                 )
                 if display:
                     # print('points: ',points)
+                    h = np.max(points[:, 1])
                     plt.title(
                         "points near drop edge\nh="
                         + str(h)
@@ -766,6 +767,7 @@ def yl_fit(profile, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
                 )
                 if display:
                     # print('points: ',points)
+                    h = np.max(points[:, 1])
                     plt.title(
                         "points near drop edge\nh="
                         + str(h)
