@@ -126,6 +126,7 @@ class CaAnalysis(CTkFrame):
         self.output = []
         self.cropped_images = {}  # Cropped pictures
         self.cropped_angle_images = {}  # Crop diagram after superimposing angles
+        self.crop_offsets = {}  # {index: (x, y)} offset of cropped_image in the full image
         self.left_angles = []  # Keep the original list for backward compatibility
         self.right_angles = []  # Keep the original list for backward compatibility
 
@@ -264,6 +265,10 @@ class CaAnalysis(CTkFrame):
                 self.cropped_images[index] = cropped_pil
                 print(f"Successfully saved cropped image, size: {cropped_pil.size}")
 
+            self.crop_offsets[index] = (
+                getattr(experimental_drop, "crop_offset", None) or (0, 0)
+            )
+
             # Check for contact angle data
             if hasattr(experimental_drop, "contact_angles"):
                 available_methods = []
@@ -395,17 +400,24 @@ class CaAnalysis(CTkFrame):
             tangent_lines = self.get_tangent_lines(angles_data)
 
             if contact_points and tangent_lines:
-                # All five fit methods share preprocess's tilt-corrected coordinate
-                # frame (set_surface_line calls preprocess(.image) which runs its
-                # own internal tilt correction inside isolate_contour). That frame
-                # aligns with the unrotated cropped_image, so every overlay uses
-                # cropped_images[index] as the canvas.
+                # All fit methods (including the ML model) compute their geometry
+                # against the full, uncropped image — set_surface_line and
+                # prepare_for_model both re-run preprocessing on
+                # experimental_drop.image, not cropped_image. cropped_image is a
+                # tighter crop with its own (x, y) origin offset within the full
+                # image, so that offset must be subtracted before drawing.
                 cropped_img = self.cropped_images.get(index)
                 if cropped_img is None:
                     return False
 
+                offset = self.crop_offsets.get(index, (0, 0))
                 annotated_img = self.draw_on_cropped_image(
-                    cropped_img, left_angle, right_angle, contact_points, tangent_lines
+                    cropped_img,
+                    left_angle,
+                    right_angle,
+                    contact_points,
+                    tangent_lines,
+                    offset=offset,
                 )
 
                 # Save to method-specific dictionary using display name
@@ -419,31 +431,48 @@ class CaAnalysis(CTkFrame):
         return False
 
     def draw_on_cropped_image(
-        self, image, left_angle, right_angle, contact_points, tangent_lines
+        self,
+        image,
+        left_angle,
+        right_angle,
+        contact_points,
+        tangent_lines,
+        offset=(0, 0),
     ):
-        """Draw contact angle annotations on cropped image"""
+        """Draw contact angle annotations on cropped image.
+
+        contact_points/tangent_lines are in full-image coordinates; offset is
+        the (x, y) origin of `image` (cropped_image) within the full image,
+        subtracted here to bring them into image-local coordinates.
+        """
         img = image.copy()
         draw = ImageDraw.Draw(img)
+        ox, oy = offset
 
         if contact_points is not None:
-            # Use original calculated coordinates, no offset needed
-            left_point = (float(contact_points[0][0]), float(contact_points[0][1]))
-            right_point = (float(contact_points[1][0]), float(contact_points[1][1]))
+            left_point = (
+                float(contact_points[0][0]) - ox,
+                float(contact_points[0][1]) - oy,
+            )
+            right_point = (
+                float(contact_points[1][0]) - ox,
+                float(contact_points[1][1]) - oy,
+            )
             left_tangent_start = (
-                float(tangent_lines[0][0][0]),
-                float(tangent_lines[0][0][1]),
+                float(tangent_lines[0][0][0]) - ox,
+                float(tangent_lines[0][0][1]) - oy,
             )
             left_tangent_end = (
-                float(tangent_lines[0][1][0]),
-                float(tangent_lines[0][1][1]),
+                float(tangent_lines[0][1][0]) - ox,
+                float(tangent_lines[0][1][1]) - oy,
             )
             right_tangent_start = (
-                float(tangent_lines[1][0][0]),
-                float(tangent_lines[1][0][1]),
+                float(tangent_lines[1][0][0]) - ox,
+                float(tangent_lines[1][0][1]) - oy,
             )
             right_tangent_end = (
-                float(tangent_lines[1][1][0]),
-                float(tangent_lines[1][1][1]),
+                float(tangent_lines[1][1][0]) - ox,
+                float(tangent_lines[1][1][1]) - oy,
             )
 
             # Calculate tangent direction vectors

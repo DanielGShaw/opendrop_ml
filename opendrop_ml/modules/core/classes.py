@@ -154,6 +154,11 @@ class ExperimentalDrop(object):
         self.drop_contour = None
         self.contact_points = None
         self.contact_angles = {}
+        # (x, y) offset of cropped_image's origin within the full image — fit
+        # geometry (contact points, tangent lines, etc.) is computed in full-image
+        # coordinates and must be translated by this offset before being drawn
+        # onto cropped_image.
+        self.crop_offset = None
         self.needle_data = None
         self.surface_data = None
         self.ret = None

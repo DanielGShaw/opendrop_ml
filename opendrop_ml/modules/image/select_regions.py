@@ -331,6 +331,7 @@ def set_drop_region(
             plt.show()
             plt.close(fig)
         experimental_setup.drop_region = [(left, top), (right, bottom)]
+        experimental_drop.crop_offset = (left, top)
     elif experimental_setup.drop_id_method == RegionSelect.USER_SELECTED:
         experimental_setup.drop_region, experimental_drop.cropped_image = (
             user_select_region(
@@ -340,6 +341,7 @@ def set_drop_region(
                 screen_position,
             )
         )
+        experimental_drop.crop_offset = tuple(experimental_setup.drop_region[0])
 
 
 def find_image_edge(img: np.ndarray, low=50, high=150, apertureSize=3):
