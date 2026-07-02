@@ -1,0 +1,3 @@
+[flake8]
+select = F
+exclude = .venv,build,dist,.git,paper_results/conan_model_repo
