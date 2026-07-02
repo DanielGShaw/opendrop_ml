@@ -2443,7 +2443,7 @@ def CPID(contour, display=False):
                 final_CPs = np.array([left_CP, right_CP])
 
                 if display:
-                    print(f"assumed low angle reflective")
+                    print("assumed low angle reflective")
                     print(
                         f"angles preceding widest point are {widest1_top_angle}, {widest2_top_angle}"
                     )
