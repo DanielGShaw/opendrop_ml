@@ -167,7 +167,6 @@ def fit_bashforth_adams(data):  # a=0.1,b= 3
     b = h / 2
     a = h / 10
     x_0 = (a, b)
-    bounds = [[0, 10], [0, 100]]
 
     optimum = opt.minimize(
         lambda x: calc_error(h, x), x_0, method="Nelder-Mead", options={"disp": False}
