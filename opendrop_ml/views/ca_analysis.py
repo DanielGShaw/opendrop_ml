@@ -377,8 +377,9 @@ class CaAnalysis(CTkFrame):
                         angles_data, baseline_intercepts, left_angle, right_angle
                     )
 
-            elif method_enum == FittingMethod.POLYNOMIAL_FIT:
-                # Special handling for polynomial fit
+            elif method_enum in [FittingMethod.POLYNOMIAL_FIT, FittingMethod.ML_MODEL]:
+                # Polynomial fit and the ML model both provide contact points but
+                # no tangent geometry — synthesize tangent lines from the angles.
                 if CONTACT_POINTS in angles_data:
                     self.create_tangent_lines_from_angles(
                         angles_data, left_angle, right_angle

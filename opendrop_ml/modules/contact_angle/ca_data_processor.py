@@ -12,7 +12,7 @@ from opendrop_ml.modules.image.select_regions import (
 from opendrop_ml.modules.contact_angle.extract_profile import extract_drop_profile
 from opendrop_ml.modules.fitting.fits import perform_fits
 from opendrop_ml.utils.enums import FittingMethod, ThresholdSelect
-from opendrop_ml.utils.config import LEFT_ANGLE, RIGHT_ANGLE
+from opendrop_ml.utils.config import LEFT_ANGLE, RIGHT_ANGLE, CONTACT_POINTS
 from opendrop_ml.utils.os import resource_path
 
 from typing import Callable, Dict, Optional
@@ -247,7 +247,9 @@ class CaDataProcessor:
                         model = tf.keras.models.load_model(model_path)
 
                         try:
-                            pred_ds = prepare_for_model(raw_experiment.image)
+                            pred_ds, ml_contact_points = prepare_for_model(
+                                raw_experiment.image, return_cps=True
+                            )
                         except ValueError as e:
                             print(f"ML preprocessing failed: {e}")
                             raw_experiment.contact_angles[FittingMethod.ML_MODEL] = {}
@@ -269,6 +271,9 @@ class CaDataProcessor:
                             raw_experiment.contact_angles[FittingMethod.ML_MODEL][
                                 RIGHT_ANGLE
                             ] = ML_predictions[1, 0]
+                            raw_experiment.contact_angles[FittingMethod.ML_MODEL][
+                                CONTACT_POINTS
+                            ] = list(ml_contact_points)
                             raw_experiment.contact_angles[FittingMethod.ML_MODEL][
                                 "timings"
                             ] = timings

@@ -154,7 +154,9 @@ def resize_image(image: np.ndarray, scale: float = 0.5) -> np.ndarray:
     return np.clip(resized, 0, 255).astype(np.uint8)
 
 
-def prepare_for_model(img, input_len=50, n_surface=10, display=False, blur=True):
+def prepare_for_model(
+    img, input_len=50, n_surface=10, display=False, blur=True, return_cps=False
+):
     """Prepare experimental image for the all-angle ML model.
 
     Uses CPID contact-point identification to extract a 50-point window
@@ -175,7 +177,11 @@ def prepare_for_model(img, input_len=50, n_surface=10, display=False, blur=True)
     :param display: If True, show intermediate plots
     :param blur: If True (default), apply Gaussian blur in edge detection.
                  Set to False to skip blur (legacy behaviour).
-    :return: pred_ds of shape (2, input_len, 2) float32 — [left, right]
+    :param return_cps: If True, also return the CPID contact points identified
+                        on the original (full-resolution) image, in image pixel
+                        coordinates — used to annotate the prediction visually.
+    :return: pred_ds of shape (2, input_len, 2) float32 — [left, right]. If
+             return_cps is True, returns (pred_ds, contact_points) instead.
     :raises ValueError: If contact point identification fails or profile too short
     """
     from opendrop_ml.modules.preprocessing.preprocessing import preprocess
@@ -202,6 +208,10 @@ def prepare_for_model(img, input_len=50, n_surface=10, display=False, blur=True)
     img_processed, CPs_chosen, longest_contour, profile, idx_leftCP, idx_rightCP = (
         _run_preprocessing(img)
     )
+    # Contact points on the original, full-resolution image — kept for annotation
+    # purposes even if a later resize pass re-derives CPs_chosen on a downsampled
+    # copy for the model input windows (those would be in different pixel scale).
+    original_CPs = CPs_chosen
 
     # --- Resolution check ---
     _RESOLUTION_SLOPE = 6.383333333333334
@@ -278,4 +288,6 @@ def prepare_for_model(img, input_len=50, n_surface=10, display=False, blur=True)
     pred_ds = np.array([left_side, right_side])
     pred_ds = normalize_ds(pred_ds)
 
+    if return_cps:
+        return pred_ds.astype(np.float32), original_CPs
     return pred_ds.astype(np.float32)
