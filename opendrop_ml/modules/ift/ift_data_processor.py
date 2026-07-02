@@ -137,6 +137,8 @@ class IftDataProcessor:
             user_input_data.drop_region[i] = drop_region
             user_input_data.needle_region[i] = needle_region
             self.draw_regions(user_input_data, i, image)
+            time_end = timeit.default_timer()
+            print("Time taken for frame %d: %.2f seconds" % (i + 1, time_end - time_start))
 
     def draw_regions(
         self, user_input_data: ExperimentalSetup, i: int, image: np.ndarray
@@ -176,8 +178,6 @@ class IftDataProcessor:
         # 3. Generate (r, z) coordinates pointwise
         #    shape(s) returns a length‐2 array [r, z]
         rz = np.array([shape(s) for s in s_values])  # shape (N,2)
-        r_coords = rz[:, 0]
-        z_coords = rz[:, 1]
         # 4. Now transform into image coords:
         #    a) scale by fitted radius
         rz_scaled = fit_result.radius * rz.T  # shape (2, N)
@@ -188,11 +188,6 @@ class IftDataProcessor:
         apex = np.array([fit_result.apex_x, fit_result.apex_y]).reshape(2, 1)
         xy_fitted += apex
         # Crop the original BGR image using drop_region
-        drop_region = user_input_data.drop_region[drop_index]
-        y0 = int(drop_region.y0)
-        y1 = int(drop_region.y1)
-        x0 = int(drop_region.x0)
-        x1 = int(drop_region.x1)
         image = cv2.imread(image)
 
         # Make a copy to draw on (still BGR)
