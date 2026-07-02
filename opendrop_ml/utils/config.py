@@ -57,3 +57,12 @@ IMAGE_TYPE = [
     ("Image Files", "*.gif"),
     ("Image Files", "*.bmp"),
 ]
+
+VIDEO_TYPE = [
+    ("Video Files", "*.mp4"),
+    ("Video Files", "*.avi"),
+    ("Video Files", "*.mov"),
+]
+
+INPUT_MODE_OPTIONS = ["Static", "Video"]
+VIDEO_SOURCE_OPTIONS = ["Video File", "Image Folder"]

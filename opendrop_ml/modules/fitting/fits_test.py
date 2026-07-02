@@ -38,7 +38,13 @@ def experimental_drop():
     if "drop_contour" not in saved_data:
         pytest.fail(f"Required 'drop_contour' data missing in test data")
 
-    drop.drop_contour = saved_data["drop_contour"]
+    contour = saved_data["drop_contour"]
+    # Stored contour has Cartesian (negative-y) coordinates; convert to
+    # image coordinates (y-down) which is what the fitting code expects.
+    if contour[:, 1].max() <= 0:
+        contour = contour.copy()
+        contour[:, 1] = -contour[:, 1]
+    drop.drop_contour = contour
     print(f"Loaded drop_contour, shape: {drop.drop_contour.shape}")
 
     # Directly use hardcoded contact points
@@ -53,11 +59,11 @@ def experimental_drop():
 # Define expected angle ranges (based on observations from real data)
 # OpenDrop_OP\experimental_data_set\3.bmp
 EXPECTED_ANGLES = {
-    "tangent fit": {"left angle": 137.61, "right angle": 136.63, "tolerance": 5.0},
-    "polynomial fit": {"left angle": 138.63, "right angle": 140.68, "tolerance": 8.0},
-    "circle fit": {"left angle": 135.55, "right angle": 135.16, "tolerance": 5.0},
-    "ellipse fit": {"left angle": 139.55, "right angle": 139.46, "tolerance": 5.0},
-    "YL fit": {"left angle": 144.76, "right angle": 144.76, "tolerance": 5.0},
+    "tangent fit": {"left angle": 134.29, "right angle": 134.02, "tolerance": 5.0},
+    "polynomial fit": {"left angle": 133.03, "right angle": 129.89, "tolerance": 3.0},
+    "circle fit": {"left angle": 135.93, "right angle": 136.33, "tolerance": 5.0},
+    "ellipse fit": {"left angle": 140.67, "right angle": 140.10, "tolerance": 5.0},
+    "YL fit": {"left angle": 143.24, "right angle": 144.00, "tolerance": 5.0},
 }
 
 
@@ -276,62 +282,61 @@ def test_perform_fits_ellipse(mock_ellipse, experimental_drop):
 
 
 def test_perform_fits_YL(experimental_drop):
-    """Test contact angle calculation - YL method"""
-    # Perform YL fitting
+    """Test contact angle calculation - YL method.
+
+    End-to-end angle accuracy is validated separately by the experimental
+    image batch test.
+    """
     perform_fits(experimental_drop, yl=True)
 
-    # Check if results exist
     assert "YL fit" in experimental_drop.contact_angles
-    assert "left angle" in experimental_drop.contact_angles["YL fit"]
-    assert "right angle" in experimental_drop.contact_angles["YL fit"]
+    data = experimental_drop.contact_angles["YL fit"]
+    assert "left angle" in data
+    assert "right angle" in data
 
-    # Extract calculated angles
-    left_angle_original = experimental_drop.contact_angles["YL fit"]["left angle"]
-    right_angle_original = experimental_drop.contact_angles["YL fit"]["right angle"]
+    left_angle = data["left angle"]
+    right_angle = data["right angle"]
 
-    # YL fitting angles seem to differ significantly from other methods, use different normalization logic
-    # Use custom normalization method for YL method
-    def normalize_yl_angle(angle):
-        # Tests show YL method angles differ by about 134 degrees, try adding 134 degrees
-        if angle < 20:  # If small angle
-            angle += 134
-        return angle
+    print(f"YL fit - left angle: {left_angle:.2f}°, right angle: {right_angle:.2f}°")
 
-    left_angle = normalize_yl_angle(left_angle_original)
-    right_angle = normalize_yl_angle(right_angle_original)
-
-    # Print calculated angles for debugging
-    print(
-        f"YL fit - Original left angle: {left_angle_original:.2f}°, Normalized: {left_angle:.2f}°"
-    )
-    print(
-        f"YL fit - Original right angle: {right_angle_original:.2f}°, Normalized: {right_angle:.2f}°"
-    )
-    print(
-        f"YL fit - Expected left angle: {EXPECTED_ANGLES['YL fit']['left angle']}° ± {EXPECTED_ANGLES['YL fit']['tolerance']}°"
-    )
-    print(
-        f"YL fit - Expected right angle: {EXPECTED_ANGLES['YL fit']['right angle']}° ± {EXPECTED_ANGLES['YL fit']['tolerance']}°"
-    )
-
-    # Check if angles are within expected range, use larger tolerance for YL method
     expected = EXPECTED_ANGLES["YL fit"]
     assert (
-        abs(left_angle - expected["left angle"]) <= 5.0
-    ), f"Left angle {left_angle:.2f}° is outside expected range {expected['left angle']}° ± 10.0°"
+        abs(left_angle - expected["left angle"]) <= expected["tolerance"]
+    ), f"Left angle {left_angle:.2f}° outside expected {expected['left angle']}° ± {expected['tolerance']}°"
     assert (
-        abs(right_angle - expected["right angle"]) <= 5.0
-    ), f"Right angle {right_angle:.2f}° is outside expected range {expected['right angle']}° ± 10.0°"
+        abs(right_angle - expected["right angle"]) <= expected["tolerance"]
+    ), f"Right angle {right_angle:.2f}° outside expected {expected['right angle']}° ± {expected['tolerance']}°"
 
-    # Print other YL fitting related information
-    if "bond number" in experimental_drop.contact_angles["YL fit"]:
-        print(
-            f"YL fit - Bond number: {experimental_drop.contact_angles['YL fit']['bond number']}"
-        )
-    if "volume" in experimental_drop.contact_angles["YL fit"]:
-        print(
-            f"YL fit - Volume: {experimental_drop.contact_angles['YL fit']['volume']}"
-        )
+
+# ============================================================
+# YL exception handling
+# ============================================================
+
+from opendrop_ml.utils.enums import FittingMethod
+from opendrop_ml.utils.config import LEFT_ANGLE, RIGHT_ANGLE
+
+
+class TestYLFailureHandling:
+    """Tests for YL failure handling."""
+
+    def test_yl_failure_populates_none_values(self):
+        """YL failure should populate result dict with None values."""
+        drop = MagicMock()
+        drop.contact_angles = {}
+        drop.drop_contour = np.array([[0, 0], [1, 1]])  # dummy
+
+        with patch(
+            "opendrop_ml.modules.fitting.BA_fit.yl_fit",
+            side_effect=RuntimeError("solver diverged"),
+        ):
+            perform_fits(drop, yl=True)
+
+        # YL_FIT key should exist with None angle values
+        assert FittingMethod.YL_FIT in drop.contact_angles
+        data = drop.contact_angles[FittingMethod.YL_FIT]
+        assert data[LEFT_ANGLE] is None
+        assert data[RIGHT_ANGLE] is None
+        assert "timings" in data
 
 
 # Run tests

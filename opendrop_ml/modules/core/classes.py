@@ -42,9 +42,9 @@ class ExperimentalSetup(object):
         self.threshold_val = None
         self.edgefinder = None
 
-        self.original_boole: int = 0
-        self.cropped_boole: int = 0
-        self.threshold_boole: int = 0
+        self.original_boole: bool = False
+        self.cropped_boole: bool = False
+        self.threshold_boole: bool = False
 
         self.density_outer: Optional[float] = None
         self.needle_diameter_mm: Optional[float] = None
@@ -53,6 +53,17 @@ class ExperimentalSetup(object):
         self.processed_images = None
         self.image_source = "Local images"
         self.number_of_frames: int = 0
+
+        # Video-mode flags. Only is_video and video_skip_interval are
+        # currently read by the pipeline; the remaining flags are reserved
+        # for planned needle-in, tilt-correction, and manual-preprocessing
+        # paths.
+        self.is_video: bool = False
+        self.needle_in_drop: bool = True
+        self.surface_tilted: bool = False
+        self.tilt_angle_deg: float = 0.0
+        self.manual_preprocessing: bool = False
+        self.video_skip_interval: int = 10
 
         self.drop_region: Optional[List[Tuple[int, int]]] = None
         self.needle_region = None
@@ -111,6 +122,32 @@ class ExperimentalSetup(object):
                         value = os.path.normpath(value)
 
                     setattr(self, key, value)
+
+
+    def save_analysis_methods(self, yaml_path):
+        """Write current analysis_methods_ca back to the yaml, preserving comments."""
+        method_values = {
+            m.name: v for m, v in self.analysis_methods_ca.items()
+        }
+        with open(yaml_path, "r") as f:
+            lines = f.readlines()
+
+        new_lines = []
+        for line in lines:
+            stripped = line.lstrip()
+            for name, val in method_values.items():
+                if stripped.startswith(name + ":"):
+                    indent = line[: len(line) - len(stripped)]
+                    comment = ""
+                    parts = line.split("#", 1)
+                    if len(parts) > 1:
+                        comment = " #" + parts[1].rstrip("\n")
+                    line = f"{indent}{name}: {str(val).lower()}{comment}\n"
+                    break
+            new_lines.append(line)
+
+        with open(yaml_path, "w") as f:
+            f.writelines(new_lines)
 
 
 class ExperimentalDrop(object):

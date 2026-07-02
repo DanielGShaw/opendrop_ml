@@ -2,22 +2,32 @@
 # coding=utf-8
 
 from opendrop_ml.modules.core.classes import ExperimentalDrop, ExperimentalSetup
+from opendrop_ml.modules.image.select_regions_geom import (
+    initial_baseline_seed,
+    longest_contour_arc_above_baseline,
+    points_above_baseline,
+    rotate_baseline,
+)
 from opendrop_ml.modules.preprocessing.preprocessing import (
-    prepare_hydrophobic,
-    tilt_correction,
+    cluster_OPTICS,
+    preprocess,
 )
 from opendrop_ml.utils.geometry import Rect2
 from opendrop_ml.utils.enums import FittingMethod, RegionSelect, ThresholdSelect
 
 # from opendrop_ml.utils.keymap import *
 
+from datetime import datetime
 from typing import List, Tuple
 import cv2
+import json
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 import sys
 import ctypes
 import platform
+import warnings
 if platform.system() == "Windows":
     try:
         import win32gui
@@ -288,13 +298,23 @@ def set_drop_region(
     screen_position = set_screen_position(screen_size)
 
     if experimental_setup.drop_id_method == RegionSelect.AUTOMATED:
-        from opendrop_ml.modules.preprocessing.preprocessing import auto_crop
+        from opendrop_ml.modules.preprocessing.preprocessing import isolate_contour
 
-        experimental_drop.cropped_image, (left, right, top, bottom) = auto_crop(
+        experimental_drop.cropped_image, _, _, _info = isolate_contour(
             experimental_drop.image
         )
+        top, bottom, left, right = _info["bounds"]
+        # isolate_contour returns the *full* (tilt-corrected) image as its
+        # first value but stashes the actually-computed crop bounds in
+        # info["bounds"]. Apply them here so cropped_image is the tight crop
+        # downstream code expects — extract_drop_profile then runs Canny on
+        # this smaller frame, which is what keeps halo gradients out of the
+        # contour on diffuse-light images like image_original (59).png.
+        experimental_drop.cropped_image = experimental_drop.cropped_image[
+            top:bottom, left:right
+        ]
         # print("experimental_drop.cropped_image",experimental_drop.cropped_image is None)
-        if experimental_setup.original_boole == 1:  # show found drop
+        if experimental_setup.original_boole:  # show found drop
 
             # Clear all existing figures to avoid conflicts with residual plots
             plt.close("all")
@@ -304,7 +324,7 @@ def set_drop_region(
             plt.show()  # Block execution until the window is manually closed by the user
             plt.close(fig)  # clean up and close the figure after it's shown
 
-        if experimental_setup.cropped_boole == 1:
+        if experimental_setup.cropped_boole:
             # Clear all existing figures to avoid conflicts with residual plots
             plt.close("all")
             fig = plt.figure()  # Explicitly create a new figure window
@@ -610,28 +630,22 @@ def set_surface_line(
     # extract_drop_profile(experimental_drop, experimental_setup)
 
     if experimental_setup.baseline_method == ThresholdSelect.AUTOMATED:
-        experimental_drop.drop_contour, experimental_drop.contact_points = (
-            prepare_hydrophobic(experimental_drop.contour)
+        img_processed, CPs_chosen, longest_contour = preprocess(
+            experimental_drop.image, display=False
         )
+        if CPs_chosen is None or len(CPs_chosen) < 2:
+            raise ValueError("CPID failed to identify contact points")
+        idx_leftCP = np.where((longest_contour == CPs_chosen[0]).all(axis=1))[0][0]
+        idx_rightCP = np.where((longest_contour == CPs_chosen[1]).all(axis=1))[0][0]
+        if idx_leftCP > idx_rightCP:
+            # The raw contour traverses right-to-left between the CPs; reverse the
+            # slice so profile[0] is always the left CP and profile[-1] is the right CP.
+            experimental_drop.drop_contour = longest_contour[idx_rightCP:idx_leftCP + 1][::-1]
+        else:
+            experimental_drop.drop_contour = longest_contour[idx_leftCP:idx_rightCP + 1]
+        experimental_drop.contact_points = CPs_chosen
     elif experimental_setup.baseline_method == ThresholdSelect.USER_SELECTED:
         user_line(experimental_drop, experimental_setup)
-
-
-def correct_tilt(
-    experimental_drop: ExperimentalDrop, experimental_setup: ExperimentalSetup
-) -> None:
-    if experimental_setup.baseline_method == ThresholdSelect.AUTOMATED:
-        experimental_drop.cropped_image = tilt_correction(
-            experimental_drop.cropped_image, experimental_drop.contact_points
-        )
-
-    # gets tricky where the baseline is manually set because under the current workflow users would
-    # be required to re-input their baseline until it's flat - when the baseline should be flat
-    # and known once it's set and corrected for
-    elif experimental_setup.baseline_method == ThresholdSelect.USER_SELECTED:
-        rotated_img_crop = tilt_correction(
-            img, experimental_drop.contact_points, user_set_baseline=True
-        )
 
 
 def set_scale(image_size: Tuple[int, int, int], screen_size: List[int]) -> float:
@@ -734,345 +748,423 @@ def user_roi(
     return [(min_x, min_y), (max_x, max_y)]
 
 
+# Method enum, on-screen label, and contact_angles dict key for each fit
+# rendered in user_line. Order is the render order (top → bottom).
+_USER_LINE_METHODS = (
+    (FittingMethod.TANGENT_FIT, "tangent", "tangent fit"),
+    (FittingMethod.POLYNOMIAL_FIT, "polynomial", "polynomial fit"),
+    (FittingMethod.CIRCLE_FIT, "circle", "circle fit"),
+    (FittingMethod.ELLIPSE_FIT, "ellipse", "ellipse fit"),
+)
+
+_USER_LINE_DEBUG_DIR = "/tmp/user_line_debug"
+
+
+def _user_line_compute_overlays(
+    experimental_drop, drop_data, ix, iy, fx, fy, methods_boole
+):
+    """Filter contour, set drop_contour/contact_points, run fits, gather overlays.
+
+    Returns ``(overlays, failure_msg)``: ``overlays`` is a dict consumed by
+    ``_draw_user_line_overlays`` (or ``None`` when no fit ran), ``failure_msg``
+    is a string for the bottom-left banner (``None`` on success).
+    """
+    # Longest contiguous arc above the baseline (filters surface spikes that
+    # poke above it) is the actual drop subset; drop[0] and drop[-1] are the
+    # implicit contact points where that arc meets the baseline.
+    drop = longest_contour_arc_above_baseline(drop_data, ix, iy, fx, fy)
+
+    # Always update drop_contour/contact_points so downstream sees fresh state
+    # even when fits are skipped.
+    experimental_drop.drop_contour = drop
+    if len(drop) > 0:
+        experimental_drop.contact_points = {0: drop[0], 1: drop[-1]}
+
+    if len(drop) < 10:
+        return None, "no fit available — adjust baseline"
+
+    any_method = any(
+        methods_boole[m] for m, _, _ in _USER_LINE_METHODS
+    )
+    if not any_method:
+        return {"angles": []}, None
+
+    from opendrop_ml.modules.fitting.fits import perform_fits
+
+    # Reset before each call so an overlay from a previously-successful method
+    # doesn't render after that method fails this iteration.
+    experimental_drop.contact_angles = {}
+    # Polyfit floods stderr with "RankWarning: Polyfit may be poorly conditioned"
+    # when the drop subset is short or near-vertical — every keypress while the
+    # user nudges the baseline. The warning is non-actionable for an interactive
+    # tool: the fit either succeeds (overlay shows) or raises (banner shows).
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", np.RankWarning)
+            perform_fits(
+                experimental_drop,
+                tangent=methods_boole[FittingMethod.TANGENT_FIT],
+                polynomial=methods_boole[FittingMethod.POLYNOMIAL_FIT],
+                circle=methods_boole[FittingMethod.CIRCLE_FIT],
+                ellipse=methods_boole[FittingMethod.ELLIPSE_FIT],
+            )
+    except Exception as fit_err:
+        return None, f"fit failed: {type(fit_err).__name__}"
+
+    if not experimental_drop.contact_angles:
+        return None, "no fit available — adjust baseline"
+
+    angles = experimental_drop.contact_angles
+    overlays = {"angles": []}
+
+    if methods_boole[FittingMethod.TANGENT_FIT] and "tangent fit" in angles:
+        overlays["tangent_lines"] = tuple(angles["tangent fit"]["tangent lines"])
+    if (
+        methods_boole[FittingMethod.POLYNOMIAL_FIT]
+        and "polynomial fit" in angles
+        # Polynomial overlay would visually duplicate tangent — show only when
+        # tangent isn't drawn this frame.
+        and not (methods_boole[FittingMethod.TANGENT_FIT] and "tangent fit" in angles)
+    ):
+        overlays["polynomial_lines"] = tuple(angles["polynomial fit"]["tangent lines"])
+    if methods_boole[FittingMethod.CIRCLE_FIT] and "circle fit" in angles:
+        xc, yc = angles["circle fit"]["circle center"]
+        r = angles["circle fit"]["circle radius"]
+        overlays["circle"] = (int(xc), int(yc), int(r))
+    if methods_boole[FittingMethod.ELLIPSE_FIT] and "ellipse fit" in angles:
+        center = angles["ellipse fit"]["ellipse center"]
+        axes = angles["ellipse fit"]["ellipse a and b"]
+        phi = angles["ellipse fit"]["ellipse rotation"]
+        overlays["ellipse"] = (
+            (int(center[0]), int(center[1])),
+            (int(axes[0]), int(axes[1])),
+            phi,
+        )
+
+    for method_enum, label, key in _USER_LINE_METHODS:
+        if not methods_boole[method_enum]:
+            continue
+        method_angles = angles.get(key)
+        if method_angles is None:
+            overlays["angles"].append((label, "L --   R --"))
+            continue
+        l_val = method_angles.get("left angle")
+        r_val = method_angles.get("right angle")
+        # Hershey stroke font (cv2's only built-in) is ASCII-only — degree
+        # sign renders as "?". Use "deg" instead.
+        l_str = f"{l_val:.0f}deg" if isinstance(l_val, (int, float)) else "--"
+        r_str = f"{r_val:.0f}deg" if isinstance(r_val, (int, float)) else "--"
+        overlays["angles"].append((label, f"L {l_str:>6}  R {r_str:>6}"))
+
+    return overlays, None
+
+
+def _draw_user_line_overlays(img, overlays):
+    """Draw fit overlays (tangent/poly lines, circle, ellipse) onto ``img``."""
+    if "tangent_lines" in overlays:
+        lines = overlays["tangent_lines"]
+        cv2.line(
+            img,
+            (int(lines[0][0][0]), int(lines[0][0][1])),
+            (int(lines[0][1][0]), int(lines[0][1][1])),
+            (0, 0, 255), 2,
+        )
+        cv2.line(
+            img,
+            (int(lines[1][0][0]), int(lines[1][0][1])),
+            (int(lines[1][1][0]), int(lines[1][1][1])),
+            (0, 0, 255), 2,
+        )
+    if "polynomial_lines" in overlays:
+        lines = overlays["polynomial_lines"]
+        cv2.line(img, lines[0][0], lines[0][1], (0, 0, 255), 2)
+        cv2.line(img, lines[1][0], lines[1][1], (0, 0, 255), 2)
+    if "circle" in overlays:
+        xc, yc, r = overlays["circle"]
+        cv2.circle(img, (xc, yc), r, (255, 150, 0), 1)
+    if "ellipse" in overlays:
+        center, axes, phi = overlays["ellipse"]
+        cv2.ellipse(img, center, axes, phi, 0, 360, (0, 88, 255), 1)
+
+
+def _draw_user_line_text_block(img, lines, anchor):
+    """Render a list of strings stacked at ``anchor`` ('tl', 'tr', or 'bl')."""
+    if not lines:
+        return
+    canvas_h, canvas_w = img.shape[:2]
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    scale = 0.5
+    thickness = 1
+    line_h = 16
+    if anchor == "tl":
+        x0, y0 = 10, 18
+    elif anchor == "tr":
+        widths = [cv2.getTextSize(s, font, scale, thickness)[0][0] for s in lines]
+        x0 = canvas_w - max(widths) - 10
+        y0 = 18
+    elif anchor == "bl":
+        x0 = 10
+        y0 = canvas_h - line_h * (len(lines) - 1) - 8
+    else:
+        return
+    for i, s in enumerate(lines):
+        cv2.putText(
+            img, s, (x0, y0 + i * line_h),
+            font, scale, (255, 255, 255), thickness, cv2.LINE_AA,
+        )
+
+
+def _draw_user_line_help(img):
+    # Two lines so the help string fits comfortably in narrow cropped canvases.
+    # Movement keys on the upper line, meta keys on the lower line.
+    canvas_h = img.shape[0]
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    cv2.putText(
+        img,
+        "W/S move  A/D rot 1deg  Q/E rot 0.1deg  O reset",
+        (10, canvas_h - 21),
+        font, 0.5, (255, 255, 255), 1, cv2.LINE_AA,
+    )
+    cv2.putText(
+        img,
+        "V debug  ENTER confirm  ESC cancel",
+        (10, canvas_h - 5),
+        font, 0.5, (255, 255, 255), 1, cv2.LINE_AA,
+    )
+
+
+def _draw_user_line_failure(img, msg):
+    canvas_h = img.shape[0]
+    # canvas_h - 41 sits clear of both help-text lines (canvas_h - 21 and -5).
+    cv2.putText(
+        img, msg, (10, canvas_h - 41),
+        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1, cv2.LINE_AA,
+    )
+
+
+def _draw_user_line_debug_panel(
+    img, ix, iy, fx, fy, drop_data, drop_arc, overlays, frame_idx
+):
+    """Top-left semi-transparent live-state panel toggled by the V key."""
+    n_total = len(drop_data)
+    n_above = len(points_above_baseline(drop_data, ix, iy, fx, fy))
+    n_arc = len(drop_arc) if drop_arc is not None else 0
+    dx, dy = fx - ix, fy - iy
+    slope_deg = float(np.degrees(np.arctan2(dy, dx))) if (dx or dy) else 0.0
+    lines = [
+        f"frame {frame_idx}",
+        f"baseline ({ix},{iy})-({fx},{fy})  slope {slope_deg:+.1f}deg",
+        # `above` is every contour point with a positive cross product;
+        # `arc` is the longest contiguous run (== drop_contour). The gap
+        # between them is what the spike-tip filter removed.
+        f"above {n_above}/{n_total}  arc {n_arc}",
+    ]
+    if n_arc > 0:
+        cp0 = drop_arc[0]
+        cp1 = drop_arc[-1]
+        lines.append(f"CP0 ({cp0[0]:.0f},{cp0[1]:.0f})  CP1 ({cp1[0]:.0f},{cp1[1]:.0f})")
+    if overlays:
+        for label, txt in overlays.get("angles", []):
+            lines.append(f"{label}: {txt}")
+    panel_h = 18 * (len(lines) + 1)
+    panel_w = 320
+    overlay = img.copy()
+    cv2.rectangle(overlay, (0, 0), (panel_w, panel_h), (0, 0, 0), -1)
+    cv2.addWeighted(overlay, 0.45, img, 0.55, 0, dst=img)
+    _draw_user_line_text_block(img, lines, anchor="tl")
+
+
+def _dump_user_line_state_log(
+    experimental_drop, experimental_setup, ix, iy, fx, fy
+):
+    """On confirm, write a JSON snapshot of the final baseline state."""
+    payload = {
+        "baseline": [int(ix), int(iy), int(fx), int(fy)],
+        "drop_contour_length": (
+            int(len(experimental_drop.drop_contour))
+            if experimental_drop.drop_contour is not None else 0
+        ),
+        "contact_points": (
+            {
+                "0": [float(c) for c in experimental_drop.contact_points[0]],
+                "1": [float(c) for c in experimental_drop.contact_points[1]],
+            } if experimental_drop.contact_points else None
+        ),
+        "source_image": getattr(experimental_setup, "filename", None),
+        "angles": {},
+    }
+    for _, _, key in _USER_LINE_METHODS:
+        method_data = experimental_drop.contact_angles.get(key)
+        if method_data is None:
+            continue
+        payload["angles"][key] = {
+            "left angle": method_data.get("left angle"),
+            "right angle": method_data.get("right angle"),
+        }
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    path = os.path.join(_USER_LINE_DEBUG_DIR, f"session_{timestamp}.json")
+    try:
+        with open(path, "w") as f:
+            json.dump(payload, f, indent=2, default=str)
+    except OSError:
+        pass
+
+
 def user_line(
     experimental_drop: ExperimentalDrop, experimental_setup: ExperimentalSetup
 ) -> None:
-    # scale = set_scale(experimental_drop.image.shape, experimental_setup.screen_resolution)
+    """Interactive USER_SELECTED baseline definition.
+
+    Manual baseline → manual contact points by intersecting the baseline with
+    the drop contour. CPID / Hough are intentionally not called here — the user
+    is the contact-point detector, and the live tangent overlay exists as a
+    visual sanity check the user judges with their eyes.
+    """
     screen_position = set_screen_position(experimental_setup.screen_resolution)
     raw_image = experimental_drop.cropped_image
     drop_data = experimental_drop.contour.astype(float)
-    CPs = experimental_drop.contact_points
+    canvas_h, canvas_w = raw_image.shape[:2]
     title = "Define surface line"
+    methods_boole = experimental_setup.analysis_methods_ca
 
-    # line = experimental_drop.surface_data # not set yet
-    region = experimental_setup.drop_region
+    debug_enabled = bool(os.environ.get("OPENDROP_DEBUG_USER_LINE"))
+    if debug_enabled:
+        os.makedirs(_USER_LINE_DEBUG_DIR, exist_ok=True)
 
-    global drawing
-    global ix, iy
-    global fx, fy
-    global image_TEMP
-    global img
-
-    DRAW_TANGENT_LINE_WHILE_SETTING_BASELINE = True
-    TEMP = False
-    baseline_def_method = "use user-inputted points"
-
-    # raw_image = raw_image2
-    # raw_image = np.flipud(cv2.cvtColor(raw_image2,cv2.COLOR_GRAY2BGR))
-    # raw_image = np.flipud(raw_image2)
-    drawing = True  # true if mouse is pressed
-    ix, iy = -1, -1
-    fx, fy = -1, -1
-
-    region = np.floor(region)
-    # print(region)
-
-    # print(region[0,0])
-    # print(region[1,0])
-    # print(region[0,1])
-    # print(region[1,1])
-
-    #    cv2.setMouseCallback(title, draw_line)
-
-    scale = 1
-    if TEMP:
-        image_TEMP = cv2.resize(
-            raw_image[
-                int(region[0, 1]): int(region[1, 1]),
-                int(region[0, 0]): int(region[1, 0]),
-            ],
-            (0, 0),
-            fx=scale,
-            fy=scale,
+    # Filter the needle out of the contour before any user interaction.
+    # AUTOMATED gets this for free via preprocess(); USER_SELECTED was feeding
+    # raw extract_edges_cv output (needle still attached) into the loop, so
+    # the needle's edge contaminated every fit. cluster_OPTICS is too slow
+    # for the per-keypress loop — run it exactly once on entry and keep the
+    # largest cluster.
+    try:
+        groups = cluster_OPTICS(drop_data, xi=0.8)
+        if isinstance(groups, dict) and groups:
+            largest_label = max(groups.keys(), key=lambda k: len(groups[k]))
+            drop_data = np.array(groups[largest_label]).astype(float)
+    except Exception as cluster_err:
+        print(
+            f"cluster_OPTICS failed during USER_SELECTED setup "
+            f"({type(cluster_err).__name__}: {cluster_err}); "
+            "continuing with the unfiltered contour."
         )
-    else:
-        image_TEMP = raw_image.copy()
-    img = image_TEMP.copy()
 
-    # set surface line starting estimate
-    N = np.shape(drop_data)[0]
-    A = 1  # 50 # maybe lower this?
-    xx = np.concatenate((drop_data[0:A, 0], drop_data[N - A: N + 1, 0]))
-    yy = np.concatenate((drop_data[0:A, 1], drop_data[N - A: N + 1, 1]))
-    coefficients = np.polyfit(xx, yy, 1)
-    line = np.poly1d(coefficients)
-
-    xx = np.array([0, img.shape[1]])
-    yy = line(xx)  # gives a starting guess for the line position
-
-    ix0, fx0 = xx.astype(int)
-    iy0, fy0 = yy.astype(int)
-
-    ix, fx = ix0, fx0
-    iy, fy = iy0, fy0
+    # Horizontal baseline 1 px below the lowest contour point, clamped inside
+    # the canvas. Replaces the polyfit-through-endpoints seed that produced
+    # near-vertical baselines on tilted-surface images.
+    #
+    # State is stored as float so Q/E sub-pixel rotations (0.1°) actually
+    # accumulate across keypresses; the cv2 draw calls int-cast at the
+    # render boundary.
+    _ix0, _iy0, _fx0, _fy0 = initial_baseline_seed(drop_data, canvas_w, canvas_h)
+    ix0, iy0, fx0, fy0 = float(_ix0), float(_iy0), float(_fx0), float(_fy0)
+    ix, iy, fx, fy = ix0, iy0, fx0, fy0
 
     cv2.namedWindow(title, cv2.WINDOW_NORMAL)
     cv2.resizeWindow(title, 500, 400)
     cv2.moveWindow(title, screen_position[0], screen_position[1])
     try:
-        cv2.setWindowProperty(title, 5, 0)  # Lock size (if supported)
-    except:
-        pass  # Safe fallback for macOS or older OpenCV
-    cv2.moveWindow(title, screen_position[0], screen_position[1])
+        cv2.setWindowProperty(title, 5, 0)  # Lock size where supported
+    except Exception:
+        pass
 
-    # so that things can be drawn over the image which surface line is changed
-    if DRAW_TANGENT_LINE_WHILE_SETTING_BASELINE:
-        conans = {}
-        if 0:
-            for i, n in enumerate(drop_data):
-                if n[0] == CPs[0][0] and int(n[1]) == int(CPs[0][1]):
-                    start_index = i
-                if int(n[0]) == int(CPs[1][0]) and int(n[1]) == int(CPs[1][1]):
-                    end_index = i
-            auto_drop = drop_data.copy()[start_index:end_index]
-        else:
-            auto_drop = drop_data
+    # Sentinel forces first-iteration fit before the user touches a key.
+    last_state = None
+    cached_overlays = None
+    failure_msg = None
+    show_debug_panel = False
+    frame_idx = 0
 
-    # Add guidance for the user
-    print("\nKeyboard Controls:")
-    print("W = Move Up")
-    print("S = Move Down")
-    print("A = Rotate Left")
-    print("D = Rotate Right")
-    print("O = Reset to Original Position")
-    print("P = Print Debug Info")
-    print("ENTER/SPACE = Confirm Selection")
-    print("ESC = Exit\n")
+    while True:
+        state = (ix, iy, fx, fy)
+        if state != last_state:
+            cached_overlays, failure_msg = _user_line_compute_overlays(
+                experimental_drop, drop_data, ix, iy, fx, fy, methods_boole,
+            )
+            last_state = state
 
-    while 1:
-        img = cv2.resize(img, (500, 400))
+        # Draw onto a fresh raw_image copy each iteration. cv2.resizeWindow
+        # handles on-screen scaling, so every draw call uses native
+        # cropped_image coordinates — same frame as drop_data and every fit
+        # overlay.
+        img = raw_image.copy()
+        cv2.line(img, (int(ix), int(iy)), (int(fx), int(fy)), (0, 255, 0), 2)
+        if cached_overlays is not None:
+            # Highlight only the longest-arc subset (== experimental_drop
+            # .drop_contour after _user_line_compute_overlays ran). Visible
+            # feedback that surface spikes were excluded from the drop.
+            arc = experimental_drop.drop_contour
+            if arc is not None:
+                for cx, cy in arc:
+                    cv2.circle(img, (int(cx), int(cy)), 2, (255, 255, 255), 1)
+            _draw_user_line_overlays(img, cached_overlays)
+            angle_lines = [
+                f"{label}: {txt}" for label, txt in cached_overlays.get("angles", [])
+            ]
+            _draw_user_line_text_block(img, angle_lines, anchor="tr")
+        if failure_msg is not None:
+            _draw_user_line_failure(img, failure_msg)
+        if show_debug_panel:
+            _draw_user_line_debug_panel(
+                img, ix, iy, fx, fy, drop_data,
+                experimental_drop.drop_contour, cached_overlays, frame_idx,
+            )
+        _draw_user_line_help(img)
+
         cv2.imshow(title, img)
-        # cv2.circle(img,(200,200),5,(255,255,0),2)
-        # line_colour,line_thickness)
-        cv2.line(img, (ix, iy), (fx, fy), (0, 255, 0), 2)
-        # Plot pixels above line
-        # cv2.waitKey(0)
-        v1 = (ix - fx, iy - fy)  # (1,coefficients[1])   # Vector 1
 
-        # print(np.shape(drop_data))
-        # print(drop_data)
+        if debug_enabled:
+            cv2.imwrite(
+                os.path.join(_USER_LINE_DEBUG_DIR, f"{frame_idx:04d}.png"), img,
+            )
+        frame_idx += 1
 
-        # Plot pixels above line
-        v1 = (ix - fx, iy - fy)
-
-        if 1:
-            drop = []
-            for i in drop_data:
-                cx, cy = i
-                v2 = (cx - ix, cy - iy)  # Vector 1
-                xp = v1[0] * v2[1] - v1[1] * v2[0]  # Cross product
-                if xp > 0:
-                    drop.append([cx, cy])
-                    cv2.circle(img, (int(cx), int(cy)), 2, (255, 255, 255), 1)
-        else:
-            drop = []
-            for i in drop_data:
-                cx, cy = i
-                # if contour point y value less than line y value
-                if cy < line(cx):
-                    drop.append([cx, cy])
-                    cv2.circle(img, (int(cx), int(cy)), 2, (255, 255, 255), 1)
-
-        # drop is the contour above the user-inputted line
-        drop = np.asarray(drop).astype(float)
-
-        if 0:
-            plt.imshow(img)
-            plt.title("check contour after being cut by baseline")
-            plt.plot(drop[:, 0], drop[:, 1])
-            plt.show()
-            plt.close()
-
-        experimental_drop.drop_contour = drop
-        CPs = {0: drop[0], 1: drop[-1]}
-        experimental_drop.contact_points = CPs
-
-        if DRAW_TANGENT_LINE_WHILE_SETTING_BASELINE:
-            methods_boole = experimental_setup.analysis_methods_ca
-            if (
-                methods_boole[FittingMethod.TANGENT_FIT]
-                or methods_boole[FittingMethod.POLYNOMIAL_FIT]
-                or methods_boole[FittingMethod.CIRCLE_FIT]
-                or methods_boole[FittingMethod.ELLIPSE_FIT]
-            ):
-                from opendrop_ml.modules.fitting.fits import perform_fits
-
-                perform_fits(
-                    experimental_drop,
-                    tangent=methods_boole[FittingMethod.TANGENT_FIT],
-                    polynomial=methods_boole[FittingMethod.POLYNOMIAL_FIT],
-                    circle=methods_boole[FittingMethod.CIRCLE_FIT],
-                    ellipse=methods_boole[FittingMethod.ELLIPSE_FIT],
-                )
-            if methods_boole[FittingMethod.TANGENT_FIT]:
-                tangent_lines = tuple(
-                    experimental_drop.contact_angles["tangent fit"]["tangent lines"]
-                )
-                cv2.line(
-                    img,
-                    (int(tangent_lines[0][0][0]), int(tangent_lines[0][0][1])),
-                    (int(tangent_lines[0][1][0]), int(tangent_lines[0][1][1])),
-                    (0, 0, 255),
-                    2,
-                )
-                cv2.line(
-                    img,
-                    (int(tangent_lines[1][0][0]), int(tangent_lines[1][0][1])),
-                    (int(tangent_lines[1][1][0]), int(tangent_lines[1][1][1])),
-                    (0, 0, 255),
-                    2,
-                )
-            if (
-                methods_boole[FittingMethod.POLYNOMIAL_FIT] == True
-                and not methods_boole[FittingMethod.TANGENT_FIT]
-            ):
-                tangent_lines = tuple(
-                    experimental_drop.contact_angles["polynomial fit"]["tangent lines"]
-                )
-                cv2.line(img, tangent_lines[0][0],
-                         tangent_lines[0][1], (0, 0, 255), 2)
-                cv2.line(img, tangent_lines[1][0],
-                         tangent_lines[1][1], (0, 0, 255), 2)
-            if methods_boole[FittingMethod.CIRCLE_FIT]:
-                xc, yc = experimental_drop.contact_angles["circle fit"]["circle center"]
-                r = experimental_drop.contact_angles["circle fit"]["circle radius"]
-                cv2.circle(img, (int(xc), int(yc)), int(r), (255, 150, 0), 1)
-            if methods_boole[FittingMethod.ELLIPSE_FIT]:
-                center = experimental_drop.contact_angles["ellipse fit"][
-                    "ellipse center"
-                ]
-                axes = experimental_drop.contact_angles["ellipse fit"][
-                    "ellipse a and b"
-                ]
-                phi = experimental_drop.contact_angles["ellipse fit"][
-                    "ellipse rotation"
-                ]
-                cv2.ellipse(
-                    img,
-                    (int(center[0]), int(center[1])),
-                    (int(axes[0]), int(axes[1])),
-                    phi,
-                    0,
-                    360,
-                    (0, 88, 255),
-                    1,
-                )
-
-        # Get key press with a simpler approach
-        k = cv2.waitKey(1) & 0xFF
-
-        # Process key presses using WASD controls instead of arrow keys
-        if k == 13 or k == 32:  # ENTER / SPACE
-            if ((fx - ix) * (fy - iy)) != 0:  # Ensure enclosed region
-                break
-            else:
-                print("something is not right...")
-                print(fx, ix, fy, iy, (fx - ix) * (fy - iy))
-                break
-
-        elif k == 27:  # ESC
+        # On macOS, clicking the cv2 window's red close button destroys the
+        # underlying NSWindow; the next waitKey then crashes with
+        # ``Fatal Python error: PyEval_RestoreThread: NULL tstate``. Detect
+        # the dead window first and abort gracefully instead.
+        try:
+            visible = cv2.getWindowProperty(title, cv2.WND_PROP_VISIBLE)
+        except cv2.error:
+            visible = 0
+        if visible < 1:
+            cv2.destroyAllWindows()
             kill()
 
-        elif k == ord("s"):  # 's' for DOWN
-            print("DOWN key pressed (s)")
-            fy += 1
-            iy += 1
-
-        elif k == ord("w"):  # 'w' for UP
-            print("UP key pressed (w)")
-            fy -= 1
-            iy -= 1
-
-        elif k == ord("o") or k == ord("O"):  # 'o' key
-            print("O key pressed")
-            fx, fy = fx0, fy0
-            ix, iy = ix0, iy0
-
-        elif k == ord("a"):  # 'a' for LEFT rotation
-            print("LEFT key pressed (a)")
-            x0 = np.array([ix, iy])
-            x1 = np.array([fx, fy])
-            xc = 0.5 * (x0 + x1)
-            theta = 0.1 / 180 * np.pi
-            theta = -theta  # counter-clockwise
-
-            rotation = np.array(
-                [[np.cos(theta), -np.sin(theta)],
-                 [np.sin(theta), np.cos(theta)]]
-            )
-            x0r = rotation @ (x0 - xc).T + xc
-            x1r = rotation @ (x1 - xc).T + xc
-
-            ix, iy = x0r.astype(int)
-            fx, fy = x1r.astype(int)
-
-        elif k == ord("d"):  # 'd' for RIGHT rotation
-            print("RIGHT key pressed (d)")
-            x0 = np.array([ix, iy])
-            x1 = np.array([fx, fy])
-            xc = 0.5 * (x0 + x1)
-            theta = 0.1 / 180 * np.pi
-            # No negation for clockwise rotation
-
-            rotation = np.array(
-                [[np.cos(theta), -np.sin(theta)],
-                 [np.sin(theta), np.cos(theta)]]
-            )
-            x0r = rotation @ (x0 - xc).T + xc
-            x1r = rotation @ (x1 - xc).T + xc
-
-            ix, iy = x0r.astype(int)
-            fx, fy = x1r.astype(int)
-
-        elif k == ord("p") or k == ord("P"):  # 'p' key
-            for key in conans.keys():
-                print(key, ":", conans[key])
-            print()
-
-        # Redraw the image after any update
-        if TEMP:
-            image_TEMP = cv2.resize(
-                raw_image[
-                    int(region[0, 1]): int(region[1, 1]),
-                    int(region[0, 0]): int(region[1, 0]),
-                ],
-                (0, 0),
-                fx=scale,
-                fy=scale,
-            )
-        else:
-            image_TEMP = raw_image.copy()
-
-        img = image_TEMP.copy()
-        # cv2.line(img, (ix, iy), (fx, fy), (0, 255, 0), 2)
-        cv2.putText(
-            img,
-            "Use W/A/S/D to move. ESC = cancel.",
-            (10, img.shape[0] - 15),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.3,
-            (255, 255, 255),
-            1,
-            cv2.LINE_AA,
-        )
-
-        cv2.putText(
-            img,
-            "Enter/Space = confirm.",
-            (10, img.shape[0] - 5),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.3,
-            (255, 255, 255),
-            1,
-            cv2.LINE_AA,
-        )
-        cv2.line(img, (ix, iy), (fx, fy), (0, 255, 0), 2)
+        k = cv2.waitKey(1) & 0xFF
+        if k == 13 or k == 32:  # ENTER / SPACE
+            if (ix, iy) == (fx, fy):
+                # Degenerate baseline; surface in the banner instead of breaking
+                # downstream silently.
+                failure_msg = "baseline has zero length — adjust before confirming"
+                continue
+            if debug_enabled:
+                _dump_user_line_state_log(
+                    experimental_drop, experimental_setup, ix, iy, fx, fy,
+                )
+            break
+        elif k == 27:  # ESC
+            kill()
+        elif k == ord("w"):
+            iy -= 1.0
+            fy -= 1.0
+        elif k == ord("s"):
+            iy += 1.0
+            fy += 1.0
+        elif k == ord("a"):
+            ix, iy, fx, fy = rotate_baseline(ix, iy, fx, fy, -1.0)
+        elif k == ord("d"):
+            ix, iy, fx, fy = rotate_baseline(ix, iy, fx, fy, +1.0)
+        elif k == ord("q"):
+            ix, iy, fx, fy = rotate_baseline(ix, iy, fx, fy, -0.1)
+        elif k == ord("e"):
+            ix, iy, fx, fy = rotate_baseline(ix, iy, fx, fy, +0.1)
+        elif k == ord("o"):
+            ix, iy, fx, fy = ix0, iy0, fx0, fy0
+        elif k == ord("v"):
+            show_debug_panel = not show_debug_panel
 
     cv2.destroyAllWindows()
-    min_x = min(ix, fx) / scale
-    max_x = max(ix, fx) / scale
-    min_y = min(iy, fy) / scale
-    max_y = max(iy, fy) / scale
 
 
 def run_set_surface_line(
@@ -1195,126 +1287,3 @@ def intersection(center, radius, p1, p2):
     return (dx * t1 + p1[0], dy * t1 + p1[1]), (dx * t2 + p1[0], dy * t2 + p1[1])
 
 
-def ML_prepare_hydrophobic(coords_in):
-    coords = coords_in
-    coords[:, 1] = -coords[:, 1]  # flip
-    # print('length of coords: ',len(coords))
-
-    # isolate the top of the contour so excess surface can be deleted
-    percent = 0.1
-    bottom = []
-    top = []  # will need this later
-    div_line_value = (
-        min(coords[:, [1]]) + (max(coords[:, [1]]) -
-                               min(coords[:, [1]])) * percent
-    )
-    for n in coords:
-        if n[1] < div_line_value:
-            bottom.append(n)
-        else:
-            top.append(n)
-
-    bottom = np.array(bottom)
-    top = np.array(top)
-
-    del_indexes = []
-    for index, coord in enumerate(coords):
-        if coord[0] > max(top[:, 0]) or coord[0] < min(top[:, 0]):
-            del_indexes.append(index)
-    # halfdrop = np.delete(halfdrop,del_indexes)
-    coords = np.delete(coords, del_indexes, axis=0)
-
-    if 0:
-        plt.title("isolated coords, length: " + str(len(coords)))
-        plt.plot(coords[:, 0], coords[:, 1])
-        plt.show()
-        plt.close()
-
-    # find the apex of the drop and split the contour into left and right sides
-
-    xtop, ytop = top[:, 0], top[:, 1]  # isolate top 90% of drop
-
-    xapex = (max(xtop) + min(xtop)) / 2
-    # yapex = max(ytop)
-    # coords[:,1] = -coords[:,1]
-
-    l_drop = []
-    r_drop = []
-    for n in coords:
-        if n[0] < xapex:
-            l_drop.append(n)
-        if n[0] > xapex:
-            r_drop.append(n)
-    l_drop = np.array(l_drop)
-    r_drop = np.array(r_drop)
-
-    # print('length of left drop is: ',len(l_drop))
-    # print('length of right drop is: ', len(r_drop))
-
-    # transpose both half drops so that they both face right and the apex of both is at 0,0
-    # r_drop[:,[0]] = r_drop[:,[0]] - min(r_drop[:,[0]])
-    # l_drop[:,[0]] = -l_drop[:,[0]] + max(l_drop[:,[0]])
-    r_drop[:, [0]] = r_drop[:, [0]] - xapex
-    l_drop[:, [0]] = -l_drop[:, [0]] + xapex
-
-    counter = 0
-    CV_contours = {}
-
-    for halfdrop in [l_drop, r_drop]:
-        if halfdrop[0, 1] < halfdrop[-1, 1]:
-            halfdrop = halfdrop[::-1]
-
-        X = halfdrop[:, 0]
-        Z = halfdrop[:, 1]
-
-        lowest = min(Z)
-        Z = Z + abs(lowest)
-
-        X = X / max(Z)
-        Z = Z / max(Z)
-
-        # zero padd contours to
-        coordinates = []
-        input_len = 1100
-        len_cont = len(X)
-
-        # if len(X) > global_max_len:
-        #    global_max_len = len(X)
-
-        if len(X) > input_len:
-            print(len(X))
-            raise Exception(
-                "Contour of length "
-                + str(len(X))
-                + " is too long for the designated output dimensionality of ("
-                + str(input_len)
-                + ",2)"
-            )
-
-        for i in range(input_len):
-            if i < len(X):
-                a = X[i]
-                b = Z[i]
-                coord = [a, b]
-                coordinates.append(coord)
-            else:
-                coordinates.append([0, 0])
-        if 0:
-            jet = plt.get_cmap("jet")
-            colors = iter(jet(np.linspace(0, 1, len(coordinates))))
-            for k in coordinates:
-                plt.plot(k[0], k[1], "o", color=next(colors))
-            plt.title("Halfdrop")
-            plt.show()
-            plt.close()
-        # key = image.split('/')[-1].split('_')[-1][:-4]
-        key = counter
-        CV_contours[key] = np.array(coordinates)
-
-        counter += 1
-
-    pred_ds = np.zeros((2, input_len, 2))
-    for counter in [0, 1]:
-        pred_ds[counter] = CV_contours[counter]
-
-    return pred_ds

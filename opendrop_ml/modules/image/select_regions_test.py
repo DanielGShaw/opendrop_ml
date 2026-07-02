@@ -1,16 +1,13 @@
 from opendrop_ml.modules.image.select_regions import (
     set_drop_region,
     set_surface_line,
-    correct_tilt,
     user_line,
     draw_rectangle,
     draw_line,
     optimized_path,
     intersection,
-    ML_prepare_hydrophobic,
 )
 from opendrop_ml.modules.core.classes import ExperimentalSetup, ExperimentalDrop
-from opendrop_ml.modules.preprocessing.preprocessing import prepare_hydrophobic
 from opendrop_ml.modules.fitting.fits import perform_fits
 from opendrop_ml.utils.enums import RegionSelect, ThresholdSelect
 
@@ -28,15 +25,19 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 class TestSelectRegions(unittest.TestCase):
 
-    @patch("opendrop_ml.modules.preprocessing.preprocessing.auto_crop")
-    def test_set_drop_region_auto(self, mock_auto_crop: MagicMock):
+    @patch("opendrop_ml.modules.preprocessing.preprocessing.isolate_contour")
+    def test_set_drop_region_auto(self, mock_isolate_contour: MagicMock):
         # Create mock return value
         # Simulate a blank image of size 100x100
         mock_image = np.zeros((100, 100, 3))
-        mock_auto_crop.return_value = (
+        # isolate_contour returns (img_processed, longest_contour, drop_only, info)
+        # info['bounds'] is [top, bottom, left, right]
+        mock_isolate_contour.return_value = (
             mock_image,
-            (10, 90, 20, 80),
-        )  # Simulate cropping result
+            np.zeros((10, 2)),
+            np.zeros((5, 2)),
+            {"bounds": [20, 80, 10, 90]},
+        )
 
         # Simulate experimental_drop and experimental_setup objects
         experimental_drop = ExperimentalDrop()
@@ -48,12 +49,13 @@ class TestSelectRegions(unittest.TestCase):
         # Call the function to be tested
         set_drop_region(experimental_drop, experimental_setup, index=0)
 
-        # Check if auto_crop was called correctly
-        mock_auto_crop.assert_called_once_with(mock_image)
+        # Check if isolate_contour was called correctly
+        mock_isolate_contour.assert_called_once_with(mock_image)
 
-        # Verify if experimental_drop handled auto_crop's return value correctly
+        # set_drop_region applies info["bounds"] to crop isolate_contour's
+        # full-image return (top=20, bottom=80, left=10, right=90).
         self.assertTrue(np.array_equal(
-            experimental_drop.cropped_image, mock_image))
+            experimental_drop.cropped_image, mock_image[20:80, 10:90]))
         self.assertEqual(experimental_setup.drop_region, [(10, 20), (90, 80)])
 
     @patch("opendrop_ml.modules.image.select_regions.user_roi")
@@ -100,67 +102,37 @@ class TestSelectRegions(unittest.TestCase):
 
 class TestSurfaceLine(unittest.TestCase):
 
-    @patch("opendrop_ml.modules.image.select_regions.prepare_hydrophobic")
-    @patch("opendrop_ml.modules.preprocessing.preprocessing.optimized_path")
-    def test_set_surface_line_auto(self, mock_optimized_path, mock_prepare_hydrophobic):
-        # Simulate optimized_path return value to ensure enough data points for distance calculation
-        mock_optimized_path.return_value = np.array(
-            [[0, 0], [1, 2], [2, 4], [3, 6], [4, 8], [5, 10]]
-        )
-
-        # Create mock return values
+    @patch("opendrop_ml.modules.image.select_regions.preprocess")
+    def test_set_surface_line_auto(self, mock_preprocess):
+        # preprocess returns (img_processed, CPs_chosen, longest_contour)
         mock_contour = np.array(
             [[0, 0], [1, 2], [2, 4], [3, 6], [4, 8], [5, 10]]
-        )  # Using more contour points
-        mock_contact_points = {0: [0, 0], 1: [5, 10]}
-        mock_prepare_hydrophobic.return_value = (
-            mock_contour, mock_contact_points)
+        )
+        mock_CPs = np.array([[1, 2], [4, 8]])
+        mock_preprocess.return_value = (
+            np.zeros((100, 100, 3), dtype=np.uint8),
+            mock_CPs,
+            mock_contour,
+        )
 
         # Simulate experimental_drop and experimental_setup objects
         experimental_drop = MagicMock()
-        experimental_drop.contour = mock_contour
+        experimental_drop.image = np.zeros((100, 100, 3), dtype=np.uint8)
         experimental_setup = MagicMock()
         experimental_setup.baseline_method = ThresholdSelect.AUTOMATED
 
         # Call the function to be tested
         set_surface_line(experimental_drop, experimental_setup)
 
-        # Check if prepare_hydrophobic was called correctly
-        mock_prepare_hydrophobic.assert_called_once_with(mock_contour)
+        # Check if preprocess was called correctly
+        mock_preprocess.assert_called_once_with(experimental_drop.image, display=False)
 
-        # Verify if the return values were handled correctly
+        # Verify drop_contour is the slice between the two CPs
+        expected_contour = mock_contour[1:5]  # idx 1 to 4 inclusive
         self.assertTrue(np.array_equal(
-            experimental_drop.drop_contour, mock_contour))
-        self.assertEqual(experimental_drop.contact_points, mock_contact_points)
-
-
-class TestCorrectTilt(unittest.TestCase):
-
-    @patch("opendrop_ml.modules.image.select_regions.tilt_correction")
-    def test_correct_tilt_auto(self, mock_tilt_correction):
-        # Create mock return value
-        mock_cropped_image = np.zeros((100, 100, 3))
-        mock_tilt_correction.return_value = mock_cropped_image
-
-        # Simulate experimental_drop and experimental_setup objects
-        experimental_drop = MagicMock()
-        experimental_drop.cropped_image = mock_cropped_image
-        experimental_drop.contact_points = [(10, 20), (90, 80)]
-        experimental_setup = MagicMock()
-        experimental_setup.baseline_method = ThresholdSelect.AUTOMATED
-
-        # Call the function to be tested
-        correct_tilt(experimental_drop, experimental_setup)
-
-        # Check if tilt_correction was called correctly
-        mock_tilt_correction.assert_called_once_with(
-            mock_cropped_image, [(10, 20), (90, 80)]
-        )
-
-        # Verify if the return values were handled correctly
-        self.assertTrue(
-            np.array_equal(experimental_drop.cropped_image, mock_cropped_image)
-        )
+            experimental_drop.drop_contour, expected_contour))
+        self.assertTrue(np.array_equal(
+            experimental_drop.contact_points, mock_CPs))
 
 
 class TestDrawRectangle(unittest.TestCase):

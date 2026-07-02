@@ -1,9 +1,6 @@
 from opendrop_ml.modules.fitting.BA_fit import (
-    cluster_optics,
-    distance1,
+    analyze_frame,
     dist,
-    optimized_path,
-    prepare_hydrophobic,
     bashforth_adams,
     sim_bashforth_adams,
     fit_bashforth_adams,
@@ -13,6 +10,7 @@ from opendrop_ml.modules.fitting.BA_fit import (
     find_intersection,
     yl_fit,
 )
+from opendrop_ml.utils.enums import FitType
 import pytest
 import numpy as np
 import warnings
@@ -31,11 +29,6 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
 @pytest.fixture
-def sample_data():
-    return np.array([[1, 1], [1.1, 1.1], [0, 5], [0.1, 5.1], [5, 0], [5.1, 0.1]])
-
-
-@pytest.fixture
 def sample_profile():
     return np.array([[0, 0], [1, 1], [2, 2], [3, 1], [4, 0]])
 
@@ -43,34 +36,10 @@ def sample_profile():
 # ===== Tests =====
 
 
-def test_cluster_optics(sample_data):
-    result = cluster_optics(sample_data, xi=0.05)
-    assert isinstance(result, dict)
-    assert len(result) > 0
-
-
-def test_distance1():
-    assert distance1([0, 0], [3, 4]) == pytest.approx(5.0)
-
-
 def test_dist():
     params = [0, 0, 1]
     points = np.array([[1, 0], [0, 1], [-1, 0], [0, -1]])
     assert dist(params, points) == pytest.approx(0.0)
-
-
-def test_optimized_path(sample_data):
-    path = optimized_path(sample_data)
-    assert len(path) <= len(sample_data)
-    for i in range(1, len(path)):
-        assert distance1(path[i - 1], path[i]) < 5
-
-
-@patch("opendrop_ml.modules.fitting.BA_fit.plt.show")
-def test_prepare_hydrophobic(mock_show, sample_profile):
-    profile, CPs = prepare_hydrophobic(sample_profile, display=True)
-    assert isinstance(profile, np.ndarray)
-    assert isinstance(CPs, dict)
 
 
 def test_bashforth_adams():
@@ -156,6 +125,55 @@ def test_yl_fit(
     result = yl_fit(sample_profile, display=True)
     assert isinstance(result, tuple)
     assert len(result) == 9
+
+
+@patch("opendrop_ml.modules.fitting.BA_fit.preprocess")
+@patch("opendrop_ml.modules.fitting.BA_fit.plt.show")
+@patch("opendrop_ml.modules.fitting.BA_fit.fit_circle", return_value={"x": [2, 2, 3], "fun": 0.1})
+@patch("opendrop_ml.modules.fitting.BA_fit.find_intersection", return_value=(1.5, 1.0))
+@patch("opendrop_ml.modules.fitting.BA_fit.generate_circle_vectors", return_value=([1, 0], [0, 1]))
+@patch("opendrop_ml.modules.fitting.BA_fit.calculate_angle", return_value=90)
+@patch("opendrop_ml.modules.fitting.BA_fit.fit_bashforth_adams", return_value=MagicMock(x=[1, 1]))
+@patch(
+    "opendrop_ml.modules.fitting.BA_fit.sim_bashforth_adams",
+    return_value=(np.array([0, 90]), np.array([[0, 0], [1, 1]]), 1.0),
+)
+def test_analyze_frame(
+    mock_sim,
+    mock_fit_ba,
+    mock_calc,
+    mock_gen,
+    mock_find,
+    mock_circle,
+    mock_show,
+    mock_preprocess,
+    sample_profile,
+):
+    """Test that analyze_frame returns a 9-element tuple with expected types."""
+    CPs_chosen = np.array([sample_profile[0], sample_profile[-1]])
+    img = np.zeros((10, 10, 3), dtype=np.uint8)
+    mock_preprocess.return_value = (img, CPs_chosen, sample_profile)
+
+    result = analyze_frame(img, lim=10, fit_type=FitType.BASHFORTH_ADAMS)
+
+    assert isinstance(result, tuple)
+    assert len(result) == 9
+
+    angles, Bo, baseline_width, volume, fit, baseline, errors, sym_errors, timings = result
+
+    # angles is a tuple of (left, right)
+    assert len(angles) == 2
+    # Bo is a float
+    assert isinstance(Bo, (int, float, np.floating))
+    # baseline is an array
+    assert isinstance(baseline, np.ndarray)
+    # timings is a dict with expected keys
+    assert isinstance(timings, dict)
+    assert "method specific preprocessing time" in timings
+    assert "fit time" in timings
+    assert "analysis time" in timings
+
+    mock_preprocess.assert_called_once()
 
 
 # Optional: run directly

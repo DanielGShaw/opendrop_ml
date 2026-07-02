@@ -123,9 +123,10 @@ class MainWindow(ctk.CTk):
                 "opendrop_ml is an open-source, cross-platform tool for analyzing liquid droplets in surface science. "
                 "It supports both classical geometric fitting and machine learning models (via Conan-ML), providing "
                 "automated, high-throughput image analysis for researchers, technicians, and developers.\n\n"
+                "The Conan-ML model supports contact angles from 20° to 180°.\n\n"
                 "Similar to the original OpenDrop tool, opendrop_ml offers two main functions:\n"
-                "• Interfacial Tension: Measures the force acting at the surface of liquids.\n"
-                "• Contact Angle: Measures the angle formed between a liquid and a solid surface."
+                "- Interfacial Tension: Measures the force acting at the surface of liquids.\n"
+                "- Contact Angle: Measures the angle formed between a liquid and a solid surface."
             ),
             parent=self,
         )

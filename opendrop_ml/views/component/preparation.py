@@ -13,7 +13,7 @@ from opendrop_ml.utils.config import (
     BASELINE_OPTIONS,
     INTERFACIAL_TENSION,
 )
-from opendrop_ml.utils.enums import FittingMethod
+from opendrop_ml.utils.enums import FittingMethod, RegionSelect, ThresholdSelect
 from opendrop_ml.utils.tooltip_util import create_tooltip
 import re
 import os
@@ -34,8 +34,7 @@ def create_user_input_fields_ift(self, parent, user_input_data: ExperimentalSetu
     )
 
     # Configure the grid for the user_input_frame to be resizable
-    user_input_frame.grid_rowconfigure(
-        0, weight=0)  # No resizing for the label row
+    user_input_frame.grid_rowconfigure(0, weight=0)  # No resizing for the label row
     # Allow resizing for the input fields row
     user_input_frame.grid_rowconfigure(1, weight=1)
     # Allow resizing for the first column
@@ -44,8 +43,7 @@ def create_user_input_fields_ift(self, parent, user_input_data: ExperimentalSetu
     user_input_frame.grid_columnconfigure(1, weight=1)
 
     # Create a label for the dynamic content
-    label = CTkLabel(user_input_frame, text="User Inputs",
-                     font=("Roboto", 16, "bold"))
+    label = CTkLabel(user_input_frame, text="User Inputs", font=("Roboto", 16, "bold"))
     label.grid(row=0, column=0, padx=10, pady=5, sticky="w")  # Grid for label
 
     # Create a frame to hold all input fields
@@ -60,8 +58,7 @@ def create_user_input_fields_ift(self, parent, user_input_data: ExperimentalSetu
         input_fields_frame.grid_rowconfigure(i, weight=1)
     # Label column fixed width (anchor='w' handles alignment)
     input_fields_frame.grid_columnconfigure(0, weight=0)
-    input_fields_frame.grid_columnconfigure(
-        1, weight=1)  # Widget column expands
+    input_fields_frame.grid_columnconfigure(1, weight=1)  # Widget column expands
 
     # Update the input value functions
     def update_drop_region_method(*args):
@@ -170,8 +167,7 @@ def create_user_input_fields_ift(self, parent, user_input_data: ExperimentalSetu
                     save_needle_options_to_config()
             except ValueError:
                 # Show error message
-                messagebox.showerror(
-                    "Invalid Input", "Please enter a valid number.")
+                messagebox.showerror("Invalid Input", "Please enter a valid number.")
 
     def remove_needle_diameter():
         current_value = needle_var.get()
@@ -308,8 +304,7 @@ def create_analysis_checklist_ift(self, parent, user_input_data: ExperimentalSet
     label = CTkLabel(
         analysis_clist_frame, text="Analysis methods*", font=("Roboto", 16, "bold")
     )
-    label.grid(row=0, column=0, padx=10, pady=5,
-               sticky="w")  # Removed columnspan
+    label.grid(row=0, column=0, padx=10, pady=5, sticky="w")  # Removed columnspan
 
     # Create a frame to hold all input fields
     input_fields_frame = CTkFrame(analysis_clist_frame)
@@ -343,7 +338,13 @@ def create_analysis_checklist_ift(self, parent, user_input_data: ExperimentalSet
     return analysis_clist_frame
 
 
-def create_user_inputs_cm(self, parent, user_input_data):
+def create_user_inputs_cm(
+    self,
+    parent,
+    user_input_data,
+    on_needle_toggle=None,
+    on_surface_tilted=None,
+):
     """Create user input fields and return the frame containing them."""
     # Create the user input frame
     user_input_frame = CTkFrame(parent)
@@ -356,27 +357,22 @@ def create_user_inputs_cm(self, parent, user_input_data):
     user_input_frame.grid_rowconfigure(0, weight=0)  # Label row fixed
     # input_fields_frame row expands
     user_input_frame.grid_rowconfigure(1, weight=1)
-    user_input_frame.grid_columnconfigure(
-        0, weight=1)  # Allow column to expand
+    user_input_frame.grid_columnconfigure(0, weight=1)  # Allow column to expand
 
     # Create a label for the dynamic content
-    label = CTkLabel(user_input_frame, text="User Inputs",
-                     font=("Roboto", 16, "bold"))
+    label = CTkLabel(user_input_frame, text="User Inputs", font=("Roboto", 16, "bold"))
     label.grid(row=0, column=0, padx=10, pady=5, sticky="w")
 
     # Create a frame to hold all input fields
     input_fields_frame = CTkFrame(user_input_frame)
     set_light_only_color(input_fields_frame, "entry")
-    input_fields_frame.grid(row=1, column=0, padx=10,
-                            pady=(0, 10), sticky="nsew")
+    input_fields_frame.grid(row=1, column=0, padx=10, pady=(0, 10), sticky="nsew")
 
     # Configure the grid of input_fields_frame to be resizable
-    for i in range(4):
+    for i in range(6):
         input_fields_frame.grid_rowconfigure(i, weight=1)
-    input_fields_frame.grid_columnconfigure(
-        0, weight=0)  # Label column fixed width
-    input_fields_frame.grid_columnconfigure(
-        1, weight=1)  # Widget column expands
+    input_fields_frame.grid_columnconfigure(0, weight=0)  # Label column fixed width
+    input_fields_frame.grid_columnconfigure(1, weight=1)  # Widget column expands
 
     # Define update functions for each input
     def update_drop_id_method(*args):
@@ -398,15 +394,24 @@ def create_user_inputs_cm(self, parent, user_input_data):
         # user_input_data.threshold_val = None
         # self.image_app.update_button_visibility()
 
+    # In video mode, drop ID and baseline must be Automated (per-frame
+    # manual selection is not supported).  Threshold can still be manual
+    # since it's just a number applied uniformly to all frames.
+    is_video = user_input_data.is_video
+    auto_only = [RegionSelect.AUTOMATED]
+    auto_only_thresh = [ThresholdSelect.AUTOMATED]
+
     # Create input fields with the associated update methods
     self.drop_id_method = OptionMenu(
         self,
         input_fields_frame,
         "Drop ID method:",
-        DROP_ID_OPTIONS,
+        auto_only if is_video else DROP_ID_OPTIONS,
         lambda *args: update_drop_id_method(*args),
         rw=0,
-        default_value=user_input_data.drop_id_method,
+        default_value=(
+            RegionSelect.AUTOMATED if is_video else user_input_data.drop_id_method
+        ),
     )
     self.drop_id_method.optionmenu.grid_configure(sticky="ew")
 
@@ -435,12 +440,70 @@ def create_user_inputs_cm(self, parent, user_input_data):
         self,
         input_fields_frame,
         "Baseline selection method:",
-        BASELINE_OPTIONS,
+        auto_only_thresh if is_video else BASELINE_OPTIONS,
         lambda *args: update_baseline_method(*args),
         rw=3,
-        default_value=user_input_data.baseline_method,
+        default_value=(
+            ThresholdSelect.AUTOMATED if is_video else user_input_data.baseline_method
+        ),
     )
     self.baseline_method.optionmenu.grid_configure(sticky="ew")
+
+    if is_video:
+        toggle_yes = "Yes (auto)"
+        toggle_no = "No"
+        toggle_options = [toggle_yes, toggle_no]
+        needle_default = toggle_yes if user_input_data.needle_in_drop else toggle_no
+
+        def update_needle_in_drop(*args):
+            user_input_data.needle_in_drop = (
+                self.needle_in_drop.get_value() == toggle_yes
+            )
+            if on_needle_toggle is not None:
+                on_needle_toggle(user_input_data.needle_in_drop)
+
+        self.needle_in_drop = OptionMenu(
+            self,
+            input_fields_frame,
+            "Needle inside drop:",
+            toggle_options,
+            lambda *args: update_needle_in_drop(*args),
+            rw=4,
+            default_value=needle_default,
+        )
+        self.needle_in_drop.optionmenu.grid_configure(sticky="ew")
+
+        create_tooltip(
+            self.needle_in_drop.label,
+            "Select 'Yes (auto)' when the needle is visible inside the droplet; "
+            "the preview shows auto-detected needle lines.",
+        )
+
+        tilted_default = toggle_yes if user_input_data.surface_tilted else toggle_no
+
+        def update_surface_tilted(*args):
+            user_input_data.surface_tilted = (
+                self.surface_tilted.get_value() == toggle_yes
+            )
+            if on_surface_tilted is not None:
+                on_surface_tilted(user_input_data.surface_tilted)
+
+        self.surface_tilted = OptionMenu(
+            self,
+            input_fields_frame,
+            "Tilted surface:",
+            toggle_options,
+            lambda *args: update_surface_tilted(*args),
+            rw=5,
+            default_value=tilted_default,
+        )
+        self.surface_tilted.optionmenu.grid_configure(sticky="ew")
+
+        create_tooltip(
+            self.surface_tilted.label,
+            "Enable automatic tilt correction when the substrate is tilted; "
+            "the preview shows the rotated middle frame.",
+        )
 
     create_tooltip(
         self.drop_id_method.label, "The method to identify the droplet region"
@@ -484,8 +547,7 @@ def create_plotting_checklist(self, parent, user_input_data):
         text="Visible during fitting (method = automated)",
         font=("Roboto", 16, "bold"),
     )
-    label.grid(row=0, column=0, padx=(10, 0),
-               pady=5, sticky="w")  # Grid for label
+    label.grid(row=0, column=0, padx=(10, 0), pady=5, sticky="w")  # Grid for label
 
     add_help_icon(
         plotting_clist_frame,
@@ -505,8 +567,7 @@ def create_plotting_checklist(self, parent, user_input_data):
     # Checkboxes are in rows 0, 1, 2 and column 0
     for i in range(3):  # Rows 0, 1, 2
         input_fields_frame.grid_rowconfigure(i, weight=1)
-    input_fields_frame.grid_columnconfigure(
-        0, weight=1)  # Single column expands
+    input_fields_frame.grid_columnconfigure(0, weight=1)  # Single column expands
 
     # Define update functions for each checkbox
     def update_original_boole(*args):
@@ -561,8 +622,7 @@ def create_analysis_checklist_cm(self, parent, user_input_data):
     # Ensure the frame itself expands, adjust columnspan if needed based on parent layout
     # Assuming row=3 is correct from previous code. Columnspan 4 seems large, maybe 2 is enough if parent has 2 cols? Let's try 2.
     # Changed sticky, adjusted columnspan
-    analysis_clist_frame.grid(
-        row=3, columnspan=2, sticky="nsew", padx=15, pady=15)
+    analysis_clist_frame.grid(row=3, columnspan=2, sticky="nsew", padx=15, pady=15)
 
     # --- Configure analysis_clist_frame's internal grid ---
     analysis_clist_frame.grid_rowconfigure(0, weight=0)  # Label row fixed
@@ -575,8 +635,7 @@ def create_analysis_checklist_cm(self, parent, user_input_data):
     label = CTkLabel(
         analysis_clist_frame, text="Analysis methods*", font=("Roboto", 16, "bold")
     )
-    label.grid(row=0, column=0, padx=10, pady=5,
-               sticky="w")  # Removed columnspan
+    label.grid(row=0, column=0, padx=10, pady=5, sticky="w")  # Removed columnspan
 
     # Create a frame to hold all checkbox fields
     input_fields_frame = CTkFrame(analysis_clist_frame)
@@ -672,11 +731,20 @@ def create_analysis_checklist_cm(self, parent, user_input_data):
     self.ML_boole = CheckButton(
         self,
         input_fields_frame,
-        "ML model",
+        "ML model (Conan-ML)",
         update_ML_boole,
         rw=2,
         cl=1,
         default_value=user_input_data.analysis_methods_ca[FittingMethod.ML_MODEL],
+    )
+    create_tooltip(
+        self.ML_boole.check_button,
+        "Conan-ML: Conv1D neural network for contact angle prediction.\n"
+        "Supports contact angles from 20° to 180°.\n\n"
+        "Angles below 20° are outside the training domain and are\n"
+        "not supported.\n\n"
+        "Training domain: Bond numbers ≤ 1. Angles from high-Bond-\n"
+        "number drops should be independently verified.",
     )
 
     return analysis_clist_frame
@@ -686,8 +754,7 @@ def save_needle_options_to_config():
     """Save NEEDLE_OPTIONS to config.py file to ensure persistence"""
     try:
         # Get the absolute path to the utils directory
-        current_dir = os.path.dirname(
-            os.path.abspath(__file__))  # component directory
+        current_dir = os.path.dirname(os.path.abspath(__file__))  # component directory
         parent_dir = os.path.dirname(current_dir)  # views directory
         root_dir = os.path.dirname(parent_dir)  # project root directory
         config_file_path = os.path.join(root_dir, "utils", "config.py")
@@ -714,8 +781,7 @@ def save_needle_options_to_config():
                 # Write back to the file to ensure persistence
                 with open(config_file_path, "w", encoding="utf-8") as file:
                     file.write(new_content)
-                print(
-                    f"Successfully saved needle options to {config_file_path}")
+                print(f"Successfully saved needle options to {config_file_path}")
                 return True
             else:
                 print("Could not find NEEDLE_OPTIONS in config file")
@@ -725,8 +791,7 @@ def save_needle_options_to_config():
             return False
     except Exception as e:
         print(f"Error saving needle options: {str(e)}")
-        messagebox.showerror(
-            "Save Error", f"Could not save needle options: {str(e)}")
+        messagebox.showerror("Save Error", f"Could not save needle options: {str(e)}")
         return False
 
 

@@ -9,93 +9,107 @@ def create_tooltip(widget, text: str, position="above-align-left"):
     system = platform.system()
     is_mac = system == "Darwin"
 
-    try:
-        bind_target = widget._canvas
-    except AttributeError:
-        bind_target = widget
+    bind_target = widget
+    hide_job = None
 
-    if is_mac:
-        tooltip = tk.Label(
-            widget.master,
-            text=text,
-            bg="#f0f0f0",
-            font=("Segoe UI", 10),
-            justify="left",
-            wraplength=350,
-            relief="solid",
-            borderwidth=1,
-        )
+    def is_descendant(child, ancestor):
+        while child is not None:
+            if child == ancestor:
+                return True
+            child = child.master
+        return False
 
-        def enter(event):
-            margin = 4
+    def _cancel_hide():
+        nonlocal hide_job
+        if hide_job is not None:
+            widget.after_cancel(hide_job)
+            hide_job = None
 
-            widget_x = widget.winfo_rootx()
-            widget_y = widget.winfo_rooty()
-            widget_w = widget.winfo_width()
-            widget_h = widget.winfo_height()
+    tooltip = tk.Toplevel(widget)
+    tooltip.withdraw()
+    tooltip.overrideredirect(True)
+    if not is_mac:
+        tooltip.attributes("-alpha", 0.90)
 
-            master_x = widget.master.winfo_rootx()
-            master_y = widget.master.winfo_rooty()
+    frame = tk.Frame(
+        tooltip,
+        background="#f0f0f0",
+        borderwidth=1,
+        relief="solid",
+    )
+    frame.pack(fill="both", expand=True)
 
-            tooltip.update_idletasks()
-            tooltip_w = tooltip.winfo_width()
-            tooltip_h = tooltip.winfo_height()
+    label = tk.Label(
+        frame,
+        text=text,
+        bg="#f0f0f0",
+        fg="#111111",
+        font=("Segoe UI", 10),
+        justify="left",
+        wraplength=350 if is_mac else 250,
+        borderwidth=0,
+    )
+    label.pack(padx=4, pady=2)
 
-            if position == "above-align-left":
-                rel_x = widget_x
-                rel_y = widget_y - tooltip_h - margin
-            elif position == "below-align-left":
-                rel_x = widget_x
-                rel_y = widget_y + widget_h + margin
-            elif position == "below-align-right":
-                rel_x = widget_x + widget_w - tooltip_w
-                rel_y = widget_y + widget_h + margin
-            else:
-                # fallback: above-align-left
-                rel_x = widget_x
-                rel_y = widget_y - tooltip_h - margin
+    def show(event):
+        _cancel_hide()
+        tooltip.update_idletasks()
+        tooltip_w = tooltip.winfo_reqwidth()
+        tooltip_h = tooltip.winfo_reqheight()
 
-            place_x = rel_x - master_x
-            place_y = rel_y - master_y
+        widget_x = widget.winfo_rootx()
+        widget_y = widget.winfo_rooty()
+        widget_w = widget.winfo_width()
+        widget_h = widget.winfo_height()
 
-            tooltip.place(x=place_x, y=place_y)
-            tooltip.lift()
+        margin = 4
+        if position == "above-align-left":
+            x_pos = widget_x
+            y_pos = widget_y - tooltip_h - margin
+        elif position == "below-align-left":
+            x_pos = widget_x
+            y_pos = widget_y + widget_h + margin
+        elif position == "below-align-right":
+            x_pos = widget_x + widget_w - tooltip_w
+            y_pos = widget_y + widget_h + margin
+        elif position == "below-left-cursor":
+            x_pos = event.x_root - tooltip_w - margin
+            y_pos = event.y_root + margin
+        else:
+            x_pos = widget_x
+            y_pos = widget_y - tooltip_h - margin
 
-        def leave(event):
-            tooltip.place_forget()
+        # Keep tooltip on screen
+        screen_w = widget.winfo_screenwidth()
+        screen_h = widget.winfo_screenheight()
+        x_pos = max(0, min(x_pos, screen_w - tooltip_w))
+        y_pos = max(0, min(y_pos, screen_h - tooltip_h))
 
-        bind_target.bind("<Enter>", enter)
-        bind_target.bind("<Leave>", leave)
+        tooltip.geometry(f"+{x_pos}+{y_pos}")
+        tooltip.deiconify()
 
-    else:
-        tooltip = tk.Toplevel(widget)
-        tooltip.withdraw()
-        tooltip.overrideredirect(True)
-        tooltip.attributes("-alpha", 0.90)  # semi-transparent
+    def schedule_hide(event):
+        nonlocal hide_job
 
-        canvas = tk.Canvas(
-            tooltip, background="#e0e0e0", borderwidth=0, highlightthickness=0
-        )
-        canvas.pack(fill="both", expand=True)
-
-        padding_x, padding_y = 10, 6
-        label = tk.Label(
-            canvas,
-            text=text,
-            bg="#e0e0e0",
-            font=("Segoe UI", 10),
-            justify="left",
-            wraplength=250,
-            borderwidth=0,
-        )
-        label.pack(padx=padding_x, pady=padding_y)
-
-        def enter(event):
-            tooltip.geometry(f"+{event.x_root + 12}+{event.y_root + 12}")
-            tooltip.deiconify()
-
-        def leave(event):
+        def maybe_hide():
+            nonlocal hide_job
+            hide_job = None
+            pointer_x, pointer_y = widget.winfo_pointerxy()
+            hovered = widget.winfo_containing(pointer_x, pointer_y)
+            if is_descendant(hovered, bind_target) or is_descendant(
+                hovered, tooltip
+            ):
+                hide_job = widget.after(120, maybe_hide)
+                return
             tooltip.withdraw()
 
-        widget.bind("<Enter>", enter)
-        widget.bind("<Leave>", leave)
+        _cancel_hide()
+        hide_job = widget.after(80, maybe_hide)
+
+    def tooltip_enter(event):
+        _cancel_hide()
+
+    bind_target.bind("<Enter>", show, add="+")
+    bind_target.bind("<Leave>", schedule_hide, add="+")
+    tooltip.bind("<Enter>", tooltip_enter, add="+")
+    tooltip.bind("<Leave>", schedule_hide, add="+")

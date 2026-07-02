@@ -15,23 +15,31 @@ needle_diameter_mm: 0.7176 # Diameter of the needle in mm
 pixel_mm: null # Calibration factor: mm per pixel
 
 # --- Processing control flags ---
-original_boole: 0 # To show original image during analysing (1 for true and 0 for false)
-cropped_boole: 0 # To show cropped image during analysing (1 for true and 0 for false)
-threshold_boole: 0 # To show threshold image during analysing (1 for true and 0 for false)
+original_boole: false # To show original image during analysing
+cropped_boole: false # To show cropped image during analysing
+threshold_boole: false # To show threshold image during analysing
 image_source: Local images # Source of images (only have Local images option for now)
 
 # --- Image acquisition ---
 import_files: null # Optional import file list
 frame_interval: 1 # Time between frames/images (float number)
 
+# --- Video mode ---
+is_video: false # Treat input as a single system over time (video file or image folder)
+needle_in_drop: true # Needle visible inside the drop; read by the video-mode router
+surface_tilted: false # Substrate is tilted (reserved; not yet read by the pipeline)
+tilt_angle_deg: 0.0 # Manual tilt angle (reserved; not yet read by the pipeline)
+manual_preprocessing: false # Any preprocessing step picked manually (reserved; not yet read by the pipeline)
+video_skip_interval: 10 # Pass 1 sampling rate for the two-pass pipeline
+
 # --- Analysis methods ---
 analysis_methods_ca: # Contact angle fitting methods
-  TANGENT_FIT: true
-  POLYNOMIAL_FIT: true
-  CIRCLE_FIT: false
-  ELLIPSE_FIT: false
-  YL_FIT: false
-  ML_MODEL: false
+  TANGENT_FIT: 1
+  POLYNOMIAL_FIT: 1
+  CIRCLE_FIT: 1
+  ELLIPSE_FIT: 1
+  YL_FIT: 1
+  ML_MODEL: 1 # Conan-ML prediction (supports contact angles 20°-180°)
 analysis_methods_pd: # IFT fitting methods
   INTERFACIAL_TENSION: true
 
