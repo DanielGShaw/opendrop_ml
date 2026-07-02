@@ -71,7 +71,7 @@ def main():
         def open_ca(main_window):
             call_user_input(FunctionType.CONTACT_ANGLE, fitted_drop_data, main_window)
 
-        main_window = MainWindow(continue_processing, open_ift, open_ca)
+        MainWindow(continue_processing, open_ift, open_ca)
 
 
 #    cheeky_pause()

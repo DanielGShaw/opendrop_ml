@@ -22,8 +22,7 @@ def validate_int(
     else:
         if text in "0123456789":
             try:
-                int_value = int(value_if_allowed)
-                # self.recheck_wait_state(int_value)
+                int(value_if_allowed)
                 return True
             except ValueError:
                 return False

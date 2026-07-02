@@ -50,7 +50,6 @@ def generate_timeseries_figure(
     frames = df["frame_number"].values
 
     left_cols = [c for c in df.columns if c.endswith(" left angle")]
-    right_cols = [c for c in df.columns if c.endswith(" right angle")]
 
     methods = []
     for lc in left_cols:
