@@ -6,7 +6,6 @@ import json
 import os
 
 import numpy as np
-import pytest
 
 from opendrop_ml.modules.contact_angle.video_state import (
     load_state,

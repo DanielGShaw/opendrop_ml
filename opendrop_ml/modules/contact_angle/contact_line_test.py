@@ -11,7 +11,6 @@ from opendrop_ml.modules.contact_angle.contact_line import (
     CASE_11_MIN_CPS,
     KEPT_X_RANGE_MIN,
     LOCAL_ANGLE_N_PTS,
-    RESIDUAL_STD_THRESHOLD,
     _line_intersection,
     find_first_intercept,
     find_last_intercept,

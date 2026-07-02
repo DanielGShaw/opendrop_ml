@@ -48,25 +48,6 @@ def mock_user_inputs():
     return UserInputs()
 
 
-@pytest.fixture
-def mock_contour_data():
-    return np.array(
-        [
-            [50, -150],
-            [55, -145],
-            [60, -140],
-            [65, -135],
-            [70, -130],
-            [75, -125],
-            [80, -120],
-            [85, -115],
-            [90, -110],
-            [95, -105],
-        ],
-        dtype=np.float32,
-    )
-
-
 # Core Function Tests -----------------------------------------------------
 
 
@@ -130,28 +111,6 @@ def test_contour_trimming(mock_findContours):
 
 
 # Clustering & Contact Point Tests ----------------------------------------
-
-
-@pytest.fixture
-def mock_contour_data():
-    return np.array(
-        [
-            [40, 160],
-            [45, 155],
-            [50, 150],
-            [55, 145],
-            [60, 140],
-            [65, 135],
-            [70, 130],
-            [75, 125],
-            [80, 120],
-            [85, 115],
-            [90, 110],
-            [95, 105],
-            [100, 100],
-        ],
-        dtype=np.float32,
-    )
 
 
 @patch("cv2.findContours")

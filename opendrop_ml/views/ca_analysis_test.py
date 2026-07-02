@@ -3,7 +3,6 @@ from opendrop_ml.utils.enums import FittingMethod
 
 from unittest.mock import MagicMock
 from PIL import Image
-import pytest
 
 
 def test_extract_method_priority():

@@ -1,9 +1,7 @@
 """Tests for video_figures.py — diagnostic figure generation."""
 
 import csv
-import math
 import os
-import tempfile
 
 import matplotlib
 

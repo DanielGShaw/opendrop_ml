@@ -10,7 +10,6 @@ from opendrop_ml.modules.fitting.ellipse_fit import (
 from unittest.mock import patch
 import numpy as np
 import pytest
-import math
 
 
 def _generate_ellipse_drop(a, b, center, angle_range=(0, np.pi), num_points=200):

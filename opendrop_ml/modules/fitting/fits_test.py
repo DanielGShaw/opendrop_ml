@@ -35,7 +35,7 @@ def experimental_drop():
 
     # Load drop_contour
     if "drop_contour" not in saved_data:
-        pytest.fail(f"Required 'drop_contour' data missing in test data")
+        pytest.fail("Required 'drop_contour' data missing in test data")
 
     contour = saved_data["drop_contour"]
     # Stored contour has Cartesian (negative-y) coordinates; convert to

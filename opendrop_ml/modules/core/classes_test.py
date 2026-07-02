@@ -201,7 +201,6 @@ def test_drop_data_s_points_setter():
 
     # Ensure theoretical data has been generated
     assert data.theoretical_data is not None
-    original_points = data.theoretical_data.shape[0]
 
     # Change s_points
     data.s_points = 100

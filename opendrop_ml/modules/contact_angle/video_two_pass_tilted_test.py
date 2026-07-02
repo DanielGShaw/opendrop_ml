@@ -21,7 +21,6 @@ from opendrop_ml.modules.contact_angle import (  # noqa: E402
     video_two_pass_tilted,
 )
 from opendrop_ml.modules.core.classes import ExperimentalSetup  # noqa: E402
-from opendrop_ml.utils.config import LEFT_ANGLE, RIGHT_ANGLE  # noqa: E402
 from opendrop_ml.utils.enums import FittingMethod  # noqa: E402
 
 
