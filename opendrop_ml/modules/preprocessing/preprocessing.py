@@ -1391,11 +1391,7 @@ def find_CP_static_Lfit(
 
         # set variables for exclusion search
         RMSE_h = max(RMSEs) - min(RMSEs)
-        gradient_h = max(gradients) - min(gradients)
         RMSE_jump_too_high = 0.2
-        RMSE_tolerance = 0.2
-        gradient_tolerance = 0.12
-        floor_tolerance = 0.01  # to ignore points right on next to each other on plots
 
         indices.sort()
         # Filter out indices with too high RMSE jumps
@@ -1414,8 +1410,6 @@ def find_CP_static_Lfit(
 
         # remove any points that are now out of range of the length of the contour
         indices = [idx for idx in indices if idx <= len(gradients)]
-
-        peak_gradients = [gradients[idx] for idx in indices]
 
         # take out any indices for points higher than the 60% contour height
         div_line = min(contour[:, 1]) + (max(contour[:, 1]) - min(contour[:, 1])) * 0.4
@@ -1650,11 +1644,7 @@ def iterative_Lfit(contour, n_pts, height=0, prominence=0, width=3, display=Fals
 
         # set variables for exclusion search
         RMSE_h = max(RMSEs) - min(RMSEs)
-        gradient_h = max(gradients) - min(gradients)
         RMSE_jump_too_high = 0.25
-        RMSE_tolerance = 0.2
-        gradient_tolerance = 0.12
-        floor_tolerance = 0.01  # to ignore points right on next to each other on plots
 
         indices.sort()
         # Filter out indices with too high RMSE jumps at high gradients
@@ -1676,8 +1666,6 @@ def iterative_Lfit(contour, n_pts, height=0, prominence=0, width=3, display=Fals
 
         # remove any points that are now out of range of the length of the contour
         indices = [idx for idx in indices if idx <= len(gradients)]
-
-        peak_gradients = [gradients[idx] for idx in indices]
 
         # take out any indices for points higher than the 60% contour height
         div_line = min(contour[:, 1]) + (max(contour[:, 1]) - min(contour[:, 1])) * 0.4
@@ -2373,8 +2361,6 @@ def CPID(contour, display=False):
 
         error_margin = 18
         final_CPs = []
-        full_Lfit = False
-        buffer = 2
 
         # is the top angle at the widest point high?
         if (
@@ -2537,7 +2523,6 @@ def preprocess(img, display=False, blur=True):
     # ensure idx_leftCP is smaller than idx_rightCP
     if idx_leftCP > idx_rightCP:
         idx_leftCP, idx_rightCP = idx_rightCP, idx_leftCP
-    profile = longest_contour[idx_leftCP : idx_rightCP + 1]
 
     return img_processed, CPs_chosen, longest_contour
 
