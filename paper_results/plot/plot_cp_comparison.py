@@ -67,13 +67,14 @@ EXPERIMENTAL_IMAGES = [
 SYNTHETIC_IMAGES = [
     "20.0_0.6000000000000001_4.0_0.006_CPL_302_461_CPR_442_461_.png",
     "100.0_0.8_4.0_0.0_CPL_303_461_CPR_441_461_.png",
-    "180.0_0.0_1.0_0.006_CPL_372_461_CPR_372_461_.png",
+    "160.0_0.8_4.0_-0.03_CPL_331_447_CPR_413_447_.png",
+    "180.0_1.0_1.0_0.006_CPL_234_461_CPR_510_461_.png",
 ]
 
 # Panel labels overlaid on the top-left of each *_overview.svg (aligned to the
 # image lists above; set to None for no label). Experimental labels mirror the
 # i)–vi) markers on the agreement-panel extrema in the plan.
-SYNTHETIC_LABELS = ["i)", "ii)", "iii)"]
+SYNTHETIC_LABELS = ["i)", "ii)", "iii)", "iv)"]
 EXPERIMENTAL_LABELS = ["i)", "ii)", "iii)", "iv)", "v)", "vi)"]
 
 

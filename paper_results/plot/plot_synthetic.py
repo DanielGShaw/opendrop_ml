@@ -128,6 +128,8 @@ def plot_bias_and_disagreement(df):
     axes[0].axhline(0, color="gray", linewidth=0.5, linestyle="--")
     axes[0].set_xlabel(u"$\\theta_{True}$ (\u00B0)")
     axes[0].set_ylabel(u"Bias (\u00B0)")
+    axes[0].text(0.01, 1.02, "a)", transform=axes[0].transAxes,
+                 fontsize=16, fontweight="bold")
     axes[0].legend()
 
     # Right panel: ML - YL disagreement vs YL angle
@@ -138,7 +140,34 @@ def plot_bias_and_disagreement(df):
     axes[1].axhline(0, color="gray", linewidth=0.5, linestyle="--")
     axes[1].set_xlabel(u"$\\theta_{YL}$ (\u00B0)")
     axes[1].set_ylabel(u"$\\theta_{ML} - \\theta_{YL}$ (\u00B0)")
+    axes[1].text(0.01, 1.02, "b)", transform=axes[1].transAxes,
+                 fontsize=16, fontweight="bold")
     axes[1].legend()
+
+    # i)-iv) annotations linking to the curated systems shown in
+    # figures/CA_tangent_plots/synthetic_composite.png
+    composite_systems = [
+        ("i)", "20.0_0.6000000000000001_4.0_0.006_CPL_302_461_CPR_442_461_.png",
+         "left", (0, 10)),
+        ("ii)", "100.0_0.8_4.0_0.0_CPL_303_461_CPR_441_461_.png",
+         "left", (-6, -26)),
+        ("iii)", "160.0_0.8_4.0_-0.03_CPL_331_447_CPR_413_447_.png",
+         "left", (-6, 10)),
+        ("iv)", "180.0_1.0_1.0_0.006_CPL_234_461_CPR_510_461_.png",
+         "left", (12, -14)),
+    ]
+    for label, image_name, side, offset_b in composite_systems:
+        row = df.loc[df["image_name"] == image_name]
+        if row.empty:
+            continue
+        row = row.iloc[0]
+        yl_angle = row[f"yl_{side}_angle"]
+        ml_angle = row[f"ml_{side}_angle"]
+
+        # Panel b): (theta_ML - theta_YL) vs theta_YL
+        axes[1].annotate(label, xy=(yl_angle, ml_angle - yl_angle),
+                          xytext=offset_b, textcoords="offset points",
+                          ha="center", fontsize=12, fontweight="bold")
 
     save_figure(fig, SUBDIR, "synthetic_bias_and_disagreement.png")
 
