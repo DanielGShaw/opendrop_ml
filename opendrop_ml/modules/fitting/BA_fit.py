@@ -17,7 +17,6 @@ from scipy.spatial import distance
 from scipy.integrate import solve_ivp
 
 # from scipy.spatial.distance import cdist
-from sklearn.metrics import r2_score
 import scipy.optimize as opt
 
 # import numba

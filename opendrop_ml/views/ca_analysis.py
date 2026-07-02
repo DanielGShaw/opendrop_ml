@@ -26,7 +26,6 @@ from customtkinter import (
     IntVar,
     StringVar,
 )
-import threading
 from PIL import Image, ImageDraw, ImageFont
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 import numpy as np

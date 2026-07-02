@@ -14,7 +14,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2  # for image reading, contour detection
 import math  # for tilt_correction
-from scipy import misc, ndimage  # for tilt_correction
+from scipy import ndimage  # for tilt_correction
 from scipy import signal  # for CP ID
 from scipy.odr import Model, Data, ODR  # for linear fit
 

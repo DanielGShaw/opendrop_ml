@@ -19,7 +19,7 @@ Entry point: :func:`_single_pass_with_tilt` (called by
 """
 
 import math
-from typing import Callable, Dict, Iterable, Optional, Tuple
+from typing import Callable, Dict, Optional, Tuple
 
 import numpy as np
 
