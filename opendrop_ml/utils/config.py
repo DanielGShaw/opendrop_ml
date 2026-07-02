@@ -28,8 +28,7 @@ TANGENT_LINES = "tangent lines"
 FIT_SHAPE = "fit shape"
 BASELINE = "baseline"
 
-PATH_TO_SCRIPT = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)), "..")
+PATH_TO_SCRIPT = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..")
 PATH_TO_FILE = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), "parameters.csv"
 )

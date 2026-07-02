@@ -7,8 +7,7 @@ import os
 import sys
 
 # Add project root directory to path
-sys.path.append(os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "../..")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 
 @pytest.fixture
@@ -212,8 +211,7 @@ def test_perform_fits_circle(experimental_drop):
     circle_center = experimental_drop.contact_angles["circle fit"]["circle center"]
     circle_radius = experimental_drop.contact_angles["circle fit"]["circle radius"]
 
-    print(
-        f"circle fit - Circle center: {circle_center}, Radius: {circle_radius}")
+    print(f"circle fit - Circle center: {circle_center}, Radius: {circle_radius}")
 
 
 @patch("modules.fitting.ellipse_fit.Ellipse")

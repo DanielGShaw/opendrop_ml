@@ -167,9 +167,17 @@ def evaluate_image(img_path, model):
 
     # --- Young-Laplace fit ---
     try:
-        yl_angles, bond, baseline_width, volume, fit_contour, baseline, errors, sym_errors, timings = yl_fit(
-            profile, display=False
-        )
+        (
+            yl_angles,
+            bond,
+            baseline_width,
+            volume,
+            fit_contour,
+            baseline,
+            errors,
+            sym_errors,
+            timings,
+        ) = yl_fit(profile, display=False)
         result["yl_left_angle"] = yl_angles[0]
         result["yl_right_angle"] = yl_angles[1]
         result["yl_bond_number"] = bond

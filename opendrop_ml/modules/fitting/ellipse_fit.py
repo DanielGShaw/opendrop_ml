@@ -5,6 +5,7 @@ This is base on the circular fit code taken from the most recent version
 of conan - conan-ML_cv1.1/modules/select_regions.py"""
 
 from opendrop_ml.modules.preprocessing.preprocessing import preprocess
+
 # from scipy.spatial import distance
 # from scipy.integrate import solve_ivp
 from matplotlib.patches import Ellipse
@@ -16,9 +17,6 @@ import matplotlib.pyplot as plt
 import cv2
 import math
 import time
-
-
-
 
 
 def rot(a):
@@ -54,10 +52,16 @@ def denormalize_ellipse(a, x_center, y_center, x_scale, y_scale):
     A_prime = A / x_scale**2
     B_prime = B / (x_scale * y_scale)
     C_prime = C / y_scale**2
-    D_prime = (-2 * A * x_center / x_scale**2 - B * y_center /
-               (x_scale * y_scale) + D / x_scale)
-    E_prime = (-B * x_center / (x_scale * y_scale) -
-               2 * C * y_center / y_scale**2 + E / y_scale)
+    D_prime = (
+        -2 * A * x_center / x_scale**2
+        - B * y_center / (x_scale * y_scale)
+        + D / x_scale
+    )
+    E_prime = (
+        -B * x_center / (x_scale * y_scale)
+        - 2 * C * y_center / y_scale**2
+        + E / y_scale
+    )
     F_prime = (
         A * x_center**2 / x_scale**2
         + B * x_center * y_center / (x_scale * y_scale)
@@ -254,8 +258,7 @@ def ellipse_line_intersection(xc, yc, a, b, theta, x0, y0, x1, y1, display=False
         y_int = m * x_int + c
         x_int_rot = x_int * np.cos(theta) - y_int * np.sin(theta)
         y_int_rot = x_int * np.sin(theta) + y_int * np.cos(theta)
-        grad = -(np.cos(theta) ** 2 * x_int_rot) / \
-            (np.sin(theta) ** 2 * y_int_rot)
+        grad = -(np.cos(theta) ** 2 * x_int_rot) / (np.sin(theta) ** 2 * y_int_rot)
 
         return ((x_int, y_int, grad),)
 
@@ -403,8 +406,7 @@ def ellipse_fit_errors(contour, h, k, a, b, theta, display):
 
     error_measures["MAE"] = sum([abs(error) for error in errors]) / len(errors)
     error_measures["MSE"] = sum([error**2 for error in errors]) / len(errors)
-    error_measures["RMSE"] = np.sqrt(
-        sum([error**2 for error in errors]) / len(errors))
+    error_measures["RMSE"] = np.sqrt(sum([error**2 for error in errors]) / len(errors))
     error_measures["Maximum error"] = max(errors)
 
     return error_measures
@@ -422,7 +424,7 @@ def ellipse_fit_img(img, display=False):
     idx_r = np.where((longest_contour == CPs_chosen[1]).all(axis=1))[0][0]
     if idx_l > idx_r:
         idx_l, idx_r = idx_r, idx_l
-    drop = longest_contour[idx_l:idx_r + 1]
+    drop = longest_contour[idx_l : idx_r + 1]
     CPs = {0: CPs_chosen[0], 1: CPs_chosen[1]}
 
     # define baseline as between the two contact points
@@ -502,7 +504,15 @@ def ellipse_fit_img(img, display=False):
         CPs_midpoint = np.array([mid_x, mid_y])
 
         gap, closest = ellipse_closest_point(
-            CPs_midpoint[0], CPs_midpoint[1], t[0], t[1], a, b, phi_deg, n=1000, display=False
+            CPs_midpoint[0],
+            CPs_midpoint[1],
+            t[0],
+            t[1],
+            a,
+            b,
+            phi_deg,
+            n=1000,
+            display=False,
         )
         if display:
             print("gap between CPs_midpoint and closest point of ellipse: ", gap)
@@ -517,7 +527,9 @@ def ellipse_fit_img(img, display=False):
             timings["method specific preprocessing time"] = fit_preprocessing_time
             timings["fit time"] = fit_time
             timings["analysis time"] = analysis_time
-            errors = "ellipse_fit: no line-ellipse intersection and fallback gap too large"
+            errors = (
+                "ellipse_fit: no line-ellipse intersection and fallback gap too large"
+            )
             return [], [], t, (a, b), phi_deg, errors, timings
     else:
         left, right = list(sorted(outputs, key=lambda x: x[0]))
@@ -656,7 +668,15 @@ def ellipse_fit(drop, display=False):
         CPs_midpoint = np.array([mid_x, mid_y])
 
         gap, closest = ellipse_closest_point(
-            CPs_midpoint[0], CPs_midpoint[1], t[0], t[1], a, b, phi_deg, n=1000, display=False
+            CPs_midpoint[0],
+            CPs_midpoint[1],
+            t[0],
+            t[1],
+            a,
+            b,
+            phi_deg,
+            n=1000,
+            display=False,
         )
         if display:
             print("gap between CPs_midpoint and closest point of ellipse: ", gap)
@@ -670,7 +690,9 @@ def ellipse_fit(drop, display=False):
             timings = {}
             timings["fit time"] = fit_time
             timings["analysis time"] = analysis_time
-            errors = "ellipse_fit: no line-ellipse intersection and fallback gap too large"
+            errors = (
+                "ellipse_fit: no line-ellipse intersection and fallback gap too large"
+            )
             return [], [], t, (a, b), phi_deg, errors, timings
     else:
         left, right = list(sorted(outputs, key=lambda x: x[0]))

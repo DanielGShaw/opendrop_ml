@@ -106,8 +106,8 @@ def longest_contour_arc_above_baseline(
     # Detect rising / falling edges. Padding with False on both ends turns the
     # boundary cases into ordinary transitions.
     diff = np.diff(np.concatenate(([False], mask, [False])).astype(np.int8))
-    starts = np.where(diff == 1)[0]   # inclusive start of each run
-    ends = np.where(diff == -1)[0]    # exclusive end of each run
+    starts = np.where(diff == 1)[0]  # inclusive start of each run
+    ends = np.where(diff == -1)[0]  # exclusive end of each run
 
     runs = list(zip(starts.tolist(), ends.tolist()))
 

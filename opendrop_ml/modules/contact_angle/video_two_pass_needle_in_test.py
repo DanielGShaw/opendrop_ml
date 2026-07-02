@@ -4,9 +4,7 @@ import sys
 import numpy as np
 import pytest
 
-sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
-)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
 from opendrop_ml.modules.contact_angle import (
     _video_helpers,
@@ -20,6 +18,7 @@ from opendrop_ml.utils.enums import FittingMethod
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_setup(skip=10, methods=None):
     setup = ExperimentalSetup()
@@ -39,15 +38,18 @@ class FakeWriter:
     def __init__(self):
         self.rows = []
 
-    def write_row(self, *, frame_number, timestamp_s, filepath,
-                  error_status, contact_angles):
-        self.rows.append({
-            "frame_number": frame_number,
-            "timestamp_s": timestamp_s,
-            "filepath": filepath,
-            "error_status": error_status,
-            "contact_angles": contact_angles,
-        })
+    def write_row(
+        self, *, frame_number, timestamp_s, filepath, error_status, contact_angles
+    ):
+        self.rows.append(
+            {
+                "frame_number": frame_number,
+                "timestamp_s": timestamp_s,
+                "filepath": filepath,
+                "error_status": error_status,
+                "contact_angles": contact_angles,
+            }
+        )
 
 
 def _fake_frames(n, with_fps=False):
@@ -66,8 +68,7 @@ def _fake_pass1_return():
     return (line, line, needle_int, needle_int, cps, cps, crop_for_pass2)
 
 
-def _patch_pipeline(monkeypatch, *, n_frames, analyze_result=None,
-                    pass1_return=None):
+def _patch_pipeline(monkeypatch, *, n_frames, analyze_result=None, pass1_return=None):
     """Stand up a mocked _needle_in_two_pass environment.
 
     `analyze_result` is the ``(contact_angles, error_status)`` tuple
@@ -79,16 +80,16 @@ def _patch_pipeline(monkeypatch, *, n_frames, analyze_result=None,
     def fake_load_frames(*args, **kwargs):
         return iter(list(frames))
 
-    monkeypatch.setattr(
-        video_two_pass_needle_in, "load_frames", fake_load_frames
-    )
+    monkeypatch.setattr(video_two_pass_needle_in, "load_frames", fake_load_frames)
     monkeypatch.setattr(
         video_two_pass_needle_in, "get_frame_count", lambda path: n_frames
     )
     monkeypatch.setattr(
-        video_two_pass_needle_in, "_pass1_calibrate",
-        lambda *a, **kw: (pass1_return if pass1_return is not None
-                          else _fake_pass1_return()),
+        video_two_pass_needle_in,
+        "_pass1_calibrate",
+        lambda *a, **kw: (
+            pass1_return if pass1_return is not None else _fake_pass1_return()
+        ),
     )
 
     default = (
@@ -96,19 +97,19 @@ def _patch_pipeline(monkeypatch, *, n_frames, analyze_result=None,
         "",
     )
     monkeypatch.setattr(
-        video_two_pass_needle_in, "_analyze_frame_needle_in",
+        video_two_pass_needle_in,
+        "_analyze_frame_needle_in",
         lambda *a, **kw: analyze_result if analyze_result is not None else default,
     )
 
-    monkeypatch.setattr(
-        video_two_pass_needle_in, "_load_ml_model", lambda: None
-    )
+    monkeypatch.setattr(video_two_pass_needle_in, "_load_ml_model", lambda: None)
     return frames
 
 
 # ---------------------------------------------------------------------------
 # Cluster-selection helpers
 # ---------------------------------------------------------------------------
+
 
 def test_largest_cluster_picks_highest_count():
     groups = {
@@ -179,6 +180,7 @@ def test_create_edge_image_rasterises_and_clips():
 # compute_pass1_calibration
 # ---------------------------------------------------------------------------
 
+
 def _pass1_result(left_cp, right_cp, left_int, right_int, baseline):
     # n=3 fixtures short-circuit through Fix B's CASE_11_MIN_CPS guard
     # before contours are inspected — any Nx2 placeholder satisfies the
@@ -202,9 +204,15 @@ def test_compute_pass1_calibration_happy_path():
         _pass1_result([11, 200], [301, 201], [50, 40], [350, 41], baseline),
     ]
 
-    (left_line, right_line, left_needle_int, right_needle_int,
-     left_cps_arr, right_cps_arr,
-     auto_crop) = video_two_pass_needle_in.compute_pass1_calibration(results)
+    (
+        left_line,
+        right_line,
+        left_needle_int,
+        right_needle_int,
+        left_cps_arr,
+        right_cps_arr,
+        auto_crop,
+    ) = video_two_pass_needle_in.compute_pass1_calibration(results)
 
     assert left_cps_arr.shape == (3, 2)
     assert right_cps_arr.shape == (3, 2)
@@ -230,9 +238,11 @@ def test_compute_pass1_calibration_raises_below_min_successes():
 # extract_pass2_frame
 # ---------------------------------------------------------------------------
 
+
 def test_extract_pass2_frame_returns_none_on_preprocess_failure(monkeypatch):
     monkeypatch.setattr(
-        video_two_pass_needle_in, "_preprocess_pass2",
+        video_two_pass_needle_in,
+        "_preprocess_pass2",
         lambda frame, crop_value: None,
     )
     line = np.array([[0.0, 15.0], [30.0, 15.0]])
@@ -249,16 +259,20 @@ def test_extract_pass2_frame_returns_none_on_preprocess_failure(monkeypatch):
 
 
 def test_extract_pass2_frame_returns_none_on_contour_short(monkeypatch):
-    contour = np.column_stack([
-        np.arange(30, dtype=float),
-        np.linspace(0, 30, 30, dtype=float),
-    ])
+    contour = np.column_stack(
+        [
+            np.arange(30, dtype=float),
+            np.linspace(0, 30, 30, dtype=float),
+        ]
+    )
     monkeypatch.setattr(
-        video_two_pass_needle_in, "_preprocess_pass2",
+        video_two_pass_needle_in,
+        "_preprocess_pass2",
         lambda frame, crop_value: (contour.copy(), contour.copy()),
     )
     monkeypatch.setattr(
-        video_two_pass_needle_in, "find_first_intercept",
+        video_two_pass_needle_in,
+        "find_first_intercept",
         lambda contour_, line: -1,
     )
     line = np.array([[0.0, 15.0], [30.0, 15.0]])
@@ -275,22 +289,27 @@ def test_extract_pass2_frame_returns_none_on_contour_short(monkeypatch):
 
 
 def test_extract_pass2_frame_returns_populated_state(monkeypatch):
-    contour = np.column_stack([
-        np.arange(60, dtype=float),
-        np.linspace(0, 60, 60, dtype=float),
-    ])
+    contour = np.column_stack(
+        [
+            np.arange(60, dtype=float),
+            np.linspace(0, 60, 60, dtype=float),
+        ]
+    )
     monkeypatch.setattr(
-        video_two_pass_needle_in, "_preprocess_pass2",
+        video_two_pass_needle_in,
+        "_preprocess_pass2",
         lambda frame, crop_value: (contour.copy(), contour.copy()),
     )
     # CP is at index 55 (near bottom of 60-point contour).
     monkeypatch.setattr(
-        video_two_pass_needle_in, "find_first_intercept",
+        video_two_pass_needle_in,
+        "find_first_intercept",
         lambda contour_, line: 55,
     )
     # Needle start at index 0.
     monkeypatch.setattr(
-        video_two_pass_needle_in, "find_last_intercept",
+        video_two_pass_needle_in,
+        "find_last_intercept",
         lambda contour_, line, max_y=None: 0,
     )
 
@@ -306,10 +325,15 @@ def test_extract_pass2_frame_returns_populated_state(monkeypatch):
     )
     assert state is not None
     assert set(state.keys()) == {
-        "profile", "left_contour", "right_contour",
-        "left_cp_idx", "right_cp_idx",
-        "left_CP", "right_CP",
-        "ml_left_window", "ml_right_window",
+        "profile",
+        "left_contour",
+        "right_contour",
+        "left_cp_idx",
+        "right_cp_idx",
+        "left_CP",
+        "right_CP",
+        "ml_left_window",
+        "ml_right_window",
     }
     # Profile = left[::-1] (56 pts) stacked with right (56 pts) = 112 rows.
     assert state["profile"].shape == (112, 2)
@@ -324,6 +348,7 @@ def test_extract_pass2_frame_returns_populated_state(monkeypatch):
 # ---------------------------------------------------------------------------
 # Pass-2 streaming / progress / cancel
 # ---------------------------------------------------------------------------
+
 
 def test_two_pass_streams_one_row_per_frame(monkeypatch):
     _patch_pipeline(monkeypatch, n_frames=5)
@@ -404,9 +429,11 @@ def test_cancel_mid_pass2_keeps_partial_rows(monkeypatch):
 # Error / per-method isolation
 # ---------------------------------------------------------------------------
 
+
 def test_contour_short_produces_row_with_error_status(monkeypatch):
     _patch_pipeline(
-        monkeypatch, n_frames=2,
+        monkeypatch,
+        n_frames=2,
         analyze_result=({}, "contour_short"),
     )
     setup = _make_setup(methods=[FittingMethod.TANGENT_FIT])
@@ -425,7 +452,8 @@ def test_per_fit_failure_isolated(monkeypatch):
     """A per-method exception leaves other methods populated. The _try_*
     helpers live in _video_helpers; patching happens there."""
     monkeypatch.setattr(
-        _video_helpers, "polynomial_fit",
+        _video_helpers,
+        "polynomial_fit",
         lambda profile, **kw: ((45.0, 46.0), None, None, {}, {}),
     )
 
@@ -434,26 +462,32 @@ def test_per_fit_failure_isolated(monkeypatch):
 
     monkeypatch.setattr(_video_helpers, "yl_fit", boom)
     monkeypatch.setattr(
-        _video_helpers, "circular_fit",
+        _video_helpers,
+        "circular_fit",
         lambda profile, display=False: ((40.0, 41.0), None, None, None, {}, {}),
     )
 
     # Build a minimal fake Pass-2 state so _analyze_frame_needle_in can
     # reach the fit-dispatch branch. Monkeypatch the pieces it calls.
-    contour = np.column_stack([
-        np.arange(30, dtype=float),
-        np.linspace(0, 30, 30, dtype=float),
-    ])
+    contour = np.column_stack(
+        [
+            np.arange(30, dtype=float),
+            np.linspace(0, 30, 30, dtype=float),
+        ]
+    )
     monkeypatch.setattr(
-        video_two_pass_needle_in, "_preprocess_pass2",
+        video_two_pass_needle_in,
+        "_preprocess_pass2",
         lambda frame, crop_value: (contour.copy(), contour.copy()),
     )
     monkeypatch.setattr(
-        video_two_pass_needle_in, "find_first_intercept",
+        video_two_pass_needle_in,
+        "find_first_intercept",
         lambda contour_, line: len(contour_) - 1,
     )
     monkeypatch.setattr(
-        video_two_pass_needle_in, "find_last_intercept",
+        video_two_pass_needle_in,
+        "find_last_intercept",
         lambda contour_, line, max_y=None: 0,
     )
 
@@ -483,6 +517,7 @@ def test_per_fit_failure_isolated(monkeypatch):
 # ---------------------------------------------------------------------------
 # ML model loading
 # ---------------------------------------------------------------------------
+
 
 def test_ml_model_loaded_once_when_enabled(monkeypatch):
     _patch_pipeline(monkeypatch, n_frames=10)
@@ -541,6 +576,7 @@ def test_ml_skipped_when_window_too_short():
 # Timestamp / filepath handling
 # ---------------------------------------------------------------------------
 
+
 def test_timestamp_computed_for_video(monkeypatch):
     frames = _fake_frames(3, with_fps=True)
 
@@ -548,20 +584,18 @@ def test_timestamp_computed_for_video(monkeypatch):
         return iter(list(frames))
 
     monkeypatch.setattr(video_two_pass_needle_in, "load_frames", fake_load)
+    monkeypatch.setattr(video_two_pass_needle_in, "get_frame_count", lambda p: 3)
     monkeypatch.setattr(
-        video_two_pass_needle_in, "get_frame_count", lambda p: 3
-    )
-    monkeypatch.setattr(
-        video_two_pass_needle_in, "_pass1_calibrate",
+        video_two_pass_needle_in,
+        "_pass1_calibrate",
         lambda *a, **kw: _fake_pass1_return(),
     )
     monkeypatch.setattr(
-        video_two_pass_needle_in, "_analyze_frame_needle_in",
+        video_two_pass_needle_in,
+        "_analyze_frame_needle_in",
         lambda *a, **kw: ({}, ""),
     )
-    monkeypatch.setattr(
-        video_two_pass_needle_in, "_load_ml_model", lambda: None
-    )
+    monkeypatch.setattr(video_two_pass_needle_in, "_load_ml_model", lambda: None)
 
     setup = _make_setup(methods=[FittingMethod.TANGENT_FIT])
     writer = FakeWriter()

@@ -103,11 +103,20 @@ def test_find_intersection():
 
 
 @patch("opendrop_ml.modules.fitting.BA_fit.plt.show")
-@patch("opendrop_ml.modules.fitting.BA_fit.fit_circle", return_value={"x": [0, 0, 1], "fun": 0.1})
+@patch(
+    "opendrop_ml.modules.fitting.BA_fit.fit_circle",
+    return_value={"x": [0, 0, 1], "fun": 0.1},
+)
 @patch("opendrop_ml.modules.fitting.BA_fit.find_intersection", return_value=(0.5, 0.5))
-@patch("opendrop_ml.modules.fitting.BA_fit.generate_circle_vectors", return_value=([1, 0], [0, 1]))
+@patch(
+    "opendrop_ml.modules.fitting.BA_fit.generate_circle_vectors",
+    return_value=([1, 0], [0, 1]),
+)
 @patch("opendrop_ml.modules.fitting.BA_fit.calculate_angle", return_value=90)
-@patch("opendrop_ml.modules.fitting.BA_fit.fit_bashforth_adams", return_value=MagicMock(x=[1, 1]))
+@patch(
+    "opendrop_ml.modules.fitting.BA_fit.fit_bashforth_adams",
+    return_value=MagicMock(x=[1, 1]),
+)
 @patch(
     "opendrop_ml.modules.fitting.BA_fit.sim_bashforth_adams",
     return_value=(np.array([0, 90]), np.array([[0, 0], [1, 1]]), 1.0),
@@ -129,11 +138,20 @@ def test_yl_fit(
 
 @patch("opendrop_ml.modules.fitting.BA_fit.preprocess")
 @patch("opendrop_ml.modules.fitting.BA_fit.plt.show")
-@patch("opendrop_ml.modules.fitting.BA_fit.fit_circle", return_value={"x": [2, 2, 3], "fun": 0.1})
+@patch(
+    "opendrop_ml.modules.fitting.BA_fit.fit_circle",
+    return_value={"x": [2, 2, 3], "fun": 0.1},
+)
 @patch("opendrop_ml.modules.fitting.BA_fit.find_intersection", return_value=(1.5, 1.0))
-@patch("opendrop_ml.modules.fitting.BA_fit.generate_circle_vectors", return_value=([1, 0], [0, 1]))
+@patch(
+    "opendrop_ml.modules.fitting.BA_fit.generate_circle_vectors",
+    return_value=([1, 0], [0, 1]),
+)
 @patch("opendrop_ml.modules.fitting.BA_fit.calculate_angle", return_value=90)
-@patch("opendrop_ml.modules.fitting.BA_fit.fit_bashforth_adams", return_value=MagicMock(x=[1, 1]))
+@patch(
+    "opendrop_ml.modules.fitting.BA_fit.fit_bashforth_adams",
+    return_value=MagicMock(x=[1, 1]),
+)
 @patch(
     "opendrop_ml.modules.fitting.BA_fit.sim_bashforth_adams",
     return_value=(np.array([0, 90]), np.array([[0, 0], [1, 1]]), 1.0),
@@ -159,7 +177,9 @@ def test_analyze_frame(
     assert isinstance(result, tuple)
     assert len(result) == 9
 
-    angles, Bo, baseline_width, volume, fit, baseline, errors, sym_errors, timings = result
+    angles, Bo, baseline_width, volume, fit, baseline, errors, sym_errors, timings = (
+        result
+    )
 
     # angles is a tuple of (left, right)
     assert len(angles) == 2

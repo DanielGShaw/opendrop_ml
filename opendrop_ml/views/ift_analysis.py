@@ -66,8 +66,7 @@ class IftAnalysis(CTkFrame):
         parent_frame.grid_columnconfigure(0, weight=1)
 
         padding_x = 5
-        headings = ["Time", "IFT (mN/m)", "V (mm^3)",
-                    "SA (mm^2)", "Bond", "Worth"]
+        headings = ["Time", "IFT (mN/m)", "V (mm^3)", "SA (mm^2)", "Bond", "Worth"]
 
         for j, heading in enumerate(headings):
             cell = CTkLabel(parent_frame, text=heading)
@@ -89,8 +88,7 @@ class IftAnalysis(CTkFrame):
 
             for j, val in enumerate(values):
                 label = CTkLabel(self.table_frame, text=val, anchor="center")
-                label.grid(row=i, column=j, padx=padding_x,
-                           pady=5, sticky="nsew")
+                label.grid(row=i, column=j, padx=padding_x, pady=5, sticky="nsew")
                 row_widgets.append(label)
 
             self.table_data.append(row_widgets)

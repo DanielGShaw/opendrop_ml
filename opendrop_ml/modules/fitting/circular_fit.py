@@ -9,6 +9,7 @@ conan-ML_cv1.1/modules/select_regions.py"""
 
 # Circular fit from the most recent version of conan - conan-ML_v1.1/modules/select_regions.py
 from opendrop_ml.modules.preprocessing.preprocessing import preprocess
+
 # from scipy.spatial import distance
 # from scipy.integrate import solve_ivp
 import scipy.optimize as opt
@@ -21,9 +22,6 @@ import matplotlib.pyplot as plt
 import cv2
 import math
 import time
-
-
-
 
 
 def intersection(center, radius, p1, p2, display=False):
@@ -139,8 +137,7 @@ def circle_fit_errors(contour, h, k, r, display=False):
 
     error_measures["MAE"] = sum([abs(error) for error in errors]) / len(errors)
     error_measures["MSE"] = sum([error**2 for error in errors]) / len(errors)
-    error_measures["RMSE"] = np.sqrt(
-        sum([error**2 for error in errors]) / len(errors))
+    error_measures["RMSE"] = np.sqrt(sum([error**2 for error in errors]) / len(errors))
     error_measures["Maximum error"] = max(errors)
 
     return error_measures
@@ -158,7 +155,7 @@ def circular_fit_img(img, display=False):
     idx_r = np.where((longest_contour == CPs_chosen[1]).all(axis=1))[0][0]
     if idx_l > idx_r:
         idx_l, idx_r = idx_r, idx_l
-    drop = longest_contour[idx_l:idx_r + 1]
+    drop = longest_contour[idx_l : idx_r + 1]
     CPs = {0: CPs_chosen[0], 1: CPs_chosen[1]}
 
     # of form [first y value of baseline, gradient]
@@ -220,7 +217,12 @@ def circular_fit_img(img, display=False):
         mid_y = (CPs[0][1] + CPs[1][1]) / 2
         CPs_midpoint = np.array([mid_x, mid_y])
         gap, closest = circle_closest_point(
-            CPs_midpoint[0], CPs_midpoint[1], center_2[0], center_2[1], R_2, display=False
+            CPs_midpoint[0],
+            CPs_midpoint[1],
+            center_2[0],
+            center_2[1],
+            R_2,
+            display=False,
         )
         if gap < 2:
             left = closest
@@ -284,8 +286,7 @@ def circular_fit_img(img, display=False):
     if display:  # show fitted circle
         circle1 = plt.Circle((center_2[0], center_2[1]), 2, color="r")
         # now make a circle with no fill, which is good for hi-lighting key results
-        circle2 = plt.Circle(
-            (center_2[0], center_2[1]), R_2, color="r", fill=False)
+        circle2 = plt.Circle((center_2[0], center_2[1]), R_2, color="r", fill=False)
 
         ax = plt.gca()
         ax.axis("equal")
@@ -380,7 +381,12 @@ def circular_fit(drop, display=False):
         mid_y = (CPs[0][1] + CPs[1][1]) / 2
         CPs_midpoint = np.array([mid_x, mid_y])
         gap, closest = circle_closest_point(
-            CPs_midpoint[0], CPs_midpoint[1], center_2[0], center_2[1], R_2, display=False
+            CPs_midpoint[0],
+            CPs_midpoint[1],
+            center_2[0],
+            center_2[1],
+            R_2,
+            display=False,
         )
         if display:
             print("gap between CPs_midpoint and closest point of circle: ", gap)
@@ -396,7 +402,9 @@ def circular_fit(drop, display=False):
             timings = {}
             timings["fit time"] = fit_time
             timings["analysis time"] = analysis_time
-            errors = "circular_fit: no line-circle intersection and fallback gap too large"
+            errors = (
+                "circular_fit: no line-circle intersection and fallback gap too large"
+            )
             return [], center_2, R_2, [], errors, timings
     a, b = outputs
     intercepts = [a, b]
@@ -447,8 +455,7 @@ def circular_fit(drop, display=False):
     if display:  # show fitted circle
         circle1 = plt.Circle((center_2[0], center_2[1]), 2, color="r")
         # now make a circle with no fill, which is good for hi-lighting key results
-        circle2 = plt.Circle(
-            (center_2[0], center_2[1]), R_2, color="r", fill=False)
+        circle2 = plt.Circle((center_2[0], center_2[1]), R_2, color="r", fill=False)
 
         ax = plt.gca()
         ax.axis("equal")

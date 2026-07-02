@@ -5,9 +5,7 @@ import sys
 
 import pytest
 
-sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
-)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
@@ -305,12 +303,17 @@ def test_process_data_does_not_mutate_cropped_image(monkeypatch):
     def fake_perform_fits(raw_experiment, **kwargs):
         if kwargs.get("yl"):
             raw_experiment.contact_angles[FittingMethod.YL_FIT] = {
-                LEFT_ANGLE: 90.0, RIGHT_ANGLE: 90.0,
+                LEFT_ANGLE: 90.0,
+                RIGHT_ANGLE: 90.0,
             }
         else:
-            raw_experiment.contact_angles.setdefault(FittingMethod.TANGENT_FIT, {
-                LEFT_ANGLE: 45.0, RIGHT_ANGLE: 45.0,
-            })
+            raw_experiment.contact_angles.setdefault(
+                FittingMethod.TANGENT_FIT,
+                {
+                    LEFT_ANGLE: 45.0,
+                    RIGHT_ANGLE: 45.0,
+                },
+            )
 
     monkeypatch.setattr(ca_data_processor, "get_image", fake_get_image)
     monkeypatch.setattr(ca_data_processor, "set_drop_region", fake_set_drop_region)

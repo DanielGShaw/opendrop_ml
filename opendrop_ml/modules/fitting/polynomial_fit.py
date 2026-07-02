@@ -10,6 +10,7 @@ conan-ML_cv1.1/modules/select_regions.py"""
 # Polynomial fit from the most recent version of conan - conan-ML_v1.1/modules/select_regions.py
 
 from opendrop_ml.modules.preprocessing.preprocessing import preprocess
+
 # from scipy.spatial import distance
 # from scipy.integrate import solve_ivp
 # import scipy.optimize as opt
@@ -19,9 +20,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 import time
-
-
-
 
 
 def polynomial_closest_point(xp, yp, poly_points, display=False):
@@ -168,8 +166,7 @@ def polynomial_fit_errors(pts1, pts2, fit_left, fit_right, display=False):
         sum([error_measures["RMSE left"], error_measures["RMSE right"]]) / 2
     )
     error_measures["Maximum error"] = max(
-        [error_measures["Maximum error left"],
-            error_measures["Maximum error right"]]
+        [error_measures["Maximum error left"], error_measures["Maximum error right"]]
     )
 
     return error_measures
@@ -198,7 +195,7 @@ def polynomial_fit_img(img, num_points=15, polynomial_degree=2, display=False):
     idx_r = np.where((longest_contour == CPs_chosen[1]).all(axis=1))[0][0]
     if idx_l > idx_r:
         idx_l, idx_r = idx_r, idx_l
-    tangent_drop = longest_contour[idx_l:idx_r + 1]
+    tangent_drop = longest_contour[idx_l : idx_r + 1]
     CPs = {0: CPs_chosen[0], 1: CPs_chosen[1]}
 
     intercepts = [
@@ -231,10 +228,8 @@ def polynomial_fit_img(img, num_points=15, polynomial_degree=2, display=False):
         f_local2 = line_local2(x_local2)
         f_local2_prime = line_local2.deriv(1)
 
-        tangent1 = f_local1_prime(pts1[0, 0]) * \
-            (x_local1 - pts1[0, 0]) + pts1[0, 1]
-        tangent2 = f_local2_prime(pts2[0, 0]) * \
-            (x_local2 - pts2[0, 0]) + pts2[0, 1]
+        tangent1 = f_local1_prime(pts1[0, 0]) * (x_local1 - pts1[0, 0]) + pts1[0, 1]
+        tangent2 = f_local2_prime(pts2[0, 0]) * (x_local2 - pts2[0, 0]) + pts2[0, 1]
 
         m1 = f_local1_prime(pts1[0, 0])
         m2 = f_local2_prime(pts2[0, 0])
@@ -344,10 +339,8 @@ def polynomial_fit(profile, num_points=None, polynomial_degree=2, display=False)
         f_local2 = line_local2(x_local2)
         f_local2_prime = line_local2.deriv(1)
 
-        tangent1 = f_local1_prime(pts1[0, 0]) * \
-            (x_local1 - pts1[0, 0]) + pts1[0, 1]
-        tangent2 = f_local2_prime(pts2[0, 0]) * \
-            (x_local2 - pts2[0, 0]) + pts2[0, 1]
+        tangent1 = f_local1_prime(pts1[0, 0]) * (x_local1 - pts1[0, 0]) + pts1[0, 1]
+        tangent2 = f_local2_prime(pts2[0, 0]) * (x_local2 - pts2[0, 0]) + pts2[0, 1]
 
         tangent_lines = (
             (
@@ -437,8 +430,7 @@ if 0:
     IMG_PATH = resource_path("../../RICOphobic_cropped.png")
     img = cv2.imread(IMG_PATH)
 
-    angles, intercepts, errors, timings = polynomial_fit_img(
-        img, display=False)
+    angles, intercepts, errors, timings = polynomial_fit_img(img, display=False)
 
     if 1:
         print("angles: ", angles)

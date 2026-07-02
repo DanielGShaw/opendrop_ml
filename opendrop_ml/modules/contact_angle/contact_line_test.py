@@ -4,9 +4,7 @@ import sys
 import numpy as np
 import pytest
 
-sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
-)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
 from opendrop_ml.modules.contact_angle.contact_line import (
     ANGLE_SEPARATION_MIN,
@@ -144,6 +142,7 @@ def test_fit_contact_line_flat_when_all_points_collinear_horizontal():
 # Fix B fixtures + tests (BIMODAL_CP_FIX.md § Production Spec)
 # ---------------------------------------------------------------------
 
+
 def _make_vertical_wall_contour(cp_xy, n_above=20):
     """Synthetic full drop contour: a vertical wall directly above the CP.
 
@@ -188,9 +187,7 @@ def _build_bimodal_fixture(side="right", n_low=16, n_high=11, x_span=27.0):
     xs_high = np.linspace(380.0, 380.0 + x_span, n_high)
     ys_high = 265.0 + rng.normal(0.0, 0.5, n_high)
 
-    cps = np.column_stack(
-        [np.r_[xs_low, xs_high], np.r_[ys_low, ys_high]]
-    )
+    cps = np.column_stack([np.r_[xs_low, xs_high], np.r_[ys_low, ys_high]])
 
     contours = []
     for cp in cps:
@@ -257,9 +254,7 @@ def test_fit_contact_line_case_5_x_range_guard_abstains():
     artifact_ys = np.full(n_artifact, 200.0)
     real_xs = np.linspace(380.0, 420.0, n_real)
     real_ys = np.full(n_real, 300.0) + np.linspace(-0.3, 0.3, n_real)
-    cps = np.column_stack(
-        [np.r_[artifact_xs, real_xs], np.r_[artifact_ys, real_ys]]
-    )
+    cps = np.column_stack([np.r_[artifact_xs, real_xs], np.r_[artifact_ys, real_ys]])
 
     contours = []
     for cp in cps:
@@ -302,9 +297,7 @@ def test_fit_contact_line_with_stats_backward_compat_bit_for_bit():
     """Legacy callers of stats variant get the same (line, stats) as before."""
     cps, _ = _build_bimodal_fixture()
     legacy_line, legacy_stats = fit_contact_line_with_stats(cps)
-    again_line, again_stats = fit_contact_line_with_stats(
-        cps, contours=None, side=None
-    )
+    again_line, again_stats = fit_contact_line_with_stats(cps, contours=None, side=None)
     np.testing.assert_array_equal(legacy_line, again_line)
     assert legacy_stats == again_stats
 
@@ -342,6 +335,7 @@ def test_fit_contact_line_with_stats_abstain_path_returns_original_stats():
 # ---------------------------------------------------------------------
 # local_contact_angle helper
 # ---------------------------------------------------------------------
+
 
 def test_local_contact_angle_vertical_wall_returns_about_90_right():
     cp = np.array([400.0, 250.0])

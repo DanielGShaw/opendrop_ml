@@ -93,8 +93,16 @@ def _safe_error(errors, key, fallback_key=None):
     return val
 
 
-def evaluate_image(img_path, frame_number, shared_tilt, left_line,
-                   right_line, left_stats, right_stats, model):
+def evaluate_image(
+    img_path,
+    frame_number,
+    shared_tilt,
+    left_line,
+    right_line,
+    left_stats,
+    right_stats,
+    model,
+):
     """Evaluate a single tilted-surface image via the two-pass pipeline.
 
     Mirrors ``video_two_pass_tilted._analyze_frame_tilted`` step-for-step
@@ -128,7 +136,10 @@ def evaluate_image(img_path, frame_number, shared_tilt, left_line,
     t0 = time.time()
     try:
         contour, threshold = isolate_contour(
-            corrected, crop=False, DISPLAY=False, blur=True,
+            corrected,
+            crop=False,
+            DISPLAY=False,
+            blur=True,
         )
     except Exception:
         result["skipped"] = True
@@ -165,12 +176,8 @@ def evaluate_image(img_path, frame_number, shared_tilt, left_line,
 
     # --- Profile extraction via find_first_intercept against Pass-1 lines ---
     try:
-        idx_left_orig = int(
-            np.where((contour == cps_orig[0]).all(axis=1))[0][0]
-        )
-        idx_right_orig = int(
-            np.where((contour == cps_orig[1]).all(axis=1))[0][0]
-        )
+        idx_left_orig = int(np.where((contour == cps_orig[0]).all(axis=1))[0][0])
+        idx_right_orig = int(np.where((contour == cps_orig[1]).all(axis=1))[0][0])
     except IndexError:
         result["skipped"] = True
         result["skip_reason"] = "cpid_index_failed"
@@ -194,7 +201,7 @@ def evaluate_image(img_path, frame_number, shared_tilt, left_line,
     if idx_left_cp > idx_right_cp:
         idx_left_cp, idx_right_cp = idx_right_cp, idx_left_cp
 
-    profile = contour[idx_left_cp: idx_right_cp + 1]
+    profile = contour[idx_left_cp : idx_right_cp + 1]
     if len(profile) < 3:
         result["skipped"] = True
         result["skip_reason"] = "profile_too_short"
@@ -212,9 +219,9 @@ def evaluate_image(img_path, frame_number, shared_tilt, left_line,
     result["right_CP_x"] = int(contour[idx_right_cp, 0])
     result["right_CP_y"] = int(contour[idx_right_cp, 1])
     result["profile_length"] = len(profile)
-    result["diameter"] = float(np.linalg.norm(
-        contour[idx_right_cp] - contour[idx_left_cp]
-    ))
+    result["diameter"] = float(
+        np.linalg.norm(contour[idx_right_cp] - contour[idx_left_cp])
+    )
 
     # --- Tangent fit ---
     try:
@@ -236,9 +243,14 @@ def evaluate_image(img_path, frame_number, shared_tilt, left_line,
         try:
             ml_t0 = time.time()
             ml_left, ml_right = _predict_ml(
-                corrected, contour, profile,
-                idx_left_cp, idx_right_cp,
-                left_line, right_line, model,
+                corrected,
+                contour,
+                profile,
+                idx_left_cp,
+                idx_right_cp,
+                left_line,
+                right_line,
+                model,
             )
             result["ml_left_angle"] = ml_left
             result["ml_right_angle"] = ml_right
@@ -291,11 +303,15 @@ def process_dataset(dataset_name, dataset_config, model):
     # --- Pass 1: shared tilt + per-side median contact lines + residual IQRs
     total_frames = get_frame_count(image_dir)
     effective_stride = _effective_tilt_stride(
-        total_frames, requested_skip=PASS1_REQUESTED_STRIDE,
+        total_frames,
+        requested_skip=PASS1_REQUESTED_STRIDE,
     )
     total_samples = math.ceil(total_frames / effective_stride)
-    print("  Pass 1: stride={} (requested {}), {} samples".format(
-        effective_stride, PASS1_REQUESTED_STRIDE, total_samples))
+    print(
+        "  Pass 1: stride={} (requested {}), {} samples".format(
+            effective_stride, PASS1_REQUESTED_STRIDE, total_samples
+        )
+    )
 
     t0 = time.time()
     pass1 = _pass1_calibrate_with_tilt(
@@ -315,12 +331,15 @@ def process_dataset(dataset_name, dataset_config, model):
         _right_cps,
         _rotated_first_frame,
     ) = pass1
-    print("  Pass 1 done in {:.1f}s: shared_tilt={:.3f}°, "
-          "left_IQR={:.2f}, right_IQR={:.2f}".format(
-              time.time() - t0, shared_tilt,
-              left_stats.get("residual_iqr", float("nan")),
-              right_stats.get("residual_iqr", float("nan")),
-          ))
+    print(
+        "  Pass 1 done in {:.1f}s: shared_tilt={:.3f}°, "
+        "left_IQR={:.2f}, right_IQR={:.2f}".format(
+            time.time() - t0,
+            shared_tilt,
+            left_stats.get("residual_iqr", float("nan")),
+            right_stats.get("residual_iqr", float("nan")),
+        )
+    )
 
     # --- Pass 2: per-frame analysis (mirrors _analyze_frame_tilted) ---
     results = []
@@ -340,10 +359,13 @@ def process_dataset(dataset_name, dataset_config, model):
 
         try:
             result = evaluate_image(
-                img_path, frame_number=i + 1,
+                img_path,
+                frame_number=i + 1,
                 shared_tilt=shared_tilt,
-                left_line=left_line, right_line=right_line,
-                left_stats=left_stats, right_stats=right_stats,
+                left_line=left_line,
+                right_line=right_line,
+                left_stats=left_stats,
+                right_stats=right_stats,
                 model=model,
             )
         except Exception:
@@ -369,8 +391,11 @@ def process_dataset(dataset_name, dataset_config, model):
     usable = n_images - skipped - failures
     print()
     print("  Done in {:.1f}s".format(total_time))
-    print("  Total: {}, Usable: {}, Skipped: {}, Failures: {}".format(
-        n_images, usable, skipped, failures))
+    print(
+        "  Total: {}, Usable: {}, Skipped: {}, Failures: {}".format(
+            n_images, usable, skipped, failures
+        )
+    )
 
     return df
 
@@ -414,16 +439,18 @@ def main():
             if "detected_tilt_angle" in usable.columns:
                 angles = usable["detected_tilt_angle"].dropna()
                 if len(angles) > 0:
-                    print("  Tilt angle: mean={:.1f}, std={:.1f}, range=[{:.1f}, {:.1f}]".format(
-                        angles.mean(), angles.std(), angles.min(), angles.max()))
+                    print(
+                        "  Tilt angle: mean={:.1f}, std={:.1f}, range=[{:.1f}, {:.1f}]".format(
+                            angles.mean(), angles.std(), angles.min(), angles.max()
+                        )
+                    )
 
             # Print method summary
             for method in ["tangent", "ml"]:
                 left_col = "{}_left_angle".format(method)
                 if left_col in usable.columns:
                     valid = usable[left_col].notna().sum()
-                    print("  {}: {}/{} successful".format(
-                        method, valid, len(usable)))
+                    print("  {}: {}/{} successful".format(method, valid, len(usable)))
 
     print()
     print("Done.")

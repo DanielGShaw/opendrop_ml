@@ -25,16 +25,18 @@ class TestNormalizeDsCurrentBehaviour:
 
         # After y-flip, max y should be 1.0 (normalized apex)
         assert result.shape == (1, 7, 2)
-        assert np.isclose(max(result[0, :, 1]), 1.0), (
-            f"Apex should be at z=1 after normalization, got {max(result[0, :, 1])}"
-        )
+        assert np.isclose(
+            max(result[0, :, 1]), 1.0
+        ), f"Apex should be at z=1 after normalization, got {max(result[0, :, 1])}"
 
     def test_zero_height_raises_valueerror(self):
         """Zero-height contour should raise ValueError with helpful message."""
         # All y-values identical → height = 0 after y-flip
         flat_contour = np.array([[0, 5], [1, 5], [2, 5], [3, 5]], dtype=float)
 
-        with pytest.raises(ValueError, match=r"(?i)(zero height|20.*180|supported range)"):
+        with pytest.raises(
+            ValueError, match=r"(?i)(zero height|20.*180|supported range)"
+        ):
             normalize_ds(np.array([flat_contour]))
 
 
@@ -45,7 +47,9 @@ class TestNormalizeDsDesiredBehaviour:
         """Zero-height contour should raise ValueError with helpful message."""
         flat_contour = np.array([[0, 5], [1, 5], [2, 5], [3, 5]], dtype=float)
 
-        with pytest.raises(ValueError, match=r"(?i)(zero height|20.*180|supported range)"):
+        with pytest.raises(
+            ValueError, match=r"(?i)(zero height|20.*180|supported range)"
+        ):
             normalize_ds(np.array([flat_contour]))
 
 
@@ -125,7 +129,9 @@ class TestWindowExtractionCurrentBehaviour:
         img = np.zeros((100, 200, 3), dtype=np.uint8)
 
         with _patch_preprocessing(mock_preprocess):
-            with pytest.raises(ValueError, match=r"(?i)(surface points|position|valid)"):
+            with pytest.raises(
+                ValueError, match=r"(?i)(surface points|position|valid)"
+            ):
                 prepare_for_model(img, input_len=50, n_surface=10)
 
 
@@ -149,7 +155,9 @@ class TestWindowExtractionDesiredBehaviour:
         img = np.zeros((100, 200, 3), dtype=np.uint8)
 
         with _patch_preprocessing(mock_preprocess):
-            with pytest.raises(ValueError, match=r"(?i)(surface points|position|valid)"):
+            with pytest.raises(
+                ValueError, match=r"(?i)(surface points|position|valid)"
+            ):
                 prepare_for_model(img, input_len=50, n_surface=10)
 
     def test_cp_at_minimum_valid_boundary_ok(self):

@@ -19,8 +19,7 @@ class IntegerEntry:
         width_specify=150,
         label_width=150,
     ):
-        self.label = ctk.CTkLabel(
-            frame, text=text_left, width=label_width, anchor="w")
+        self.label = ctk.CTkLabel(frame, text=text_left, width=label_width, anchor="w")
         self.label.grid(row=rw, column=cl, sticky="w", padx=padx, pady=pady)
         self.text_variable = ctk.StringVar()
 
@@ -49,8 +48,7 @@ class IntegerEntry:
             validatecommand=vcmd_int,
         )
         self.entry.configure(width=width_specify)
-        self.entry.grid(row=rw, column=cl + 1,
-                        sticky="we", padx=padx, pady=pady)
+        self.entry.grid(row=rw, column=cl + 1, sticky="we", padx=padx, pady=pady)
 
     def get_value(self):
         return int("0" + self.text_variable.get())

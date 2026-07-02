@@ -14,9 +14,7 @@ import sys
 import numpy as np
 import pytest
 
-sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
-)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
 from opendrop_ml.modules.contact_angle import (  # noqa: E402
     _video_helpers,
@@ -30,6 +28,7 @@ from opendrop_ml.utils.enums import FittingMethod  # noqa: E402
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_setup(methods=None):
     setup = ExperimentalSetup()
@@ -51,17 +50,26 @@ class FakeWriter:
     def __init__(self):
         self.rows = []
 
-    def write_row(self, *, frame_number, timestamp_s, filepath,
-                  error_status, contact_angles=None,
-                  detected_tilt_angle=math.nan):
-        self.rows.append({
-            "frame_number": frame_number,
-            "timestamp_s": timestamp_s,
-            "filepath": filepath,
-            "error_status": error_status,
-            "contact_angles": contact_angles or {},
-            "detected_tilt_angle": detected_tilt_angle,
-        })
+    def write_row(
+        self,
+        *,
+        frame_number,
+        timestamp_s,
+        filepath,
+        error_status,
+        contact_angles=None,
+        detected_tilt_angle=math.nan,
+    ):
+        self.rows.append(
+            {
+                "frame_number": frame_number,
+                "timestamp_s": timestamp_s,
+                "filepath": filepath,
+                "error_status": error_status,
+                "contact_angles": contact_angles or {},
+                "detected_tilt_angle": detected_tilt_angle,
+            }
+        )
 
 
 def _fake_frames(n, with_fps=False, shape=(400, 400, 3)):
@@ -74,15 +82,25 @@ def _fake_frames(n, with_fps=False, shape=(400, 400, 3)):
 
 def _good_contour(npts=60):
     """A monotonic contour with two interior contact points."""
-    return np.column_stack([
-        np.arange(npts, dtype=float),
-        np.linspace(0, npts, npts, dtype=float),
-    ])
+    return np.column_stack(
+        [
+            np.arange(npts, dtype=float),
+            np.linspace(0, npts, npts, dtype=float),
+        ]
+    )
 
 
-def _patch_pipeline(monkeypatch, *, n_frames, tilt_angle=60.0,
-                    cps=None, touches=False, isolate_raises=False,
-                    cpid_raises=False, with_fps=False):
+def _patch_pipeline(
+    monkeypatch,
+    *,
+    n_frames,
+    tilt_angle=60.0,
+    cps=None,
+    touches=False,
+    isolate_raises=False,
+    cpid_raises=False,
+    with_fps=False,
+):
     """Stand up a mocked single-pass-with-tilt environment.
 
     `cps` defaults to two interior points of the canonical contour.
@@ -94,7 +112,8 @@ def _patch_pipeline(monkeypatch, *, n_frames, tilt_angle=60.0,
     frames = _fake_frames(n_frames, with_fps=with_fps)
 
     monkeypatch.setattr(
-        video_single_pass_tilted, "load_frames",
+        video_single_pass_tilted,
+        "load_frames",
         lambda *a, **kw: iter(list(frames)),
     )
     monkeypatch.setattr(
@@ -104,9 +123,11 @@ def _patch_pipeline(monkeypatch, *, n_frames, tilt_angle=60.0,
     # though its own `tilt_angle` kwarg shadows the outer binding.
     _fixture_tilt = tilt_angle
     monkeypatch.setattr(
-        video_single_pass_tilted, "correct_tilt",
+        video_single_pass_tilted,
+        "correct_tilt",
         lambda img, tilt_angle=None, crop=True: (
-            img, tilt_angle if tilt_angle is not None else _fixture_tilt,
+            img,
+            tilt_angle if tilt_angle is not None else _fixture_tilt,
         ),
     )
 
@@ -115,11 +136,10 @@ def _patch_pipeline(monkeypatch, *, n_frames, tilt_angle=60.0,
             raise RuntimeError("synthetic isolate failure")
         return img, contour.copy(), None, {}
 
+    monkeypatch.setattr(video_single_pass_tilted, "isolate_contour", fake_isolate)
     monkeypatch.setattr(
-        video_single_pass_tilted, "isolate_contour", fake_isolate
-    )
-    monkeypatch.setattr(
-        video_single_pass_tilted, "touches_border",
+        video_single_pass_tilted,
+        "touches_border",
         lambda c, shape, margin=2: touches,
     )
 
@@ -129,9 +149,7 @@ def _patch_pipeline(monkeypatch, *, n_frames, tilt_angle=60.0,
         return cps.copy()
 
     monkeypatch.setattr(video_single_pass_tilted, "CPID", fake_cpid)
-    monkeypatch.setattr(
-        video_single_pass_tilted, "_load_ml_model", lambda: None
-    )
+    monkeypatch.setattr(video_single_pass_tilted, "_load_ml_model", lambda: None)
     return frames, contour, cps
 
 
@@ -139,11 +157,12 @@ def _patch_pipeline(monkeypatch, *, n_frames, tilt_angle=60.0,
 # _extract_profile_between_cps
 # ---------------------------------------------------------------------------
 
+
 def test_extract_profile_between_cps_happy_path():
     contour = _good_contour(60)
     cps = np.array([contour[10], contour[50]], dtype=float)
-    profile, idx_l, idx_r = (
-        video_single_pass_tilted._extract_profile_between_cps(contour, cps)
+    profile, idx_l, idx_r = video_single_pass_tilted._extract_profile_between_cps(
+        contour, cps
     )
     assert idx_l == 10
     assert idx_r == 50
@@ -156,8 +175,8 @@ def test_extract_profile_between_cps_reversed_contour():
     """When CPs come back in right-then-left order, indices swap."""
     contour = _good_contour(60)
     cps = np.array([contour[50], contour[10]], dtype=float)
-    profile, idx_l, idx_r = (
-        video_single_pass_tilted._extract_profile_between_cps(contour, cps)
+    profile, idx_l, idx_r = video_single_pass_tilted._extract_profile_between_cps(
+        contour, cps
     )
     assert idx_l == 10
     assert idx_r == 50
@@ -168,8 +187,8 @@ def test_extract_profile_between_cps_missing_cp_returns_none():
     """If a CP isn't in the contour, return (None, None, None)."""
     contour = _good_contour(60)
     cps = np.array([[999.0, 999.0], contour[50]], dtype=float)
-    profile, idx_l, idx_r = (
-        video_single_pass_tilted._extract_profile_between_cps(contour, cps)
+    profile, idx_l, idx_r = video_single_pass_tilted._extract_profile_between_cps(
+        contour, cps
     )
     assert profile is None
     assert idx_l is None
@@ -180,6 +199,7 @@ def test_extract_profile_between_cps_missing_cp_returns_none():
 # Per-frame happy path
 # ---------------------------------------------------------------------------
 
+
 def test_happy_path_writes_one_row_per_frame_with_angles(monkeypatch):
     _patch_pipeline(monkeypatch, n_frames=3)
     setup = _make_setup(methods=[FittingMethod.TANGENT_FIT])
@@ -187,7 +207,8 @@ def test_happy_path_writes_one_row_per_frame_with_angles(monkeypatch):
     # Patch the underlying fit so the angles arrive without invoking
     # the real polynomial_fit code path.
     monkeypatch.setattr(
-        _video_helpers, "polynomial_fit",
+        _video_helpers,
+        "polynomial_fit",
         lambda profile, **kw: ((45.0, 46.0), None, None, {}, {}),
     )
 
@@ -215,13 +236,15 @@ def test_happy_path_progress_callback_called_per_frame(monkeypatch):
     _patch_pipeline(monkeypatch, n_frames=4)
     setup = _make_setup(methods=[FittingMethod.TANGENT_FIT])
     monkeypatch.setattr(
-        _video_helpers, "polynomial_fit",
+        _video_helpers,
+        "polynomial_fit",
         lambda profile, **kw: ((45.0, 46.0), None, None, {}, {}),
     )
 
     progress_calls = []
     video_single_pass_tilted._single_pass_with_tilt(
-        setup, FakeWriter(),
+        setup,
+        FakeWriter(),
         lambda *a: progress_calls.append(a),
         lambda: False,
     )
@@ -233,6 +256,7 @@ def test_happy_path_progress_callback_called_per_frame(monkeypatch):
 # ---------------------------------------------------------------------------
 # touches_border skip
 # ---------------------------------------------------------------------------
+
 
 def test_touches_border_skip_writes_drop_off_edge_row(monkeypatch):
     _patch_pipeline(monkeypatch, n_frames=2, touches=True, tilt_angle=59.5)
@@ -256,6 +280,7 @@ def test_touches_border_skip_writes_drop_off_edge_row(monkeypatch):
 # ---------------------------------------------------------------------------
 # Error paths
 # ---------------------------------------------------------------------------
+
 
 def test_isolate_failure_writes_isolate_failed_row(monkeypatch):
     _patch_pipeline(monkeypatch, n_frames=2, isolate_raises=True)
@@ -288,17 +313,21 @@ def test_cpid_failure_writes_cpid_failed_row(monkeypatch):
 def test_per_fit_failure_isolated(monkeypatch):
     """One fit raising leaves the others populated."""
     _patch_pipeline(monkeypatch, n_frames=1)
-    setup = _make_setup(methods=[
-        FittingMethod.TANGENT_FIT,
-        FittingMethod.CIRCLE_FIT,
-        FittingMethod.YL_FIT,
-    ])
+    setup = _make_setup(
+        methods=[
+            FittingMethod.TANGENT_FIT,
+            FittingMethod.CIRCLE_FIT,
+            FittingMethod.YL_FIT,
+        ]
+    )
     monkeypatch.setattr(
-        _video_helpers, "polynomial_fit",
+        _video_helpers,
+        "polynomial_fit",
         lambda profile, **kw: ((45.0, 46.0), None, None, {}, {}),
     )
     monkeypatch.setattr(
-        _video_helpers, "circular_fit",
+        _video_helpers,
+        "circular_fit",
         lambda profile, display=False: ((40.0, 41.0), None, None, None, {}, {}),
     )
 
@@ -322,6 +351,7 @@ def test_per_fit_failure_isolated(monkeypatch):
 # ML model loading + short-window skip
 # ---------------------------------------------------------------------------
 
+
 def test_ml_model_loaded_once_when_enabled(monkeypatch):
     _patch_pipeline(monkeypatch, n_frames=5)
     setup = _make_setup(methods=[FittingMethod.ML_MODEL])
@@ -336,7 +366,8 @@ def test_ml_model_loaded_once_when_enabled(monkeypatch):
     # Stub out the ML predict path so it doesn't hit prepare_for_model /
     # experimental_pred with the canonical fake contour.
     monkeypatch.setattr(
-        video_single_pass_tilted, "_try_ml_single_pass",
+        video_single_pass_tilted,
+        "_try_ml_single_pass",
         lambda *a, **kw: None,
     )
 
@@ -351,7 +382,8 @@ def test_ml_not_loaded_when_disabled(monkeypatch):
     _patch_pipeline(monkeypatch, n_frames=3)
     setup = _make_setup(methods=[FittingMethod.TANGENT_FIT])
     monkeypatch.setattr(
-        _video_helpers, "polynomial_fit",
+        _video_helpers,
+        "polynomial_fit",
         lambda profile, **kw: ((45.0, 46.0), None, None, {}, {}),
     )
 
@@ -374,16 +406,18 @@ def test_ml_failure_does_not_block_other_fits(monkeypatch):
     the surviving (non-ML) angles. Mirrors evaluate_kristina's per-method
     try/except isolation."""
     _patch_pipeline(monkeypatch, n_frames=1)
-    setup = _make_setup(methods=[
-        FittingMethod.TANGENT_FIT, FittingMethod.ML_MODEL,
-    ])
+    setup = _make_setup(
+        methods=[
+            FittingMethod.TANGENT_FIT,
+            FittingMethod.ML_MODEL,
+        ]
+    )
     monkeypatch.setattr(
-        _video_helpers, "polynomial_fit",
+        _video_helpers,
+        "polynomial_fit",
         lambda profile, **kw: ((45.0, 46.0), None, None, {}, {}),
     )
-    monkeypatch.setattr(
-        video_single_pass_tilted, "_load_ml_model", lambda: object()
-    )
+    monkeypatch.setattr(video_single_pass_tilted, "_load_ml_model", lambda: object())
 
     def boom(*a, **kw):
         raise RuntimeError("synthetic ML failure")
@@ -405,11 +439,13 @@ def test_ml_failure_does_not_block_other_fits(monkeypatch):
 # Cancel
 # ---------------------------------------------------------------------------
 
+
 def test_cancel_mid_loop_keeps_partial_rows(monkeypatch):
     _patch_pipeline(monkeypatch, n_frames=10)
     setup = _make_setup(methods=[FittingMethod.TANGENT_FIT])
     monkeypatch.setattr(
-        _video_helpers, "polynomial_fit",
+        _video_helpers,
+        "polynomial_fit",
         lambda profile, **kw: ((45.0, 46.0), None, None, {}, {}),
     )
 
@@ -432,11 +468,13 @@ def test_cancel_mid_loop_keeps_partial_rows(monkeypatch):
 # Timestamp / filepath
 # ---------------------------------------------------------------------------
 
+
 def test_timestamp_computed_for_video(monkeypatch):
     _patch_pipeline(monkeypatch, n_frames=3, with_fps=True)
     setup = _make_setup(methods=[FittingMethod.TANGENT_FIT])
     monkeypatch.setattr(
-        _video_helpers, "polynomial_fit",
+        _video_helpers,
+        "polynomial_fit",
         lambda profile, **kw: ((45.0, 46.0), None, None, {}, {}),
     )
 
@@ -454,7 +492,8 @@ def test_filepath_is_image_path_for_directory(monkeypatch):
     _patch_pipeline(monkeypatch, n_frames=2)
     setup = _make_setup(methods=[FittingMethod.TANGENT_FIT])
     monkeypatch.setattr(
-        _video_helpers, "polynomial_fit",
+        _video_helpers,
+        "polynomial_fit",
         lambda profile, **kw: ((45.0, 46.0), None, None, {}, {}),
     )
 
@@ -471,13 +510,15 @@ def test_filepath_is_image_path_for_directory(monkeypatch):
 # Return-dict shape
 # ---------------------------------------------------------------------------
 
+
 def test_return_dict_shape_and_median_tilt(monkeypatch):
     """Return dict carries every documented key + median_tilt_angle is the
     np.median of per-frame detected angles (NaN-filtered)."""
     _patch_pipeline(monkeypatch, n_frames=3, tilt_angle=60.0)
     setup = _make_setup(methods=[FittingMethod.TANGENT_FIT])
     monkeypatch.setattr(
-        _video_helpers, "polynomial_fit",
+        _video_helpers,
+        "polynomial_fit",
         lambda profile, **kw: ((45.0, 46.0), None, None, {}, {}),
     )
 
@@ -486,10 +527,17 @@ def test_return_dict_shape_and_median_tilt(monkeypatch):
     )
 
     expected_keys = {
-        "status", "phase", "frames_processed", "frames_skipped",
-        "median_tilt_angle", "rotated_first_frame",
-        "left_contact_line", "right_contact_line", "pass1_cps",
-        "left_needle_x", "right_needle_x",
+        "status",
+        "phase",
+        "frames_processed",
+        "frames_skipped",
+        "median_tilt_angle",
+        "rotated_first_frame",
+        "left_contact_line",
+        "right_contact_line",
+        "pass1_cps",
+        "left_needle_x",
+        "right_needle_x",
     }
     assert set(result.keys()) == expected_keys
     assert result["median_tilt_angle"] == pytest.approx(60.0)
@@ -504,7 +552,8 @@ def test_return_dict_carries_rotated_first_frame(monkeypatch):
     _patch_pipeline(monkeypatch, n_frames=2)
     setup = _make_setup(methods=[FittingMethod.TANGENT_FIT])
     monkeypatch.setattr(
-        _video_helpers, "polynomial_fit",
+        _video_helpers,
+        "polynomial_fit",
         lambda profile, **kw: ((45.0, 46.0), None, None, {}, {}),
     )
 
@@ -521,7 +570,8 @@ def test_return_dict_contact_lines_populated_when_enough_cps(monkeypatch):
     _patch_pipeline(monkeypatch, n_frames=4)
     setup = _make_setup(methods=[FittingMethod.TANGENT_FIT])
     monkeypatch.setattr(
-        _video_helpers, "polynomial_fit",
+        _video_helpers,
+        "polynomial_fit",
         lambda profile, **kw: ((45.0, 46.0), None, None, {}, {}),
     )
 
@@ -543,24 +593,30 @@ def test_return_dict_contact_lines_populated_when_enough_cps(monkeypatch):
 # Once-per-video tilt (``_USE_PER_VIDEO_TILT``)
 # ---------------------------------------------------------------------------
 
+
 def test_derive_shared_tilt_medians_non_zero_samples(monkeypatch):
     """_derive_shared_tilt filters zeros before taking the median and
     reports the success rate over the full sample list."""
     frames = _fake_frames(4)
     monkeypatch.setattr(
-        video_single_pass_tilted, "load_frames",
+        video_single_pass_tilted,
+        "load_frames",
         lambda *a, **kw: iter(list(frames)),
     )
     angles = [60.0, 0.0, 60.5, 59.5]
     angle_iter = iter(angles)
     monkeypatch.setattr(
-        video_single_pass_tilted, "detect_tilt_angle",
+        video_single_pass_tilted,
+        "detect_tilt_angle",
         lambda img: next(angle_iter),
     )
 
     shared, samples, success_rate = video_single_pass_tilted._derive_shared_tilt(
-        "/fake/source", skip=10, total_samples=4,
-        progress=lambda *a: None, cancel=lambda: False,
+        "/fake/source",
+        skip=10,
+        total_samples=4,
+        progress=lambda *a: None,
+        cancel=lambda: False,
     )
 
     assert shared == pytest.approx(60.0)  # median of 60.0, 60.5, 59.5
@@ -574,7 +630,8 @@ def test_per_video_tilt_applied_to_every_frame(monkeypatch):
     _patch_pipeline(monkeypatch, n_frames=3, tilt_angle=59.8)
     monkeypatch.setattr(video_single_pass_tilted, "_USE_PER_VIDEO_TILT", True)
     monkeypatch.setattr(
-        video_single_pass_tilted, "_derive_shared_tilt",
+        video_single_pass_tilted,
+        "_derive_shared_tilt",
         lambda *a, **kw: (59.8, [60.0, 60.0, 59.5], 1.0),
     )
 
@@ -584,27 +641,26 @@ def test_per_video_tilt_applied_to_every_frame(monkeypatch):
         correct_tilt_calls.append(tilt_angle)
         return img, tilt_angle if tilt_angle is not None else 0.0
 
-    monkeypatch.setattr(
-        video_single_pass_tilted, "correct_tilt", spy_correct_tilt
-    )
+    monkeypatch.setattr(video_single_pass_tilted, "correct_tilt", spy_correct_tilt)
 
     setup = _make_setup(methods=[FittingMethod.TANGENT_FIT])
     monkeypatch.setattr(
-        _video_helpers, "polynomial_fit",
+        _video_helpers,
+        "polynomial_fit",
         lambda profile, **kw: ((45.0, 46.0), None, None, {}, {}),
     )
 
     writer = FakeWriter()
     video_single_pass_tilted._single_pass_with_tilt(
-        setup, writer, lambda *a: None, lambda: False,
+        setup,
+        writer,
+        lambda *a: None,
+        lambda: False,
     )
 
     assert len(correct_tilt_calls) == 3
     assert all(v == 59.8 for v in correct_tilt_calls)
-    assert all(
-        row["detected_tilt_angle"] == pytest.approx(59.8)
-        for row in writer.rows
-    )
+    assert all(row["detected_tilt_angle"] == pytest.approx(59.8) for row in writer.rows)
 
 
 def test_per_video_fallback_on_zero_success_rate(monkeypatch, capsys):
@@ -614,7 +670,8 @@ def test_per_video_fallback_on_zero_success_rate(monkeypatch, capsys):
     _patch_pipeline(monkeypatch, n_frames=2, tilt_angle=60.0)
     monkeypatch.setattr(video_single_pass_tilted, "_USE_PER_VIDEO_TILT", True)
     monkeypatch.setattr(
-        video_single_pass_tilted, "_derive_shared_tilt",
+        video_single_pass_tilted,
+        "_derive_shared_tilt",
         lambda *a, **kw: (float("nan"), [0.0, 0.0], 0.0),
     )
 
@@ -624,18 +681,20 @@ def test_per_video_fallback_on_zero_success_rate(monkeypatch, capsys):
         tilt_kwargs.append(tilt_angle)
         return img, 60.0
 
-    monkeypatch.setattr(
-        video_single_pass_tilted, "correct_tilt", spy_correct_tilt
-    )
+    monkeypatch.setattr(video_single_pass_tilted, "correct_tilt", spy_correct_tilt)
 
     setup = _make_setup(methods=[FittingMethod.TANGENT_FIT])
     monkeypatch.setattr(
-        _video_helpers, "polynomial_fit",
+        _video_helpers,
+        "polynomial_fit",
         lambda profile, **kw: ((45.0, 46.0), None, None, {}, {}),
     )
 
     video_single_pass_tilted._single_pass_with_tilt(
-        setup, FakeWriter(), lambda *a: None, lambda: False,
+        setup,
+        FakeWriter(),
+        lambda *a: None,
+        lambda: False,
     )
 
     assert tilt_kwargs == [None, None]  # per-frame auto-detect path
@@ -656,9 +715,7 @@ def test_default_flag_preserves_per_frame_tilt_behaviour(monkeypatch):
             "_derive_shared_tilt called with _USE_PER_VIDEO_TILT=False"
         )
 
-    monkeypatch.setattr(
-        video_single_pass_tilted, "_derive_shared_tilt", fail_helper
-    )
+    monkeypatch.setattr(video_single_pass_tilted, "_derive_shared_tilt", fail_helper)
 
     tilt_kwargs = []
 
@@ -666,18 +723,20 @@ def test_default_flag_preserves_per_frame_tilt_behaviour(monkeypatch):
         tilt_kwargs.append(tilt_angle)
         return img, 60.0
 
-    monkeypatch.setattr(
-        video_single_pass_tilted, "correct_tilt", spy_correct_tilt
-    )
+    monkeypatch.setattr(video_single_pass_tilted, "correct_tilt", spy_correct_tilt)
 
     setup = _make_setup(methods=[FittingMethod.TANGENT_FIT])
     monkeypatch.setattr(
-        _video_helpers, "polynomial_fit",
+        _video_helpers,
+        "polynomial_fit",
         lambda profile, **kw: ((45.0, 46.0), None, None, {}, {}),
     )
 
     video_single_pass_tilted._single_pass_with_tilt(
-        setup, FakeWriter(), lambda *a: None, lambda: False,
+        setup,
+        FakeWriter(),
+        lambda *a: None,
+        lambda: False,
     )
 
     assert tilt_kwargs == [None, None]
@@ -689,7 +748,8 @@ def test_cancel_during_stage1_returns_cancelled_without_stage2(monkeypatch):
     _patch_pipeline(monkeypatch, n_frames=3, tilt_angle=60.0)
     monkeypatch.setattr(video_single_pass_tilted, "_USE_PER_VIDEO_TILT", True)
     monkeypatch.setattr(
-        video_single_pass_tilted, "_derive_shared_tilt",
+        video_single_pass_tilted,
+        "_derive_shared_tilt",
         lambda *a, **kw: (float("nan"), [], 0.0),
     )
 
@@ -699,14 +759,15 @@ def test_cancel_during_stage1_returns_cancelled_without_stage2(monkeypatch):
         correct_tilt_calls.append(tilt_angle)
         return img, 60.0
 
-    monkeypatch.setattr(
-        video_single_pass_tilted, "correct_tilt", spy_correct_tilt
-    )
+    monkeypatch.setattr(video_single_pass_tilted, "correct_tilt", spy_correct_tilt)
 
     setup = _make_setup(methods=[FittingMethod.TANGENT_FIT])
     writer = FakeWriter()
     result = video_single_pass_tilted._single_pass_with_tilt(
-        setup, writer, lambda *a: None, lambda: True,
+        setup,
+        writer,
+        lambda *a: None,
+        lambda: True,
     )
 
     assert result["status"] == "cancelled"
@@ -749,19 +810,21 @@ def test_per_video_tilt_tightens_stride_for_short_video(monkeypatch, capsys):
         observed_skips.append(skip)
         return 60.0, [60.0] * total_samples, 1.0
 
-    monkeypatch.setattr(
-        video_single_pass_tilted, "_derive_shared_tilt", fake_derive
-    )
+    monkeypatch.setattr(video_single_pass_tilted, "_derive_shared_tilt", fake_derive)
 
     setup = _make_setup(methods=[FittingMethod.TANGENT_FIT])
     setup.video_skip_interval = 10  # user's requested stride
     monkeypatch.setattr(
-        _video_helpers, "polynomial_fit",
+        _video_helpers,
+        "polynomial_fit",
         lambda profile, **kw: ((45.0, 46.0), None, None, {}, {}),
     )
 
     video_single_pass_tilted._single_pass_with_tilt(
-        setup, FakeWriter(), lambda *a: None, lambda: False,
+        setup,
+        FakeWriter(),
+        lambda *a: None,
+        lambda: False,
     )
 
     assert observed_skips == [5]
@@ -781,19 +844,21 @@ def test_per_video_tilt_keeps_requested_stride_when_floor_met(monkeypatch, capsy
         observed_skips.append(skip)
         return 60.0, [60.0] * total_samples, 1.0
 
-    monkeypatch.setattr(
-        video_single_pass_tilted, "_derive_shared_tilt", fake_derive
-    )
+    monkeypatch.setattr(video_single_pass_tilted, "_derive_shared_tilt", fake_derive)
 
     setup = _make_setup(methods=[FittingMethod.TANGENT_FIT])
     setup.video_skip_interval = 10
     monkeypatch.setattr(
-        _video_helpers, "polynomial_fit",
+        _video_helpers,
+        "polynomial_fit",
         lambda profile, **kw: ((45.0, 46.0), None, None, {}, {}),
     )
 
     video_single_pass_tilted._single_pass_with_tilt(
-        setup, FakeWriter(), lambda *a: None, lambda: False,
+        setup,
+        FakeWriter(),
+        lambda *a: None,
+        lambda: False,
     )
 
     assert observed_skips == [10]
@@ -805,16 +870,22 @@ def test_derive_shared_tilt_all_zeros_returns_nan(monkeypatch):
     rate is 0.0 — the caller uses this to trigger the fallback."""
     frames = _fake_frames(3)
     monkeypatch.setattr(
-        video_single_pass_tilted, "load_frames",
+        video_single_pass_tilted,
+        "load_frames",
         lambda *a, **kw: iter(list(frames)),
     )
     monkeypatch.setattr(
-        video_single_pass_tilted, "detect_tilt_angle", lambda img: 0.0,
+        video_single_pass_tilted,
+        "detect_tilt_angle",
+        lambda img: 0.0,
     )
 
     shared, samples, success_rate = video_single_pass_tilted._derive_shared_tilt(
-        "/fake/source", skip=10, total_samples=3,
-        progress=lambda *a: None, cancel=lambda: False,
+        "/fake/source",
+        skip=10,
+        total_samples=3,
+        progress=lambda *a: None,
+        cancel=lambda: False,
     )
 
     assert math.isnan(shared)
@@ -823,9 +894,7 @@ def test_derive_shared_tilt_all_zeros_returns_nan(monkeypatch):
 
 
 def test_no_frames_raises(monkeypatch):
-    monkeypatch.setattr(
-        video_single_pass_tilted, "get_frame_count", lambda p: 0
-    )
+    monkeypatch.setattr(video_single_pass_tilted, "get_frame_count", lambda p: 0)
     setup = _make_setup(methods=[FittingMethod.TANGENT_FIT])
     with pytest.raises(ValueError, match="No frames"):
         video_single_pass_tilted._single_pass_with_tilt(

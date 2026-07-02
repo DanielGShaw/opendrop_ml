@@ -83,8 +83,7 @@ class OutputPage(ctk.CTkFrame):
         self.filename_entry = ctk.CTkEntry(
             output_frame, width=300, textvariable=self.filename_var
         )
-        self.filename_entry.grid(
-            row=2, column=1, padx=10, pady=(5, 10), sticky="ew")
+        self.filename_entry.grid(row=2, column=1, padx=10, pady=(5, 10), sticky="ew")
 
         # "❓" help icon next to filename
         help_label = ctk.CTkLabel(
@@ -151,20 +150,24 @@ class OutputPage(ctk.CTkFrame):
         tmp_dir = getattr(self.user_input_data, "_video_tmp_dir", None)
         if tmp_dir and os.path.isdir(tmp_dir):
             files = sorted(
-                f for f in os.listdir(tmp_dir)
+                f
+                for f in os.listdir(tmp_dir)
                 if os.path.isfile(os.path.join(tmp_dir, f))
             )
             if files:
                 files_text = "Files to save:\n  " + "\n  ".join(files)
             else:
                 files_text = "No files generated."
-            ctk.CTkLabel(
-                info_frame, text=files_text, anchor="w", justify="left"
-            ).grid(row=2, column=0, padx=10, pady=2, sticky="w")
+            ctk.CTkLabel(info_frame, text=files_text, anchor="w", justify="left").grid(
+                row=2, column=0, padx=10, pady=2, sticky="w"
+            )
 
         hint = _build_inspection_hint(self.user_input_data)
         ctk.CTkLabel(
-            info_frame, text=hint, anchor="w", justify="left",
+            info_frame,
+            text=hint,
+            anchor="w",
+            justify="left",
             text_color="gray",
         ).grid(row=3, column=0, padx=10, pady=(5, 10), sticky="w")
 

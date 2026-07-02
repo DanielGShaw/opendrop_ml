@@ -35,10 +35,10 @@ video_skip_interval: 10 # Pass 1 sampling rate for the two-pass pipeline
 # --- Analysis methods ---
 analysis_methods_ca: # Contact angle fitting methods
   TANGENT_FIT: 1
-  POLYNOMIAL_FIT: 1
-  CIRCLE_FIT: 1
-  ELLIPSE_FIT: 1
-  YL_FIT: 1
+  POLYNOMIAL_FIT: 0
+  CIRCLE_FIT: 0
+  ELLIPSE_FIT: 0
+  YL_FIT: 0
   ML_MODEL: 1 # Conan-ML prediction (supports contact angles 20°-180°)
 analysis_methods_pd: # IFT fitting methods
   INTERFACIAL_TENSION: true

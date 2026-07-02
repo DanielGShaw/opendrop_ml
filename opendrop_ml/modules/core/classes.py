@@ -123,12 +123,9 @@ class ExperimentalSetup(object):
 
                     setattr(self, key, value)
 
-
     def save_analysis_methods(self, yaml_path):
         """Write current analysis_methods_ca back to the yaml, preserving comments."""
-        method_values = {
-            m.name: v for m, v in self.analysis_methods_ca.items()
-        }
+        method_values = {m.name: v for m, v in self.analysis_methods_ca.items()}
         with open(yaml_path, "r") as f:
             lines = f.readlines()
 

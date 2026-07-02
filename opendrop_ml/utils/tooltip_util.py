@@ -96,9 +96,7 @@ def create_tooltip(widget, text: str, position="above-align-left"):
             hide_job = None
             pointer_x, pointer_y = widget.winfo_pointerxy()
             hovered = widget.winfo_containing(pointer_x, pointer_y)
-            if is_descendant(hovered, bind_target) or is_descendant(
-                hovered, tooltip
-            ):
+            if is_descendant(hovered, bind_target) or is_descendant(hovered, tooltip):
                 hide_job = widget.after(120, maybe_hide)
                 return
             tooltip.withdraw()

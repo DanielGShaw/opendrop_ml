@@ -147,6 +147,7 @@ def _auto_two_pass(user_input_data, writer, progress: ProgressCb, cancel: Cancel
 # Pass 1 — calibrate median contact lines
 # ---------------------------------------------------------------------------
 
+
 def _pass1_calibrate(
     source_path: str,
     skip: int,
@@ -194,10 +195,14 @@ def _pass1_calibrate(
     left_arr = np.array(left_cps)
     right_arr = np.array(right_cps)
     left_line = fit_contact_line(
-        left_arr, contours=contours_per_frame, side="left",
+        left_arr,
+        contours=contours_per_frame,
+        side="left",
     )
     right_line = fit_contact_line(
-        right_arr, contours=contours_per_frame, side="right",
+        right_arr,
+        contours=contours_per_frame,
+        side="right",
     )
     return left_line, right_line, left_arr, right_arr
 
@@ -205,6 +210,7 @@ def _pass1_calibrate(
 # ---------------------------------------------------------------------------
 # Pass 2 — per-frame analysis
 # ---------------------------------------------------------------------------
+
 
 def _pass2_analyze(
     source_path: str,
@@ -285,7 +291,7 @@ def _analyze_frame(
     if idx_left_cp > idx_right_cp:
         idx_left_cp, idx_right_cp = idx_right_cp, idx_left_cp
 
-    profile = contour[idx_left_cp: idx_right_cp + 1]
+    profile = contour[idx_left_cp : idx_right_cp + 1]
     if len(profile) < 3:
         return contact_angles, "profile_too_short"
 
@@ -293,13 +299,17 @@ def _analyze_frame(
     # others populated. Failures manifest as NaN columns in the unified CSV.
     if FittingMethod.TANGENT_FIT in enabled_methods:
         _try_polynomial(
-            contact_angles, FittingMethod.TANGENT_FIT,
-            profile, POLYNOMIAL_DEGREE_TANGENT,
+            contact_angles,
+            FittingMethod.TANGENT_FIT,
+            profile,
+            POLYNOMIAL_DEGREE_TANGENT,
         )
     if FittingMethod.POLYNOMIAL_FIT in enabled_methods:
         _try_polynomial(
-            contact_angles, FittingMethod.POLYNOMIAL_FIT,
-            profile, POLYNOMIAL_DEGREE_POLY,
+            contact_angles,
+            FittingMethod.POLYNOMIAL_FIT,
+            profile,
+            POLYNOMIAL_DEGREE_POLY,
         )
     if FittingMethod.CIRCLE_FIT in enabled_methods:
         _try_circular(contact_angles, profile)
@@ -310,8 +320,15 @@ def _analyze_frame(
 
     if FittingMethod.ML_MODEL in enabled_methods and ml_model is not None:
         _try_ml(
-            contact_angles, frame, contour, profile,
-            idx_left_cp, idx_right_cp, left_line, right_line, ml_model,
+            contact_angles,
+            frame,
+            contour,
+            profile,
+            idx_left_cp,
+            idx_right_cp,
+            left_line,
+            right_line,
+            ml_model,
         )
 
     return contact_angles, ""
@@ -330,9 +347,14 @@ def _try_ml(
 ) -> None:
     try:
         left_angle, right_angle = _predict_ml(
-            frame, contour, profile,
-            idx_left_cp, idx_right_cp,
-            left_line, right_line, ml_model,
+            frame,
+            contour,
+            profile,
+            idx_left_cp,
+            idx_right_cp,
+            left_line,
+            right_line,
+            ml_model,
         )
         out[FittingMethod.ML_MODEL] = {
             LEFT_ANGLE: float(left_angle),
@@ -345,6 +367,7 @@ def _try_ml(
 # ---------------------------------------------------------------------------
 # ML prediction with resolution-drop + window extraction.
 # ---------------------------------------------------------------------------
+
 
 def _predict_ml(
     frame: np.ndarray,
@@ -366,12 +389,12 @@ def _predict_ml(
     if idx_l_ml < _ML_N_SURFACE:
         left_side = contour_ml[:_ML_INPUT_LEN]
     else:
-        left_side = contour_ml[idx_l_ml - _ML_N_SURFACE: idx_l_ml + _ML_N_DROP]
+        left_side = contour_ml[idx_l_ml - _ML_N_SURFACE : idx_l_ml + _ML_N_DROP]
 
     if idx_r_ml > len(contour_ml) - _ML_N_SURFACE:
         right_side = contour_ml[-_ML_INPUT_LEN:]
     else:
-        right_side = contour_ml[idx_r_ml - _ML_N_DROP: idx_r_ml + _ML_N_SURFACE]
+        right_side = contour_ml[idx_r_ml - _ML_N_DROP : idx_r_ml + _ML_N_SURFACE]
 
     left_side = left_side[::-1].copy()
     left_side[:, 0] = -left_side[:, 0]
@@ -431,5 +454,3 @@ def _rerun_preprocess_downsampled(
     if idx_l > idx_r:
         idx_l, idx_r = idx_r, idx_l
     return contour_ml, idx_l, idx_r
-
-

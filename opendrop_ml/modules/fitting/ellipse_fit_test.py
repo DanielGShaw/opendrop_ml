@@ -91,9 +91,9 @@ def test_ellipse_fit_symmetric_drop_angles_close(symmetric_drop):
     CA, *_ = ellipse_fit(symmetric_drop)
 
     if len(CA) == 2:
-        assert abs(CA[0] - CA[1]) < 10, (
-            f"Symmetric drop angles differ by {abs(CA[0] - CA[1]):.1f}°"
-        )
+        assert (
+            abs(CA[0] - CA[1]) < 10
+        ), f"Symmetric drop angles differ by {abs(CA[0] - CA[1]):.1f}°"
 
 
 def test_ellipse_fit_recovers_ellipse_parameters(symmetric_drop):
@@ -192,9 +192,9 @@ def test_ellipse_fit_img_angles_match_ellipse_fit(mock_preprocess):
 
     assert len(CA_img) == len(CA_direct)
     for a_img, a_direct in zip(CA_img, CA_direct):
-        assert abs(a_img - a_direct) < 0.1, (
-            f"ellipse_fit_img={a_img:.2f} vs ellipse_fit={a_direct:.2f}"
-        )
+        assert (
+            abs(a_img - a_direct) < 0.1
+        ), f"ellipse_fit_img={a_img:.2f} vs ellipse_fit={a_direct:.2f}"
 
 
 # ---------- Helper functions ----------
@@ -237,8 +237,15 @@ def test_ellipse_line_intersection_horizontal_baseline():
     # Upright ellipse at (100,100), a=50 (horizontal), b=30 (vertical)
     # Horizontal line y=130 (bottom of ellipse) through CPs
     result = ellipse_line_intersection(
-        100, 100, 50, 30, 0,  # xc, yc, a, b, theta=0
-        50, 130, 150, 130,    # baseline from (50,130) to (150,130)
+        100,
+        100,
+        50,
+        30,
+        0,  # xc, yc, a, b, theta=0
+        50,
+        130,
+        150,
+        130,  # baseline from (50,130) to (150,130)
         display=False,
     )
     if result is not None:
@@ -260,4 +267,5 @@ def test_ellipse_closest_point():
 
 if __name__ == "__main__":
     import sys
+
     sys.exit(pytest.main(["-v", __file__]))

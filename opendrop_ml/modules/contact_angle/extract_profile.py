@@ -35,8 +35,7 @@ def extract_drop_profile(
             plt.close("all")
             fig = plt.figure()
             plt.imshow(raw_experiment.cropped_image)
-            plt.plot(raw_experiment.contour[:, 0],
-                     raw_experiment.contour[:, 1], "r,")
+            plt.plot(raw_experiment.contour[:, 0], raw_experiment.contour[:, 1], "r,")
             plt.title(
                 f"Extracted drop profile\nTheshold value of : {raw_experiment.ret}"
             )
@@ -56,8 +55,7 @@ def extract_drop_profile(
                 fig = plt.figure()  # Explicitly create a new figure window
                 plt.imshow(raw_experiment.cropped_image)
                 plt.plot(
-                    raw_experiment.contour[:,
-                                           0], raw_experiment.contour[:, 1], "r,"
+                    raw_experiment.contour[:, 0], raw_experiment.contour[:, 1], "r,"
                 )
                 plt.title(
                     f"Extracted drop profile\nThreshold value: {raw_experiment.ret:.2f}"
@@ -85,7 +83,7 @@ def extract_drop_profile(
 def image_crop(image, points):  # loaded in conan.py
     # return image[min(y):max(y), min(x),max(x)]
     return image[
-        int(points[0][1]): int(points[1][1]), int(points[0][0]): int(points[1][0])
+        int(points[0][1]) : int(points[1][1]), int(points[0][0]) : int(points[1][0])
     ]
 
 
@@ -117,8 +115,7 @@ def detect_edges(
     # error in PDT code - shouldn't threshold before Canny - otherwise Canny is useless
     # edges = cv2.Canny(blur,0.5*ret,ret) # detect edges using Canny edge detection
 
-    contours, hierarchy = cv2.findContours(
-        thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+    contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
 
     # contour_lengths = [length for length in cv2.arcLength(contours,0)] #list to hold all areas
     contour_lengths = [
@@ -181,12 +178,8 @@ def detect_edges(
     # find line between first and last contour points to estimate surface line
     N = np.shape(contour_trimmed)[0]
     A = 1
-    xx = np.concatenate(
-        (contour_trimmed[0:A, 0], contour_trimmed[N - A: N + 1, 0])
-    )
-    yy = np.concatenate(
-        (contour_trimmed[0:A, 1], contour_trimmed[N - A: N + 1, 1])
-    )
+    xx = np.concatenate((contour_trimmed[0:A, 0], contour_trimmed[N - A : N + 1, 0]))
+    yy = np.concatenate((contour_trimmed[0:A, 1], contour_trimmed[N - A : N + 1, 1]))
 
     coefficients = np.polyfit(xx, yy, 1)
     line = np.poly1d(coefficients)
@@ -223,5 +216,3 @@ def detect_edges(
 
 
 # def calculate_needle_diameter(raw_experiment, fitted_drop_data, tolerances):
-
-

@@ -14,8 +14,7 @@ def initialise_parameters(experimental_drop: ExperimentalDrop, drop_data: DropDa
     bond_number = calculate_Bond_number(
         experimental_drop.drop_data, x_apex, y_apex, radius_apex
     )
-    drop_data.params = [x_apex, y_apex,
-                        radius_apex, bond_number, omega_rotation]
+    drop_data.params = [x_apex, y_apex, radius_apex, bond_number, omega_rotation]
     # maybe calculate_max_s() to determine initial max_s - although current version can handle max_s being too small
     drop_data.max_s = 4.0
 
@@ -65,15 +64,13 @@ def fit_circle(xypoints):
 
 
 def calculate_Bond_number(xypoints, x_apex, y_apex, radius_apex):
-    r_z2 = scaled_radius_at_scaled_height(
-        xypoints, x_apex, y_apex, radius_apex, 2)
+    r_z2 = scaled_radius_at_scaled_height(xypoints, x_apex, y_apex, radius_apex, 2)
     if r_z2 > 0:  # JB edit 26/3/15
         bond = (
             0.1756 * r_z2**2 + 0.5234 * r_z2**3 - 0.2563 * r_z2**4
         )  # interpolated from numerical data
         return bond
-    r_z1 = scaled_radius_at_scaled_height(
-        xypoints, x_apex, y_apex, radius_apex, 1)
+    r_z1 = scaled_radius_at_scaled_height(xypoints, x_apex, y_apex, radius_apex, 1)
     #    if r_z1 > 0: #JB edit 26/3/15
     #        bond = 5.819 * (r_z1 - 1) # interpolated from numerical data
     #        return bond

@@ -20,11 +20,11 @@ from config import FIGURES_DIR, ANGLE_BUCKETS, ANGLE_BUCKET_LABELS
 # Method colors (hex) — matches legacy scripts exactly
 # ---------------------------------------------------------------------------
 COLORS = {
-    "tangent": "#1b9e77",   # green
+    "tangent": "#1b9e77",  # green
     "circular": "#7570b3",  # purple
-    "ellipse": "#585858",   # gray
-    "yl": "#000000",        # black
-    "ml": "#e41a1c",        # red
+    "ellipse": "#585858",  # gray
+    "yl": "#000000",  # black
+    "ml": "#e41a1c",  # red
 }
 
 # Transparent versions for left/right split in agreement scatter plots
@@ -34,11 +34,11 @@ COLORS_TRANSPARENT = {k: v + "00" for k, v in COLORS.items()}
 # Method markers — matches legacy scripts
 # ---------------------------------------------------------------------------
 MARKERS = {
-    "tangent": "^",     # triangle up
-    "circular": "o",    # circle
-    "ellipse": "d",     # diamond
-    "yl": "X",          # cross
-    "ml": "*",          # star
+    "tangent": "^",  # triangle up
+    "circular": "o",  # circle
+    "ellipse": "d",  # diamond
+    "yl": "X",  # cross
+    "ml": "*",  # star
 }
 
 # ---------------------------------------------------------------------------
@@ -60,11 +60,12 @@ MARKER_SIZE = 100
 # ---------------------------------------------------------------------------
 # Standard figure sizes
 # ---------------------------------------------------------------------------
-FIGSIZE_SINGLE = (8, 8)       # Single agreement plot
-FIGSIZE_COMBINED = (6, 6)     # Combined multi-method agreement
-FIGSIZE_SPEED = (14, 8)       # 2x2 speed grid
-FIGSIZE_BAR = (10, 6)         # Single bar chart
-FIGSIZE_SCATTER = (8, 6)      # Single scatter/error plot
+FIGSIZE_SINGLE = (8, 8)  # Single agreement plot
+FIGSIZE_COMBINED = (6, 6)  # Combined multi-method agreement
+FIGSIZE_SPEED = (14, 8)  # 2x2 speed grid
+FIGSIZE_BAR = (10, 6)  # Single bar chart
+FIGSIZE_SCATTER = (8, 6)  # Single scatter/error plot
+
 
 # ---------------------------------------------------------------------------
 # Matplotlib global settings — matches legacy
@@ -89,6 +90,7 @@ EXPERIMENTAL_AGREEMENT_METHODS = ["tangent", "circular", "ellipse", "ml"]
 # Helper functions
 # ---------------------------------------------------------------------------
 
+
 def angle_bucket(angle):
     """Classify angle into bucket label."""
     for (lo, hi), label in zip(ANGLE_BUCKETS, ANGLE_BUCKET_LABELS):
@@ -111,10 +113,12 @@ def save_figure(fig, subdir, filename):
 def add_agreement_line(ax, lims=(0, 180)):
     """Add perfect agreement diagonal and ±5% bands."""
     lo, hi = lims
-    ax.plot([lo, hi], [lo, hi], "-", color=COLORS["yl"],
-            label="Perfect Agreement", zorder=0)
-    ax.plot([0, hi * 0.95], [0, hi], "--", color=COLORS["yl"],
-            label=u"\u00B1 5%", zorder=0)
+    ax.plot(
+        [lo, hi], [lo, hi], "-", color=COLORS["yl"], label="Perfect Agreement", zorder=0
+    )
+    ax.plot(
+        [0, hi * 0.95], [0, hi], "--", color=COLORS["yl"], label="\u00B1 5%", zorder=0
+    )
     ax.plot([0, hi * 1.05], [0, hi], "--", color=COLORS["yl"], zorder=0)
 
 
@@ -129,8 +133,21 @@ def scatter_lr(ax, x_left, y_left, x_right, y_right, method, label=None):
     lbl = label if label else LABELS[method]
 
     # Left angles — transparent facecolor
-    ax.scatter(x_left, y_left, marker=marker, s=MARKER_SIZE,
-               facecolor=color + "00", edgecolor=color, label=lbl)
+    ax.scatter(
+        x_left,
+        y_left,
+        marker=marker,
+        s=MARKER_SIZE,
+        facecolor=color + "00",
+        edgecolor=color,
+        label=lbl,
+    )
     # Right angles — no label (avoid legend duplicate)
-    ax.scatter(x_right, y_right, marker=marker, s=MARKER_SIZE,
-               facecolor=color + "00", edgecolor=color)
+    ax.scatter(
+        x_right,
+        y_right,
+        marker=marker,
+        s=MARKER_SIZE,
+        facecolor=color + "00",
+        edgecolor=color,
+    )

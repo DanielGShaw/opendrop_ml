@@ -55,7 +55,9 @@ def load_data():
 
 def training_profile_length_bounds(df_syn):
     """Return (angles, min_lengths, max_lengths) grouped by ground-truth angle."""
-    grouped = df_syn.groupby("gt_angle")["profile_length"].agg(["min", "max"]).sort_index()
+    grouped = (
+        df_syn.groupby("gt_angle")["profile_length"].agg(["min", "max"]).sort_index()
+    )
     angles = grouped.index.tolist()
     min_lengths = grouped["min"].tolist()
     max_lengths = grouped["max"].tolist()
@@ -71,13 +73,17 @@ def plot_training_coverage(df_exp, df_syn):
     # ----- (a) Profile length vs angle -----
     ax = axes[0]
     ax.scatter(
-        df_exp["yl_left_angle"], df_exp["profile_length"],
-        facecolor="none", edgecolor="black",
+        df_exp["yl_left_angle"],
+        df_exp["profile_length"],
+        facecolor="none",
+        edgecolor="black",
         label=r"All experimental data ($\theta_{YL}$)",
     )
     ax.scatter(
-        df_exp["yl_right_angle"], df_exp["profile_length"],
-        facecolor="none", edgecolor="black",
+        df_exp["yl_right_angle"],
+        df_exp["profile_length"],
+        facecolor="none",
+        edgecolor="black",
     )
     ax.plot(angles, min_lens, "r", label=r"Training bounds ($\theta_{True}$)")
     ax.plot(angles, max_lens, "r")
@@ -89,16 +95,24 @@ def plot_training_coverage(df_exp, df_syn):
     ax = axes[1]
     filt = df_exp[df_exp["yl_RMSE"] < BOND_RMSE_FILTER_PX]
     ax.scatter(
-        filt["yl_left_angle"], filt["yl_bond_number"],
-        facecolor="none", edgecolor="black",
+        filt["yl_left_angle"],
+        filt["yl_bond_number"],
+        facecolor="none",
+        edgecolor="black",
         label=rf"YL fit RMSE < {BOND_RMSE_FILTER_PX:g} px ($\theta_{{YL}}$)",
     )
     ax.scatter(
-        filt["yl_right_angle"], filt["yl_bond_number"],
-        facecolor="none", edgecolor="black",
+        filt["yl_right_angle"],
+        filt["yl_bond_number"],
+        facecolor="none",
+        edgecolor="black",
     )
-    ax.plot(angles, [TRAIN_BO_MIN] * len(angles), "r",
-            label=r"Training bounds ($\theta_{True}$)")
+    ax.plot(
+        angles,
+        [TRAIN_BO_MIN] * len(angles),
+        "r",
+        label=r"Training bounds ($\theta_{True}$)",
+    )
     ax.plot(angles, [TRAIN_BO_MAX] * len(angles), "r")
     ax.set_xlabel(r"$\theta$")
     ax.set_ylabel("Bond number")

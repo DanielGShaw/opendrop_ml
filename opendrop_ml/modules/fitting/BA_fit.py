@@ -29,7 +29,6 @@ import os
 from datetime import datetime
 
 
-
 def dist(param, points):
     """
     Calculate the total distance from the calculated circle to the points
@@ -41,10 +40,8 @@ def dist(param, points):
              the provided parameters
     """
     *z, r = param
-    ar = [(np.linalg.norm(np.array(z) - np.array(point)) - r)
-          ** 2 for point in points]
+    ar = [(np.linalg.norm(np.array(z) - np.array(point)) - r) ** 2 for point in points]
     return np.sum(ar)
-
 
 
 def bashforth_adams(t, y, a, b):
@@ -350,12 +347,16 @@ def save_circle_baseline_debug_plot(profile, baseline_coeffs, circ_params):
     cx, cy, r = circ_params
 
     fig, ax = plt.subplots(figsize=(8, 6))
-    ax.plot(profile[:, 0], profile[:, 1], ".", color="tab:blue", alpha=0.7, label="Contour")
+    ax.plot(
+        profile[:, 0], profile[:, 1], ".", color="tab:blue", alpha=0.7, label="Contour"
+    )
 
     theta = np.linspace(0, 2 * np.pi, num=400)
     x_circle = cx + r * np.cos(theta)
     y_circle = cy + r * np.sin(theta)
-    ax.plot(x_circle, y_circle, "-", color="tab:green", linewidth=1.5, label="Fitted circle")
+    ax.plot(
+        x_circle, y_circle, "-", color="tab:green", linewidth=1.5, label="Fitted circle"
+    )
 
     x_min = float(np.min(profile[:, 0]))
     x_max = float(np.max(profile[:, 0]))
@@ -449,8 +450,7 @@ def yl_fit_errors(contour, yl_points, display=False):
 
     error_measures["MAE"] = sum([abs(error) for error in errors]) / len(errors)
     error_measures["MSE"] = sum([error**2 for error in errors]) / len(errors)
-    error_measures["RMSE"] = np.sqrt(
-        sum([error**2 for error in errors]) / len(errors))
+    error_measures["RMSE"] = np.sqrt(sum([error**2 for error in errors]) / len(errors))
     error_measures["Maximum error"] = max(errors)
 
     return error_measures
@@ -470,7 +470,7 @@ def analyze_frame(img, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
     idx_r = np.where((longest_contour == CPs_chosen[1]).all(axis=1))[0][0]
     if idx_l > idx_r:
         idx_l, idx_r = idx_r, idx_l
-    profile = longest_contour[idx_l:idx_r + 1]
+    profile = longest_contour[idx_l : idx_r + 1]
     CPs = {0: CPs_chosen[0], 1: CPs_chosen[1]}
 
     # Baseline coefficients [y-intercept, gradient].
@@ -544,9 +544,7 @@ def analyze_frame(img, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
                 plt.plot(points[:, 0], points[:, 1])
                 plt.show()
                 plt.close()
-            if (
-                0
-            ):  # Get points within 10 pixels of the circle edge
+            if 0:  # Get points within 10 pixels of the circle edge
                 # not appropriate for high bond numbers but will also work for low angle drops
                 points = np.array(
                     [
@@ -579,7 +577,8 @@ def analyze_frame(img, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
                 print("Running Bashforth-Adams fit...\n")
             cap_length, curv = fit_bashforth_adams(points).x
             thetas, pred, Bo = sim_bashforth_adams(
-                h, cap_length, curv, profile.shape[0])
+                h, cap_length, curv, profile.shape[0]
+            )
 
             # theta uses circle-based angle average
             theta = (phi["left"] + phi["right"]) / 2
@@ -595,13 +594,9 @@ def analyze_frame(img, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
 
             # Find fit point closest to each contact point, then read the
             # angle at that index — this allows independent left/right angles
-            dist = np.sqrt(
-                (fit[:, 0] - CPs[0][0]) ** 2 + (fit[:, 1] - CPs[0][1]) ** 2
-            )
+            dist = np.sqrt((fit[:, 0] - CPs[0][0]) ** 2 + (fit[:, 1] - CPs[0][1]) ** 2)
             idx_left = np.argmin(dist)
-            dist = np.sqrt(
-                (fit[:, 0] - CPs[1][0]) ** 2 + (fit[:, 1] - CPs[1][1]) ** 2
-            )
+            dist = np.sqrt((fit[:, 0] - CPs[1][0]) ** 2 + (fit[:, 1] - CPs[1][1]) ** 2)
             idx_right = np.argmin(dist)
 
             phi["left"] = -thetas[idx_left]
@@ -646,7 +641,9 @@ def analyze_frame(img, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
 
     if display:
         plt.imshow(img)
-        plt.plot(fit[idx_left:idx_right, 0], fit[idx_left:idx_right, 1], ",", color="cyan")
+        plt.plot(
+            fit[idx_left:idx_right, 0], fit[idx_left:idx_right, 1], ",", color="cyan"
+        )
         # plt.plot(fit[:,0],fit[:,1],'-', color='black', linewidth=2.5)
         # plt.plot(fit[:,0],fit[:,1],'-', color='white', linewidth=1)
         plt.title(
@@ -758,9 +755,7 @@ def yl_fit(profile, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
                 plt.plot(points[:, 0], points[:, 1])
                 plt.show()
                 plt.close()
-            if (
-                0
-            ):  # Get points within 10 pixels of the circle edge
+            if 0:  # Get points within 10 pixels of the circle edge
                 # not appropriate for high bond numbers but will also work for low angle drops
                 points = np.array(
                     [
@@ -793,7 +788,8 @@ def yl_fit(profile, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
                 print("Running Bashforth-Adams fit...\n")
             cap_length, curv = fit_bashforth_adams(points).x
             thetas, pred, Bo = sim_bashforth_adams(
-                h, cap_length, curv, profile.shape[0])
+                h, cap_length, curv, profile.shape[0]
+            )
 
             # theta uses circle-based angle average
             theta = (phi["left"] + phi["right"]) / 2
@@ -809,13 +805,9 @@ def yl_fit(profile, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
 
             # Find fit point closest to each contact point, then read the
             # angle at that index — this allows independent left/right angles
-            dist = np.sqrt(
-                (fit[:, 0] - CPs[0][0]) ** 2 + (fit[:, 1] - CPs[0][1]) ** 2
-            )
+            dist = np.sqrt((fit[:, 0] - CPs[0][0]) ** 2 + (fit[:, 1] - CPs[0][1]) ** 2)
             idx_left = np.argmin(dist)
-            dist = np.sqrt(
-                (fit[:, 0] - CPs[1][0]) ** 2 + (fit[:, 1] - CPs[1][1]) ** 2
-            )
+            dist = np.sqrt((fit[:, 0] - CPs[1][0]) ** 2 + (fit[:, 1] - CPs[1][1]) ** 2)
             idx_right = np.argmin(dist)
 
             phi["left"] = -thetas[idx_left]

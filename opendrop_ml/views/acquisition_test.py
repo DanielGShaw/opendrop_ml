@@ -149,11 +149,18 @@ def test_select_image_folder_empty_rejected(
 
 @patch("opendrop_ml.views.acquisition.get_middle_frame")
 @patch("opendrop_ml.views.acquisition.get_frame_count", return_value=50)
-@patch("opendrop_ml.views.acquisition.os.listdir", return_value=["img001.png", "img002.png"])
+@patch(
+    "opendrop_ml.views.acquisition.os.listdir",
+    return_value=["img001.png", "img002.png"],
+)
 @patch("opendrop_ml.views.acquisition.filedialog")
 def test_select_image_folder_valid(
-    mock_dialog, mock_listdir, mock_frame_count, mock_middle_frame,
-    component, mock_user_input,
+    mock_dialog,
+    mock_listdir,
+    mock_frame_count,
+    mock_middle_frame,
+    component,
+    mock_user_input,
 ):
     mock_dialog.askdirectory.return_value = "/path/to/images"
     dummy_frame = np.zeros((100, 100, 3), dtype=np.uint8)

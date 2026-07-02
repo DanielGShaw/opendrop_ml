@@ -54,8 +54,9 @@ class TestSelectRegions(unittest.TestCase):
 
         # set_drop_region applies info["bounds"] to crop isolate_contour's
         # full-image return (top=20, bottom=80, left=10, right=90).
-        self.assertTrue(np.array_equal(
-            experimental_drop.cropped_image, mock_image[20:80, 10:90]))
+        self.assertTrue(
+            np.array_equal(experimental_drop.cropped_image, mock_image[20:80, 10:90])
+        )
         self.assertEqual(experimental_setup.drop_region, [(10, 20), (90, 80)])
 
     @patch("opendrop_ml.modules.image.select_regions.user_roi")
@@ -90,8 +91,7 @@ class TestSelectRegions(unittest.TestCase):
         )
 
         # Verify if image_crop was called correctly
-        mock_image_crop.assert_called_once_with(
-            mock_image, [(10, 20), (90, 80)])
+        mock_image_crop.assert_called_once_with(mock_image, [(10, 20), (90, 80)])
 
         # Check if experimental_drop and experimental_setup handled user_roi's return value correctly
         self.assertEqual(experimental_setup.drop_region, [(10, 20), (90, 80)])
@@ -105,9 +105,7 @@ class TestSurfaceLine(unittest.TestCase):
     @patch("opendrop_ml.modules.image.select_regions.preprocess")
     def test_set_surface_line_auto(self, mock_preprocess):
         # preprocess returns (img_processed, CPs_chosen, longest_contour)
-        mock_contour = np.array(
-            [[0, 0], [1, 2], [2, 4], [3, 6], [4, 8], [5, 10]]
-        )
+        mock_contour = np.array([[0, 0], [1, 2], [2, 4], [3, 6], [4, 8], [5, 10]])
         mock_CPs = np.array([[1, 2], [4, 8]])
         mock_preprocess.return_value = (
             np.zeros((100, 100, 3), dtype=np.uint8),
@@ -129,10 +127,10 @@ class TestSurfaceLine(unittest.TestCase):
 
         # Verify drop_contour is the slice between the two CPs
         expected_contour = mock_contour[1:5]  # idx 1 to 4 inclusive
-        self.assertTrue(np.array_equal(
-            experimental_drop.drop_contour, expected_contour))
-        self.assertTrue(np.array_equal(
-            experimental_drop.contact_points, mock_CPs))
+        self.assertTrue(
+            np.array_equal(experimental_drop.drop_contour, expected_contour)
+        )
+        self.assertTrue(np.array_equal(experimental_drop.contact_points, mock_CPs))
 
 
 class TestDrawRectangle(unittest.TestCase):
@@ -140,8 +138,7 @@ class TestDrawRectangle(unittest.TestCase):
     @patch("opendrop_ml.modules.image.select_regions.cv2.rectangle")
     @patch.dict(
         "opendrop_ml.modules.image.select_regions.__dict__",
-        {"image_TEMP": np.zeros((100, 100, 3)),
-         "img": np.zeros((100, 100, 3))},
+        {"image_TEMP": np.zeros((100, 100, 3)), "img": np.zeros((100, 100, 3))},
     )
     def test_draw_rectangle(self, mock_rectangle):
         global drawing, ix, iy, fx, fy
@@ -183,8 +180,7 @@ class TestDrawLine(unittest.TestCase):
     @patch("opendrop_ml.modules.image.select_regions.cv2.line")
     @patch.dict(
         "opendrop_ml.modules.image.select_regions.__dict__",
-        {"image_TEMP": np.zeros((100, 100, 3)),
-         "img": np.zeros((100, 100, 3))},
+        {"image_TEMP": np.zeros((100, 100, 3)), "img": np.zeros((100, 100, 3))},
     )
     def test_draw_line(self, mock_line):
         global drawing, ix, iy, fx, fy

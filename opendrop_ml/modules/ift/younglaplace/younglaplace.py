@@ -151,9 +151,8 @@ def _bond_selected_plane(r: np.ndarray, z: np.ndarray, radius: float) -> float:
     """Estimate Bond number by method of selected plane."""
     z_ix = np.argsort(z)
     if np.searchsorted(z, 2.0 * radius, sorter=z_ix) < len(z):
-        lower, upper = np.searchsorted(
-            z, [1.95 * radius, 2.05 * radius], sorter=z_ix)
-        radii = np.abs(r[z_ix][lower: upper + 1])
+        lower, upper = np.searchsorted(z, [1.95 * radius, 2.05 * radius], sorter=z_ix)
+        radii = np.abs(r[z_ix][lower : upper + 1])
         x = radii.mean() / radius
         bond = max(0.10, 0.1756 * x**2 + 0.5234 * x**3 - 0.2563 * x**4)
     else:
@@ -211,10 +210,8 @@ class YoungLaplaceModel:
         e[np.signbit(e_r) != np.signbit(r)] *= -1
 
         residuals[:] = e
-        de_dBo[:] = -(e_r * dr_dBo + e_z * dz_dBo) / \
-            e  # derivative w.r.t. Bond number
-        de_dR[:] = -(e_r * r + e_z * z) / \
-            (radius * e)  # derivative w.r.t. radius
+        de_dBo[:] = -(e_r * dr_dBo + e_z * dz_dBo) / e  # derivative w.r.t. Bond number
+        de_dR[:] = -(e_r * r + e_z * z) / (radius * e)  # derivative w.r.t. radius
         # derivative w.r.t. apex (x, y)-coordinates
         de_dX0[:], de_dY0[:] = -Q @ (e_r, e_z) / e
         # derivative w.r.t. rotation

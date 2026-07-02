@@ -56,6 +56,7 @@ from opendrop_ml.modules.contact_angle.video_single_pass_tilted import (
     _derive_shared_tilt,
     _effective_tilt_stride,
 )
+
 # ML prediction helpers are pure and independent of the tilted vs
 # non-tilted control flow, so this pipeline reuses the non-tilted
 # two-pass implementation instead of duplicating ~100 lines of
@@ -122,7 +123,9 @@ def _auto_two_pass_with_tilt_correction(
         print(
             "  INFO: Pass 1 tightened stride from {} to {} "
             "to reach the {}-sample floor ({} frames total).".format(
-                requested_skip, effective_stride, _PASS1_TARGET_SAMPLES,
+                requested_skip,
+                effective_stride,
+                _PASS1_TARGET_SAMPLES,
                 total_frames,
             )
         )
@@ -189,16 +192,25 @@ def _auto_two_pass_with_tilt_correction(
 # Pass 1 — shared tilt + per-side median contact lines + IQR stats
 # ---------------------------------------------------------------------------
 
+
 def _pass1_calibrate_with_tilt(
     source_path: str,
     stride: int,
     total_samples: int,
     progress: ProgressCb,
     cancel: CancelCb,
-) -> Optional[Tuple[
-    float, np.ndarray, np.ndarray, Dict, Dict, np.ndarray, np.ndarray,
-    Optional[np.ndarray],
-]]:
+) -> Optional[
+    Tuple[
+        float,
+        np.ndarray,
+        np.ndarray,
+        Dict,
+        Dict,
+        np.ndarray,
+        np.ndarray,
+        Optional[np.ndarray],
+    ]
+]:
     """Derive shared tilt + median contact lines + residual IQR stats.
 
     Two-stage: (1a) sample every ``stride``-th frame via
@@ -235,7 +247,8 @@ def _pass1_calibrate_with_tilt(
     rotated_first_frame: Optional[np.ndarray] = None
     sample_idx = 0
     for frame, _frame_number, _meta in load_frames(
-        source_path, frame_step=stride,
+        source_path,
+        frame_step=stride,
     ):
         if cancel():
             return None
@@ -243,7 +256,9 @@ def _pass1_calibrate_with_tilt(
 
         try:
             corrected, _ = correct_tilt(
-                frame, tilt_angle=shared_tilt, crop=True,
+                frame,
+                tilt_angle=shared_tilt,
+                crop=True,
             )
         except Exception:
             progress(sample_idx, total_samples, "Pass 1")
@@ -261,7 +276,10 @@ def _pass1_calibrate_with_tilt(
         # giving CPID both true baseline CPs to find.
         try:
             contour, _threshold = isolate_contour(
-                corrected, crop=False, DISPLAY=False, blur=True,
+                corrected,
+                crop=False,
+                DISPLAY=False,
+                blur=True,
             )
         except Exception:
             progress(sample_idx, total_samples, "Pass 1")
@@ -290,17 +308,22 @@ def _pass1_calibrate_with_tilt(
         raise RuntimeError(
             "Pass 1 CP collection failed: {} successful samples "
             "(need at least {}).".format(
-                len(left_cps), _MIN_PASS1_SUCCESSES,
+                len(left_cps),
+                _MIN_PASS1_SUCCESSES,
             )
         )
 
     left_arr = np.array(left_cps)
     right_arr = np.array(right_cps)
     left_line, left_stats = fit_contact_line_with_stats(
-        left_arr, contours=contours_per_frame, side="left",
+        left_arr,
+        contours=contours_per_frame,
+        side="left",
     )
     right_line, right_stats = fit_contact_line_with_stats(
-        right_arr, contours=contours_per_frame, side="right",
+        right_arr,
+        contours=contours_per_frame,
+        side="right",
     )
 
     return (
@@ -318,6 +341,7 @@ def _pass1_calibrate_with_tilt(
 # ---------------------------------------------------------------------------
 # Pass 2 — per-frame analysis with shared-tilt rotation + CP-outlier gate
 # ---------------------------------------------------------------------------
+
 
 def _pass2_analyze_with_tilt(
     source_path: str,
@@ -392,7 +416,10 @@ def _analyze_frame_tilted(
     # far-side contact point on partially-rolled drops.
     try:
         contour, _threshold = isolate_contour(
-            corrected, crop=False, DISPLAY=False, blur=True,
+            corrected,
+            crop=False,
+            DISPLAY=False,
+            blur=True,
         )
     except Exception:
         return contact_angles, "isolate_failed"
@@ -422,12 +449,8 @@ def _analyze_frame_tilted(
         return contact_angles, "drop_off_edge"
 
     try:
-        idx_left_orig = int(
-            np.where((contour == cps_orig[0]).all(axis=1))[0][0]
-        )
-        idx_right_orig = int(
-            np.where((contour == cps_orig[1]).all(axis=1))[0][0]
-        )
+        idx_left_orig = int(np.where((contour == cps_orig[0]).all(axis=1))[0][0])
+        idx_right_orig = int(np.where((contour == cps_orig[1]).all(axis=1))[0][0])
     except IndexError:
         return contact_angles, "cpid_index_failed"
     if idx_left_orig > idx_right_orig:
@@ -447,19 +470,23 @@ def _analyze_frame_tilted(
     if idx_left_cp > idx_right_cp:
         idx_left_cp, idx_right_cp = idx_right_cp, idx_left_cp
 
-    profile = contour[idx_left_cp: idx_right_cp + 1]
+    profile = contour[idx_left_cp : idx_right_cp + 1]
     if len(profile) < 3:
         return contact_angles, "profile_too_short"
 
     if FittingMethod.TANGENT_FIT in enabled_methods:
         _try_polynomial(
-            contact_angles, FittingMethod.TANGENT_FIT,
-            profile, POLYNOMIAL_DEGREE_TANGENT,
+            contact_angles,
+            FittingMethod.TANGENT_FIT,
+            profile,
+            POLYNOMIAL_DEGREE_TANGENT,
         )
     if FittingMethod.POLYNOMIAL_FIT in enabled_methods:
         _try_polynomial(
-            contact_angles, FittingMethod.POLYNOMIAL_FIT,
-            profile, POLYNOMIAL_DEGREE_POLY,
+            contact_angles,
+            FittingMethod.POLYNOMIAL_FIT,
+            profile,
+            POLYNOMIAL_DEGREE_POLY,
         )
     if FittingMethod.CIRCLE_FIT in enabled_methods:
         _try_circular(contact_angles, profile)
@@ -471,9 +498,14 @@ def _analyze_frame_tilted(
     if FittingMethod.ML_MODEL in enabled_methods and ml_model is not None:
         try:
             left_angle, right_angle = _predict_ml(
-                corrected, contour, profile,
-                idx_left_cp, idx_right_cp,
-                left_line, right_line, ml_model,
+                corrected,
+                contour,
+                profile,
+                idx_left_cp,
+                idx_right_cp,
+                left_line,
+                right_line,
+                ml_model,
             )
             contact_angles[FittingMethod.ML_MODEL] = {
                 LEFT_ANGLE: float(left_angle),
@@ -518,4 +550,6 @@ def _perp_distance_point_to_line(point, line_points) -> float:
     denom = math.hypot(dx, dy)
     if denom == 0:
         return float("nan")
-    return abs(dy * px - dx * py + float(x2) * float(y1) - float(y2) * float(x1)) / denom
+    return (
+        abs(dy * px - dx * py + float(x2) * float(y1) - float(y2) * float(x1)) / denom
+    )

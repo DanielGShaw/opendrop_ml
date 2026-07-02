@@ -66,8 +66,7 @@ class ImageGallery(ctk.CTkFrame):
         self.index_entry = ctk.CTkEntry(self.button_frame, width=50)
         self.index_entry.grid(row=0, column=1)
         self.index_entry.insert(0, str(self.current_index + 1))
-        self.index_entry.bind(
-            "<Return>", lambda e: self.update_index_from_entry())
+        self.index_entry.bind("<Return>", lambda e: self.update_index_from_entry())
 
         # of N label
         self.total_label = ctk.CTkLabel(
@@ -119,8 +118,7 @@ class ImageGallery(ctk.CTkFrame):
         except Exception as e:
             print(f"Error opening image {selected_image}: {e}")
             self.current_image = None
-            self.image_label.configure(
-                image=None, text="Error displaying image")
+            self.image_label.configure(image=None, text="Error displaying image")
 
     # RESTORED display_image logic using fixed max_height
 
@@ -154,12 +152,10 @@ class ImageGallery(ctk.CTkFrame):
                 light_image=self.current_image, size=(new_width, new_height)
             )
 
-            self.image_label.configure(
-                image=self.tk_image, text="")  # Update label
+            self.image_label.configure(image=self.tk_image, text="")  # Update label
         except Exception as e:
             print(f"Error creating fixed size CTkImage: {e}")
-            self.image_label.configure(
-                image=None, text="Error displaying image")
+            self.image_label.configure(image=None, text="Error displaying image")
 
     def change_image(self, direction):
         """Change the currently displayed image based on the direction."""

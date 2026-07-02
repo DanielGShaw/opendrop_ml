@@ -15,8 +15,7 @@ import os
 import sys
 import matplotlib
 
-sys.path.insert(0, os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "../../")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 matplotlib.use("Agg")
 plt.show = lambda: None
 
@@ -81,8 +80,7 @@ def test_manual_threshold_processing(
         127,
         np.zeros_like(mock_raw_experiment.cropped_image),
     )
-    dummy_contour = np.array(
-        [[[50, 50]], [[51, 51]], [[52, 52]]], dtype=np.int32)
+    dummy_contour = np.array([[[50, 50]], [[51, 51]], [[52, 52]]], dtype=np.int32)
     mock_findContours.return_value = ([dummy_contour], None)
 
     extract_drop_profile(mock_raw_experiment, mock_user_inputs)
@@ -102,8 +100,7 @@ def test_otsu_auto_threshold(
         127,
         np.zeros_like(mock_raw_experiment.cropped_image),
     )
-    dummy_contour = np.array(
-        [[[50, 50]], [[51, 51]], [[52, 52]]], dtype=np.int32)
+    dummy_contour = np.array([[[50, 50]], [[51, 51]], [[52, 52]]], dtype=np.int32)
     mock_findContours.return_value = ([dummy_contour], None)
 
     extract_drop_profile(mock_raw_experiment, mock_user_inputs)
@@ -159,8 +156,7 @@ def mock_contour_data():
 
 @patch("cv2.findContours")
 def test_invalid_threshold_handling(mock_findContours, mock_raw_experiment):
-    dummy_contour = np.array(
-        [[[10, 10]], [[20, 20]], [[30, 30]]], dtype=np.int32)
+    dummy_contour = np.array([[[10, 10]], [[20, 20]], [[30, 30]]], dtype=np.int32)
     mock_findContours.return_value = ([dummy_contour], None)
 
     contour, _ = detect_edges(
@@ -179,8 +175,7 @@ def test_low_contrast_image_processing(mock_findContours):
     class DummyRawExp:
         image = low_contrast_img
 
-    dummy_contour = np.array(
-        [[[50, 50]], [[51, 51]], [[52, 52]]], dtype=np.int32)
+    dummy_contour = np.array([[[50, 50]], [[51, 51]], [[52, 52]]], dtype=np.int32)
     mock_findContours.return_value = ([dummy_contour], None)
 
     contour, _ = detect_edges(low_contrast_img, DummyRawExp(), None, 1, 127)
@@ -190,8 +185,7 @@ def test_low_contrast_image_processing(mock_findContours):
 @patch("cv2.findContours")
 def test_high_noise_handling(mock_findContours):
     mock_findContours.return_value = (
-        [np.random.randint(0, 100, (50, 1, 2), dtype=np.int32)
-         for _ in range(10)],
+        [np.random.randint(0, 100, (50, 1, 2), dtype=np.int32) for _ in range(10)],
         None,
     )
 

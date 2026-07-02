@@ -20,8 +20,7 @@ class FloatEntry:
         label_width=150,
         state_specify="normal",
     ):
-        self.label = ctk.CTkLabel(
-            frame, text=text_left, width=label_width, anchor="w")
+        self.label = ctk.CTkLabel(frame, text=text_left, width=label_width, anchor="w")
         self.label.grid(row=rw, column=cl, sticky="w", padx=padx, pady=pady)
 
         self.text_variable = ctk.StringVar()

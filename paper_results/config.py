@@ -8,7 +8,7 @@ import os
 
 # --- Directory layout ---
 PAPER_RESULTS_DIR = os.path.dirname(os.path.abspath(__file__))
-OPENDROP_DIR = os.path.dirname(PAPER_RESULTS_DIR)        # OpenDrop_OP/
+OPENDROP_DIR = os.path.dirname(PAPER_RESULTS_DIR)  # OpenDrop_OP/
 
 # --- Dataset paths (all in-tree under paper_results/data/) ---
 EXPERIMENTAL_DATA_DIR = os.path.join(PAPER_RESULTS_DIR, "data", "experimental")
@@ -22,9 +22,9 @@ FIGURES_DIR = os.path.join(PAPER_RESULTS_DIR, "figures")
 ML_MODEL_DIR = os.path.join(OPENDROP_DIR, "opendrop_ml", "modules", "ML_model")
 
 # --- Fitting constants ---
-N_TANGENT_POINTS = 10          # num_points for tangent / polynomial fit
+N_TANGENT_POINTS = 10  # num_points for tangent / polynomial fit
 POLYNOMIAL_DEGREE_TANGENT = 1  # degree=1 for tangent fit
-POLYNOMIAL_DEGREE_POLY = 2    # degree=2 for polynomial fit
+POLYNOMIAL_DEGREE_POLY = 2  # degree=2 for polynomial fit
 
 # --- Angle buckets for per-bucket analysis ---
 ANGLE_BUCKETS = [(0, 90), (90, 110), (110, 180)]

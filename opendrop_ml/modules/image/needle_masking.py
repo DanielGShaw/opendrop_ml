@@ -54,9 +54,7 @@ def extract_edges_two_contours(img, threshold_val=None, blur=False):
     contours, _ = cv2.findContours(binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
 
     if len(contours) < 2:
-        raise ValueError(
-            "Expected at least 2 contours, found {}".format(len(contours))
-        )
+        raise ValueError("Expected at least 2 contours, found {}".format(len(contours)))
 
     contours = [c.reshape(-1, 2) for c in contours]
 
@@ -135,9 +133,7 @@ def hough_baseline(edges_img, threshold=40, vertical_threshold=10):
     return np.array(converted[0])
 
 
-def detect_vertical_lines(
-    edges_img, hough_threshold=100, vertical_angle_threshold=30
-):
+def detect_vertical_lines(edges_img, hough_threshold=100, vertical_angle_threshold=30):
     """Detect two vertical needle lines using Hough Line Transform.
 
     Uses merge-count sorting to distinguish real needle lines (many
@@ -176,11 +172,7 @@ def detect_vertical_lines(
     for line in lines:
         x1, y1, x2, y2 = line[0]
         angle = abs(np.arctan2(y2 - y1, x2 - x1) * 180 / np.pi)
-        if (
-            90 - vertical_angle_threshold
-            <= angle
-            <= 90 + vertical_angle_threshold
-        ):
+        if 90 - vertical_angle_threshold <= angle <= 90 + vertical_angle_threshold:
             vertical_lines.append([x1, y1, x2, y2])
 
     if len(vertical_lines) < 2:
@@ -193,10 +185,7 @@ def detect_vertical_lines(
         should_merge = False
         for i, merged_line in enumerate(merged_lines):
             mx1, my1, mx2, my2 = merged_line
-            if (
-                abs(mx1 - x1) < merge_threshold
-                and abs(mx2 - x2) < merge_threshold
-            ):
+            if abs(mx1 - x1) < merge_threshold and abs(mx2 - x2) < merge_threshold:
                 should_merge = True
                 if max(y1, y2) > max(my1, my2):
                     merged_lines[i] = line
@@ -373,6 +362,7 @@ def mask_needle(
 # Private helpers
 # ---------------------------------------------------------------------------
 
+
 def _plot_debug(
     edge_img,
     left_orig,
@@ -394,9 +384,7 @@ def _plot_debug(
     ax1.imshow(edge_img, cmap="gray")
     ax1.set_title("Edge image + detected lines")
     if baseline is not None:
-        ax1.plot(
-            baseline[:, 0], baseline[:, 1], "g-", linewidth=2, label="Baseline"
-        )
+        ax1.plot(baseline[:, 0], baseline[:, 1], "g-", linewidth=2, label="Baseline")
     if left_line is not None:
         ax1.plot(
             [left_line[0][0], left_line[1][0]],
@@ -417,13 +405,9 @@ def _plot_debug(
 
     ax2.set_title("Isolated contours (after removal)")
     if len(left_iso) > 0:
-        ax2.plot(
-            left_iso[:, 0], left_iso[:, 1], ".", markersize=1, label="Left"
-        )
+        ax2.plot(left_iso[:, 0], left_iso[:, 1], ".", markersize=1, label="Left")
     if len(right_iso) > 0:
-        ax2.plot(
-            right_iso[:, 0], right_iso[:, 1], ".", markersize=1, label="Right"
-        )
+        ax2.plot(right_iso[:, 0], right_iso[:, 1], ".", markersize=1, label="Right")
     ax2.legend()
     ax2.set_aspect("equal")
     ax2.invert_yaxis()

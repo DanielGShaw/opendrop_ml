@@ -267,9 +267,7 @@ def main():
 
     # Collect images
     images = sorted(
-        f
-        for f in os.listdir(SENSITIVITY_DIR)
-        if f.lower().endswith(IMAGE_EXTENSIONS)
+        f for f in os.listdir(SENSITIVITY_DIR) if f.lower().endswith(IMAGE_EXTENSIONS)
     )
     n_images = len(images)
     print("Found {} images in {}".format(n_images, SENSITIVITY_DIR))
@@ -310,7 +308,9 @@ def main():
             result.update(gt)
 
         if "error" in result or "v05_error" in result or "v03_error" in result:
-            err_msg = result.get("error", result.get("v05_error", result.get("v03_error", "")))
+            err_msg = result.get(
+                "error", result.get("v05_error", result.get("v03_error", ""))
+            )
             failures += 1
             print("    ERROR: {}".format(str(err_msg)[:120]))
 

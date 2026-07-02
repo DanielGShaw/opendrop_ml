@@ -35,6 +35,7 @@ N_TANGENT_POINTS = 10
 # unified CSV (the writer fills NaN where a method key is missing).
 # ---------------------------------------------------------------------------
 
+
 def _try_polynomial(out: Dict, method: FittingMethod, profile, degree: int) -> None:
     try:
         with warnings.catch_warnings():
@@ -94,6 +95,7 @@ def _try_yl(out: Dict, profile) -> None:
 # is enabled.
 # ---------------------------------------------------------------------------
 
+
 def _load_ml_model():
     import tensorflow as tf
 
@@ -108,6 +110,7 @@ def _load_ml_model():
 # timestamp columns. Directories have per-frame filenames but no fps;
 # videos have fps but a single source path.
 # ---------------------------------------------------------------------------
+
 
 def _frame_filepath(source_path: str, meta: Dict) -> str:
     if "filename" in meta:

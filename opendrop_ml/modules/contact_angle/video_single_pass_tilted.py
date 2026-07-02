@@ -169,7 +169,8 @@ def _derive_shared_tilt(
     sample_angles: list = []
     sample_idx = 0
     for frame, _frame_number, _meta in load_frames(
-        source_path, frame_step=skip,
+        source_path,
+        frame_step=skip,
     ):
         if cancel():
             break
@@ -188,8 +189,9 @@ def _derive_shared_tilt(
     return float(np.median(non_zero)), sample_angles, success_rate
 
 
-def _single_pass_with_tilt(user_input_data, writer, progress: ProgressCb,
-                           cancel: CancelCb) -> dict:
+def _single_pass_with_tilt(
+    user_input_data, writer, progress: ProgressCb, cancel: CancelCb
+) -> dict:
     """Run the single-pass tilted-surface pipeline.
 
     Reads ``import_files[0]`` (a video file or image directory) off
@@ -236,12 +238,19 @@ def _single_pass_with_tilt(user_input_data, writer, progress: ProgressCb,
             print(
                 "  INFO: tilt-sample stride tightened from {} to {} "
                 "to reach the {}-sample floor ({} frames total).".format(
-                    requested_skip, skip, _PASS1_TARGET_SAMPLES, total_frames,
+                    requested_skip,
+                    skip,
+                    _PASS1_TARGET_SAMPLES,
+                    total_frames,
                 )
             )
         total_samples = math.ceil(total_frames / skip)
         shared_tilt, _samples, success_rate = _derive_shared_tilt(
-            source_path, skip, total_samples, progress, cancel,
+            source_path,
+            skip,
+            total_samples,
+            progress,
+            cancel,
         )
         if cancel():
             return _build_empty_return_dict(status="cancelled")
@@ -273,7 +282,9 @@ def _single_pass_with_tilt(user_input_data, writer, progress: ProgressCb,
         #    ``_USE_PER_VIDEO_TILT`` is active.
         try:
             corrected, tilt_angle = correct_tilt(
-                frame, tilt_angle=shared_tilt, crop=True,
+                frame,
+                tilt_angle=shared_tilt,
+                crop=True,
             )
         except Exception:
             writer.write_row(
@@ -293,9 +304,7 @@ def _single_pass_with_tilt(user_input_data, writer, progress: ProgressCb,
 
         # 2. Preprocess on the corrected image.
         try:
-            _, contour, _, _ = isolate_contour(
-                corrected, DISPLAY=False, blur=True
-            )
+            _, contour, _, _ = isolate_contour(corrected, DISPLAY=False, blur=True)
         except Exception:
             writer.write_row(
                 frame_number=frame_number + 1,
@@ -381,13 +390,17 @@ def _single_pass_with_tilt(user_input_data, writer, progress: ProgressCb,
         contact_angles: Dict = {}
         if FittingMethod.TANGENT_FIT in enabled:
             _try_polynomial(
-                contact_angles, FittingMethod.TANGENT_FIT,
-                profile, POLYNOMIAL_DEGREE_TANGENT,
+                contact_angles,
+                FittingMethod.TANGENT_FIT,
+                profile,
+                POLYNOMIAL_DEGREE_TANGENT,
             )
         if FittingMethod.POLYNOMIAL_FIT in enabled:
             _try_polynomial(
-                contact_angles, FittingMethod.POLYNOMIAL_FIT,
-                profile, POLYNOMIAL_DEGREE_POLY,
+                contact_angles,
+                FittingMethod.POLYNOMIAL_FIT,
+                profile,
+                POLYNOMIAL_DEGREE_POLY,
             )
         if FittingMethod.CIRCLE_FIT in enabled:
             _try_circular(contact_angles, profile)
@@ -412,9 +425,7 @@ def _single_pass_with_tilt(user_input_data, writer, progress: ProgressCb,
 
     left_line = _safe_fit_contact_line(left_cps)
     right_line = _safe_fit_contact_line(right_cps)
-    median_tilt = (
-        float(np.median(tilt_angles)) if tilt_angles else float("nan")
-    )
+    median_tilt = float(np.median(tilt_angles)) if tilt_angles else float("nan")
 
     return {
         "status": "cancelled" if cancel() else "completed",
@@ -423,12 +434,8 @@ def _single_pass_with_tilt(user_input_data, writer, progress: ProgressCb,
         "frames_skipped": frames_skipped,
         "median_tilt_angle": median_tilt,
         "rotated_first_frame": rotated_first_frame,
-        "left_contact_line": (
-            left_line.tolist() if left_line is not None else None
-        ),
-        "right_contact_line": (
-            right_line.tolist() if right_line is not None else None
-        ),
+        "left_contact_line": (left_line.tolist() if left_line is not None else None),
+        "right_contact_line": (right_line.tolist() if right_line is not None else None),
         "pass1_cps": {
             "left": np.asarray(left_cps).tolist() if left_cps else [],
             "right": np.asarray(right_cps).tolist() if right_cps else [],
@@ -444,8 +451,10 @@ def _single_pass_with_tilt(user_input_data, writer, progress: ProgressCb,
 # external Pass-1 line, not direct CPID indices).
 # ---------------------------------------------------------------------------
 
+
 def _extract_profile_between_cps(
-    contour: np.ndarray, cps: np.ndarray,
+    contour: np.ndarray,
+    cps: np.ndarray,
 ) -> Tuple[Optional[np.ndarray], Optional[int], Optional[int]]:
     try:
         idx_l = int(np.where((contour == cps[0]).all(axis=1))[0][0])
@@ -454,13 +463,14 @@ def _extract_profile_between_cps(
         return None, None, None
     if idx_l > idx_r:
         idx_l, idx_r = idx_r, idx_l
-    return contour[idx_l: idx_r + 1], idx_l, idx_r
+    return contour[idx_l : idx_r + 1], idx_l, idx_r
 
 
 # ---------------------------------------------------------------------------
 # ML predict — single-pass uses the reference's prepare_for_model path
 # (operates directly on the corrected image, no line-intercept windows).
 # ---------------------------------------------------------------------------
+
 
 def _try_ml_single_pass(out: Dict, corrected: np.ndarray, ml_model) -> None:
     try:

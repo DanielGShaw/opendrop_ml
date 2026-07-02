@@ -109,8 +109,7 @@ def create_platform_specific_tar_gz():
 
     for platform in dependencies_folder_names:
         src_tar = os.path.join("dist", f"{PACKAGE_NAME}-{VERSION}.tar.gz")
-        dst_tar = os.path.join(
-            "dist", f"{PACKAGE_NAME}-{VERSION}-{platform}.tar.gz")
+        dst_tar = os.path.join("dist", f"{PACKAGE_NAME}-{VERSION}-{platform}.tar.gz")
         tmp_dir = os.path.join("dist", f"tmp_{platform}_extract")
 
         # Duplicate the .tar.gz file
@@ -175,39 +174,40 @@ if __name__ == "__main__":
         PyInstaller.__main__.run(
             [
                 os.path.join(PACKAGE_NAME, "main.py"),
-
                 # add all root dir folders
                 # (to exclude unrelated files such as dependencies/)
-                "--collect-submodules", f"{PACKAGE_NAME}.modules",
-                "--collect-submodules", f"{PACKAGE_NAME}.views",
-                "--collect-submodules", f"{PACKAGE_NAME}.utils",
-
+                "--collect-submodules",
+                f"{PACKAGE_NAME}.modules",
+                "--collect-submodules",
+                f"{PACKAGE_NAME}.views",
+                "--collect-submodules",
+                f"{PACKAGE_NAME}.utils",
                 # collect all non-python files
-                "--add-data", f"{os.path.join(PACKAGE_NAME, 'assets')}{sep}assets",
-                "--add-data", f"{os.path.join(PACKAGE_NAME, 'user_config.yaml')}{sep}.",
-                "--add-data", f"{os.path.join(PACKAGE_NAME, 'modules', 'ML_model')}{sep}modules/ML_model",
-                "--add-data", f"{os.path.join(PACKAGE_NAME, 'experimental_data_set')}{sep}{os.path.join(PACKAGE_NAME, 'experimental_data_set')}",
-
+                "--add-data",
+                f"{os.path.join(PACKAGE_NAME, 'assets')}{sep}assets",
+                "--add-data",
+                f"{os.path.join(PACKAGE_NAME, 'user_config.yaml')}{sep}.",
+                "--add-data",
+                f"{os.path.join(PACKAGE_NAME, 'modules', 'ML_model')}{sep}modules/ML_model",
+                "--add-data",
+                f"{os.path.join(PACKAGE_NAME, 'experimental_data_set')}{sep}{os.path.join(PACKAGE_NAME, 'experimental_data_set')}",
                 # if fails due to missing files, can add them manually.
                 # add hidden imports that are not
                 # being collected automatically
-                "--hidden-import", "PIL._tkinter_finder",
-
+                "--hidden-import",
+                "PIL._tkinter_finder",
                 # clean up previous builds
                 "--clean",
-
                 # output in one directory instead of one huge exe file
                 "--onedir",
-
-                "--icon", os.path.join(
+                "--icon",
+                os.path.join(
                     PACKAGE_NAME,
                     "assets",
                     "opendrop.ico" if is_windows() else "opendrop.png",
                 ),
-
                 # no console window in the background
                 "--windowed",
-
                 # do not require answering 'yes/no' to create msi
                 "--noconfirm",
             ]
@@ -226,8 +226,7 @@ if __name__ == "__main__":
                 "Windows Installation complete. The OpenDrop msi is saved at dist/OpenDrop.msi."
             )
 
-    pip_package_name = os.path.join(
-        "dist", f"{PACKAGE_NAME}-{VERSION}.tar.gz")
+    pip_package_name = os.path.join("dist", f"{PACKAGE_NAME}-{VERSION}.tar.gz")
 
     if "--no-pip" not in sys.argv:
 
@@ -249,8 +248,7 @@ if __name__ == "__main__":
         if not os.path.exists(exe_path):
             print(f"Executable {exe_path} does not exist. Skipping test.")
         else:
-            result = subprocess.run(
-                f"{exe_path} > {log_path} 2>&1", shell=True)
+            result = subprocess.run(f"{exe_path} > {log_path} 2>&1", shell=True)
             if result.returncode != 0:
                 print(
                     "main.exe exited with errors. Outputting last 20 lines of output.log:"
@@ -269,13 +267,11 @@ if __name__ == "__main__":
         package_path = glob.glob(pip_package_name)
 
         if not package_path:
-            print(
-                f"Package {pip_package_name} does not exist. Skipping test.")
+            print(f"Package {pip_package_name} does not exist. Skipping test.")
         else:
             print(f"Found packages: {package_path}")
             run(f"pip install {package_path[-1]}", shell=True)
-            print(
-                f"Installed package {pip_package_name} successfully.")
+            print(f"Installed package {pip_package_name} successfully.")
             run("opendrop", shell=True)
             tested += 1
 
@@ -294,6 +290,5 @@ if __name__ == "__main__":
     if "--upload" in sys.argv:
         # Only one pip package is allowed per release
         print("Uploading to PyPI...")
-        combined_package_name = os.path.join(
-            "dist", f"{PACKAGE_NAME}-{VERSION}.tar.gz")
+        combined_package_name = os.path.join("dist", f"{PACKAGE_NAME}-{VERSION}.tar.gz")
         run(f"twine upload {combined_package_name}", shell=True)
