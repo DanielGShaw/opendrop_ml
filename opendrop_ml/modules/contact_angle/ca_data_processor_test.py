@@ -1,5 +1,4 @@
 import csv
-import math
 import os
 import sys
 
@@ -12,6 +11,7 @@ sys.path.insert(0, project_root)
 
 from opendrop_ml.modules.contact_angle import ca_data_processor
 from opendrop_ml.modules.contact_angle.ca_data_processor import (
+    CaDataProcessor,
     UnifiedCsvWriter,
     run_video_analysis,
 )
@@ -49,7 +49,7 @@ def test_experimental_setup_has_new_fields():
 
 
 def test_writer_header_is_unified(tmp_path, setup_with_two_methods):
-    """Header = 4 video columns + 2 enabled methods * (left, right)."""
+    """Header = 4 video columns + per-method (left, right, + fit-quality columns)."""
     path = str(tmp_path / "out.csv")
     UnifiedCsvWriter(path, setup_with_two_methods)
 
@@ -61,6 +61,8 @@ def test_writer_header_is_unified(tmp_path, setup_with_two_methods):
     assert header[5:] == [
         "tangent fit left angle",
         "tangent fit right angle",
+        "tangent fit left RMSE",
+        "tangent fit right RMSE",
         "ML model left angle",
         "ML model right angle",
     ]
@@ -71,18 +73,22 @@ def test_writer_all_columns_every_row(tmp_path, setup_with_two_methods):
     path = str(tmp_path / "out.csv")
     writer = UnifiedCsvWriter(path, setup_with_two_methods)
 
-    # Full population
+    # Full population, including TANGENT_FIT's RMSE error metrics
     writer.write_row(
         frame_number=0,
         timestamp_s=0.0,
         filepath="f0.png",
         error_status="",
         contact_angles={
-            FittingMethod.TANGENT_FIT: {LEFT_ANGLE: 45.0, RIGHT_ANGLE: 46.0},
+            FittingMethod.TANGENT_FIT: {
+                LEFT_ANGLE: 45.0,
+                RIGHT_ANGLE: 46.0,
+                "errors": {"RMSE left": 0.5, "RMSE right": 0.6},
+            },
             FittingMethod.ML_MODEL: {LEFT_ANGLE: 44.5, RIGHT_ANGLE: 45.5},
         },
     )
-    # Partial — only one method populated
+    # Partial — only one method populated, and it has no "errors" key at all
     writer.write_row(
         frame_number=1,
         timestamp_s=0.1,
@@ -114,16 +120,13 @@ def test_writer_all_columns_every_row(tmp_path, setup_with_two_methods):
     assert data_rows[0][4] == "nan"
     assert data_rows[1][4] == "nan"
     assert data_rows[2][4] == "nan"
-    # Full row: all numeric
-    assert data_rows[0][5:] == ["45.0", "46.0", "44.5", "45.5"]
-    # Partial row: ML_MODEL NaNs, TANGENT right NaN
-    assert data_rows[1][5] == "47.0"
-    assert data_rows[1][6] == "nan"
-    assert data_rows[1][7] == "nan"
-    assert data_rows[1][8] == "nan"
+    # Full row: angles + RMSE for TANGENT_FIT, angles only for ML_MODEL
+    assert data_rows[0][5:] == ["45.0", "46.0", "0.5", "0.6", "44.5", "45.5"]
+    # Partial row: TANGENT right/RMSE NaN (no "errors" key), ML_MODEL NaNs
+    assert data_rows[1][5:] == ["47.0", "nan", "nan", "nan", "nan", "nan"]
     # Empty row: all NaNs; error_status populated
     assert data_rows[2][3] == "contour_short"
-    assert data_rows[2][5:] == ["nan", "nan", "nan", "nan"]
+    assert data_rows[2][5:] == ["nan", "nan", "nan", "nan", "nan", "nan"]
 
 
 def test_writer_append_mode_preserves_header(tmp_path, setup_with_two_methods):
@@ -142,6 +145,102 @@ def test_writer_append_mode_preserves_header(tmp_path, setup_with_two_methods):
     assert rows[0][0] == "frame_number"
     assert rows[1][0] == "0"
     assert rows[2][0] == "1"
+
+
+def test_save_result_header_and_columns(tmp_path):
+    """save_result's header/columns come from analysis_methods_ca (not from
+    whichever keys happen to be present on row 0), and include each method's
+    fit-quality columns (RMSE, and Bond number for YL)."""
+    setup = ExperimentalSetup()
+    for method in setup.analysis_methods_ca:
+        setup.analysis_methods_ca[method] = False
+    setup.analysis_methods_ca[FittingMethod.TANGENT_FIT] = True
+    setup.analysis_methods_ca[FittingMethod.CIRCLE_FIT] = True
+    setup.analysis_methods_ca[FittingMethod.YL_FIT] = True
+    setup.import_files = ["f0.png", "f1.png"]
+    setup.frame_interval = 2.0
+
+    processor = CaDataProcessor()
+    processor.results = [
+        {
+            FittingMethod.TANGENT_FIT: {
+                LEFT_ANGLE: 45.0,
+                RIGHT_ANGLE: 46.0,
+                "errors": {"RMSE left": 0.5, "RMSE right": 0.6},
+            },
+            # CIRCLE_FIT failed on this frame: fits.py's perform_fits()
+            # never sets the key at all in that case (no None placeholder).
+            FittingMethod.YL_FIT: {
+                LEFT_ANGLE: 100.0,
+                RIGHT_ANGLE: 101.0,
+                "bond number": 0.42,
+                "errors": {"RMSE": 0.12},
+            },
+        },
+        {
+            FittingMethod.TANGENT_FIT: {LEFT_ANGLE: 47.0, RIGHT_ANGLE: 48.0},
+            FittingMethod.CIRCLE_FIT: {
+                LEFT_ANGLE: 50.0,
+                RIGHT_ANGLE: 51.0,
+                "errors": {"RMSE": 0.3},
+            },
+            FittingMethod.YL_FIT: {LEFT_ANGLE: None, RIGHT_ANGLE: None},
+        },
+    ]
+
+    path = str(tmp_path / "out.csv")
+    processor.save_result(setup, path)
+
+    rows = _read_csv(path)
+    header, row0, row1 = rows[0], rows[1], rows[2]
+
+    assert header == [
+        "Filename",
+        "Time (s)",
+        "tangent fit left angle",
+        "tangent fit right angle",
+        "tangent fit left RMSE",
+        "tangent fit right RMSE",
+        "circle fit left angle",
+        "circle fit right angle",
+        "circle fit fit RMSE",
+        "YL fit left angle",
+        "YL fit right angle",
+        "YL fit Bond number",
+        "YL fit fit RMSE",
+    ]
+    # Row 0: CIRCLE_FIT key absent entirely -> its columns are still present
+    # (schema is fixed by analysis_methods_ca, not by row 0's own keys).
+    assert row0 == [
+        "f0.png",
+        "0.0",
+        "45.0",
+        "46.0",
+        "0.5",
+        "0.6",
+        "nan",
+        "nan",
+        "nan",
+        "100.0",
+        "101.0",
+        "0.42",
+        "0.12",
+    ]
+    assert row1 == [
+        "f1.png",
+        "2.0",
+        "47.0",
+        "48.0",
+        "nan",
+        "nan",
+        "50.0",
+        "51.0",
+        "0.3",
+        "nan",
+        "nan",
+        "nan",
+        "nan",
+    ]
 
 
 def test_run_video_analysis_routes_to_two_pass(monkeypatch):

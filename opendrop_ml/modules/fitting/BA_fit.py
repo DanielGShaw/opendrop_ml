@@ -17,7 +17,6 @@ from scipy.spatial import distance
 from scipy.integrate import solve_ivp
 
 # from scipy.spatial.distance import cdist
-from sklearn.metrics import r2_score
 import scipy.optimize as opt
 
 # import numba
@@ -168,7 +167,6 @@ def fit_bashforth_adams(data):  # a=0.1,b= 3
     b = h / 2
     a = h / 10
     x_0 = (a, b)
-    bounds = [[0, 10], [0, 100]]
 
     optimum = opt.minimize(
         lambda x: calc_error(h, x), x_0, method="Nelder-Mead", options={"disp": False}
@@ -503,8 +501,6 @@ def analyze_frame(img, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
 
     # now fit the circle, this will be used as a starting point for the BA fit
     if fit_type in FitType:
-        width = max(profile[:, 0])
-
         res = fit_circle_leastsq(circle)
         *z, r = res
 
@@ -555,6 +551,7 @@ def analyze_frame(img, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
                 )
                 if display:
                     # print('points: ',points)
+                    h = np.max(points[:, 1])
                     plt.title(
                         "points near drop edge\nh="
                         + str(h)
@@ -714,8 +711,6 @@ def yl_fit(profile, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
 
     # now fit the circle, this will be used as a starting point for the BA fit
     if fit_type in FitType:
-        width = max(profile[:, 0])
-
         res = fit_circle_leastsq(circle)
         *z, r = res
 
@@ -766,6 +761,7 @@ def yl_fit(profile, lim=10, fit_type=FitType.BASHFORTH_ADAMS, display=False):
                 )
                 if display:
                     # print('points: ',points)
+                    h = np.max(points[:, 1])
                     plt.title(
                         "points near drop edge\nh="
                         + str(h)

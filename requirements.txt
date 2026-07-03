@@ -11,6 +11,7 @@ customtkinter==5.2.2
 cycler==0.11.0
 darkdetect==0.8.0
 exceptiongroup==1.2.2
+flake8==7.1.2 # linter
 flatbuffers==23.5.26
 fonttools==4.38.0
 gast==0.4.0

@@ -452,8 +452,6 @@ def auto_crop(
     original = img.copy()
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     H, W = gray.shape
-    # Applying 7x7 Gaussian Blur
-    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
     # 1) rough mask via inverted Otsu + largest CC
     threshold = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
     # n_labels, labels, stats, _ = cv2.connectedComponentsWithStats(thr, 8)
@@ -591,16 +589,6 @@ def auto_crop(
             dtype=np.int32,
         )
 
-    # Create the bounding box for the entire ROI
-    x1_roi = x
-    y1_roi = y
-    x2_roi = x + bw
-    y2_roi = y + bh
-    # Create the absolute bounding box for the entire ROI
-    abs_bounds = create_bounds_array(x1_roi, y1_roi, x2_roi, y2_roi)
-    # Create the cropped bounding box for the entire ROI
-    crop_bounds = create_bounds_array(x1_roi, y1_roi, x2_roi, y2_roi)
-    crop_roi = original[y1_roi:y2_roi, x1_roi:x2_roi]
     if not found_expansion_point:
         needle_pts = pts[pts[:, 0] < row_thresh]
         pts_xy_needle = needle_pts[:, ::-1]  # (x, y) coordinates
@@ -610,22 +598,6 @@ def auto_crop(
             needle_x2_roi = np.max(pts_xy_needle[:, 0])
             needle_y1_roi = np.min(pts_xy_needle[:, 1])
             needle_y2_roi = np.max(pts_xy_needle[:, 1])
-            needle_abs_bounds = create_bounds_array(
-                x + needle_x1_roi - padding,
-                y + needle_y1_roi,
-                x + needle_x2_roi + padding,
-                y + needle_y2_roi - padding,
-            )
-            needle_crop_bounds = create_bounds_array(
-                needle_x1_roi - padding,
-                needle_y1_roi,
-                needle_x2_roi + padding,
-                needle_y2_roi - padding,
-            )
-            # Crop the original image using the final absolute bounding box coordinates
-            crop = original[
-                needle_y1_roi:needle_y2_roi, x + needle_x1_roi : x + needle_x2_roi
-            ]
             needle_rect = Rect2(
                 (x + needle_x1_roi, y + needle_y1_roi),
                 (x + needle_x2_roi, y + needle_y2_roi),
@@ -640,15 +612,6 @@ def auto_crop(
             needle_x2_roi = np.max(pts_xy_needle[:, 0]) + padding
             needle_y1_roi = np.min(pts_xy_needle[:, 1])
             needle_y2_roi = np.max(pts_xy_needle[:, 1]) - padding
-            needle_abs_bounds = create_bounds_array(
-                x + needle_x1_roi,
-                y + needle_y1_roi,
-                x + needle_x2_roi,
-                y + needle_y2_roi,
-            )
-            needle_crop_bounds = create_bounds_array(
-                needle_x1_roi - padding, needle_y1_roi, needle_x2_roi, needle_y2_roi
-            )
             needle_rect = Rect2(
                 (x + needle_x1_roi, y + needle_y1_roi),
                 (x + needle_x2_roi, y + needle_y2_roi),
@@ -662,15 +625,8 @@ def auto_crop(
             drop_x2_roi = np.max(pts_xy_drop[:, 0]) + padding
             drop_y1_roi = np.min(pts_xy_drop[:, 1])  # - padding
             drop_y2_roi = np.max(pts_xy_drop[:, 1]) + padding
-            drop_abs_bounds = create_bounds_array(
-                x + drop_x1_roi, y + drop_y1_roi, x + drop_x2_roi, y + drop_y2_roi
-            )
-            drop_crop_bounds = create_bounds_array(
-                drop_x1_roi, drop_y1_roi, drop_x2_roi, drop_y2_roi
-            )
             drop_rect = Rect2(
                 (x + drop_x1_roi, y + drop_y1_roi), (x + drop_x2_roi, y + drop_y2_roi)
             )
 
-        crop = original[drop_y1_roi:drop_y2_roi, x + drop_x1_roi : x + drop_x2_roi]
         return drop_rect, needle_rect

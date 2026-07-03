@@ -135,7 +135,7 @@ def grabanimage() -> None:
         return im
 
     for i in range(ramp_frames):
-        temp = get_image()
+        get_image()
     print("Taking image...")
     # Take the actual image we want to keep
     camera_capture = get_image()

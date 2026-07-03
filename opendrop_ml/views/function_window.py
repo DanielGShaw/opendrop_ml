@@ -5,7 +5,7 @@ from opendrop_ml.modules.core.classes import (
     ExperimentalDrop,
     DropData,
 )
-from opendrop_ml.utils.os import resource_path, is_windows
+from opendrop_ml.utils.os import resource_path
 from opendrop_ml.views.helper.validation import (
     validate_user_input_data_ift,
     validate_user_input_data_cm,
@@ -24,7 +24,7 @@ from opendrop_ml.views.output_page import OutputPage
 from opendrop_ml.utils.enums import FunctionType, Stage, Move, RegionSelect
 
 from customtkinter import CTkFrame, CTkButton, CTkToplevel, get_appearance_mode
-from tkinter import messagebox, PhotoImage
+from tkinter import messagebox
 from typing import List, Callable
 from datetime import datetime
 import os

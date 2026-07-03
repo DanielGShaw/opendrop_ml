@@ -1,5 +1,4 @@
 from opendrop_ml.views.component.preparation import (
-    create_plotting_checklist,
     create_analysis_checklist_ift,
     create_user_input_fields_ift,
 )
@@ -65,7 +64,6 @@ class IftPreparation(ctk.CTkFrame):
         # Create user input fields and analysis fields on the left
         self.create_user_input_fields(self.input_fields_frame)
         self.create_analysis_method_fields(self.input_fields_frame)
-        self.create_fitting_view_fields(self.input_fields_frame)
 
     def create_user_input_fields(self, parent_frame):
         """Create and pack user input fields into the specified parent frame."""
@@ -81,10 +79,3 @@ class IftPreparation(ctk.CTkFrame):
             self, parent_frame, self.user_input_data
         )
         analysis_frame.grid(row=1, column=0, sticky="nsew", pady=(10, 0))
-
-    def create_fitting_view_fields(self, parent_frame):
-        """Create and pack Statisitcal Output fields into the specified parent frame."""
-        fitting_view_frame = create_plotting_checklist(
-            self, parent_frame, self.user_input_data
-        )
-        fitting_view_frame.grid(row=2, column=0, sticky="nsew", pady=10)  # Use row 1

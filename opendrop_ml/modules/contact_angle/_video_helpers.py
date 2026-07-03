@@ -40,7 +40,7 @@ def _try_polynomial(out: Dict, method: FittingMethod, profile, degree: int) -> N
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", np.RankWarning)
-            angles, *_ = polynomial_fit(
+            angles, _cps, _tangent_lines, errors, _timings = polynomial_fit(
                 profile,
                 num_points=N_TANGENT_POINTS,
                 polynomial_degree=degree,
@@ -49,6 +49,7 @@ def _try_polynomial(out: Dict, method: FittingMethod, profile, degree: int) -> N
         out[method] = {
             LEFT_ANGLE: float(angles[0]),
             RIGHT_ANGLE: float(angles[1]),
+            "errors": errors,
         }
     except Exception:
         pass
@@ -56,10 +57,13 @@ def _try_polynomial(out: Dict, method: FittingMethod, profile, degree: int) -> N
 
 def _try_circular(out: Dict, profile) -> None:
     try:
-        angles, *_ = circular_fit(profile, display=False)
+        angles, _center, _radius, _intercepts, errors, _timings = circular_fit(
+            profile, display=False
+        )
         out[FittingMethod.CIRCLE_FIT] = {
             LEFT_ANGLE: float(angles[0]),
             RIGHT_ANGLE: float(angles[1]),
+            "errors": errors,
         }
     except Exception:
         pass
@@ -67,12 +71,15 @@ def _try_circular(out: Dict, profile) -> None:
 
 def _try_ellipse(out: Dict, profile) -> None:
     try:
-        angles, *_ = ellipse_fit(profile, display=False)
+        angles, _intercepts, _t, _ab, _phi_deg, errors, _timings = ellipse_fit(
+            profile, display=False
+        )
         if not angles:
             return
         out[FittingMethod.ELLIPSE_FIT] = {
             LEFT_ANGLE: float(angles[0]),
             RIGHT_ANGLE: float(angles[1]),
+            "errors": errors,
         }
     except Exception:
         pass
@@ -82,9 +89,13 @@ def _try_yl(out: Dict, profile) -> None:
     try:
         result = yl_fit(profile, display=False)
         angles = result[0]
+        bond_number = result[1]
+        errors = result[6]
         out[FittingMethod.YL_FIT] = {
             LEFT_ANGLE: float(angles[0]),
             RIGHT_ANGLE: float(angles[1]),
+            "bond number": bond_number,
+            "errors": errors,
         }
     except Exception:
         pass

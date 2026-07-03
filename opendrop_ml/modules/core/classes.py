@@ -170,6 +170,13 @@ class ExperimentalDrop(object):
         # self.img_src = 2
 
 
+def cubic_interpolation_function(y_1, y_2, k_1, k_2, delta_x, t):
+    """Hermite cubic interpolation between (y_1, k_1) and (y_2, k_2) over delta_x, at position t."""
+    a = k_1 * delta_x - (y_2 - y_1)
+    b = -k_2 * delta_x + (y_2 - y_1)
+    return (1 - t) * y_1 + t * y_2 + t * (1 - t) * (a * (1 - t) + b * t)
+
+
 class DropData(object):
     def __init__(self):
         self.previous_guess = None

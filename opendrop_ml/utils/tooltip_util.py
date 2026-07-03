@@ -1,7 +1,3 @@
-import tkinter as tk
-import platform
-
-
 def create_tooltip(widget, text: str, position="above-align-left"):
     import tkinter as tk
     import platform

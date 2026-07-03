@@ -1,14 +1,11 @@
 from opendrop_ml.modules.image.select_regions import (
     set_drop_region,
     set_surface_line,
-    user_line,
     draw_rectangle,
     draw_line,
     optimized_path,
-    intersection,
 )
 from opendrop_ml.modules.core.classes import ExperimentalSetup, ExperimentalDrop
-from opendrop_ml.modules.fitting.fits import perform_fits
 from opendrop_ml.utils.enums import RegionSelect, ThresholdSelect
 
 from itertools import cycle
@@ -224,7 +221,7 @@ class TestOptimizedPath(unittest.TestCase):
         with patch(
             "opendrop_ml.modules.image.select_regions.distance", side_effect=cycle([1])
         ) as mock_distance:
-            result = optimized_path(coords, start)
+            optimized_path(coords, start)
 
             # Add debug output
             print("Distance call count:", mock_distance.call_count)

@@ -168,7 +168,6 @@ def circular_fit_img(img, display=False):
     rise = CPs[1][1] - CPs[0][1]
     run = CPs[1][0] - CPs[0][0]
     slope = rise / run
-    baseline = [(CPs[0][0], CPs[0][1]), slope]
     c = CPs[0][1] - (slope * CPs[0][0])
     baseline_x = np.linspace(1, img.shape[1], 100)
     baseline_y = slope * baseline_x + c
@@ -200,7 +199,6 @@ def circular_fit_img(img, display=False):
     # Ri_2       = calc_R(*center_2)
     Ri_2 = np.sqrt((x - xc_2) ** 2 + (y - yc_2) ** 2)
     R_2 = Ri_2.mean()
-    residu_2 = sum((Ri_2 - R_2) ** 2)
 
     if 1:  # round circle parameters so that it works for pixelated points
         center_2 = [round(xc_2), round(yc_2)]
@@ -336,7 +334,6 @@ def circular_fit(drop, display=False):
     rise = CPs[1][1] - CPs[0][1]
     run = CPs[1][0] - CPs[0][0]
     slope = rise / run
-    baseline = [(CPs[0][0], CPs[0][1]), slope]
     c = CPs[0][1] - (slope * CPs[0][0])
     baseline_x = np.linspace(1, max(drop[:, 0]), 100)
     baseline_y = slope * baseline_x + c
@@ -364,7 +361,6 @@ def circular_fit(drop, display=False):
     # Ri_2       = calc_R(*center_2)
     Ri_2 = np.sqrt((x - xc_2) ** 2 + (y - yc_2) ** 2)
     R_2 = Ri_2.mean()
-    residu_2 = sum((Ri_2 - R_2) ** 2)
 
     if 1:  # round circle parameters so that it works for pixelated points
         center_2 = [round(xc_2), round(yc_2)]

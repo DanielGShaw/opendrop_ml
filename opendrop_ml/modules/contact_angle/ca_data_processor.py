@@ -15,12 +15,45 @@ from opendrop_ml.utils.enums import FittingMethod, ThresholdSelect
 from opendrop_ml.utils.config import LEFT_ANGLE, RIGHT_ANGLE, CONTACT_POINTS
 from opendrop_ml.utils.os import resource_path
 
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, List, Optional
 import csv
 import math
 import os
-import numpy as np
 import copy
+
+
+# Per-method fit-quality columns appended after left/right angle. These
+# surface the RMSE (and, for YL, the Bond number) that perform_fits()
+# already computes into contact_angles[method]["errors"]/["bond number"]
+# but that both CSV writers used to discard.
+_TANGENT_POLY_EXTRA_COLUMNS = ["left RMSE", "right RMSE"]
+_CIRCLE_ELLIPSE_EXTRA_COLUMNS = ["fit RMSE"]
+_YL_EXTRA_COLUMNS = ["Bond number", "fit RMSE"]
+
+
+def _extra_columns_for_method(method: FittingMethod) -> List[str]:
+    """Column suffixes appended after left/right angle for a fitting method."""
+    if method in (FittingMethod.TANGENT_FIT, FittingMethod.POLYNOMIAL_FIT):
+        return _TANGENT_POLY_EXTRA_COLUMNS
+    if method in (FittingMethod.CIRCLE_FIT, FittingMethod.ELLIPSE_FIT):
+        return _CIRCLE_ELLIPSE_EXTRA_COLUMNS
+    if method == FittingMethod.YL_FIT:
+        return _YL_EXTRA_COLUMNS
+    return []
+
+
+def _extra_values_for_method(method: FittingMethod, method_data: Dict) -> List:
+    """Extract extra column values for a method, in the same order as
+    _extra_columns_for_method. Missing values are None (callers serialise
+    as needed)."""
+    errors = method_data.get("errors") or {}
+    if method in (FittingMethod.TANGENT_FIT, FittingMethod.POLYNOMIAL_FIT):
+        return [errors.get("RMSE left"), errors.get("RMSE right")]
+    if method in (FittingMethod.CIRCLE_FIT, FittingMethod.ELLIPSE_FIT):
+        return [errors.get("RMSE")]
+    if method == FittingMethod.YL_FIT:
+        return [method_data.get("bond number"), errors.get("RMSE")]
+    return []
 
 
 class UnifiedCsvWriter:
@@ -28,7 +61,8 @@ class UnifiedCsvWriter:
 
     Columns are a strict superset of the static-CA CSV: four video columns
     (frame_number, timestamp_s, filepath, error_status) followed by left/
-    right angle columns for every enabled fitting method. Missing values
+    right angle columns (plus each method's fit-quality columns — RMSE, and
+    Bond number for YL) for every enabled fitting method. Missing values
     serialise as NaN so downstream tooling sees a stable schema regardless
     of which pipeline produced the row.
     """
@@ -50,6 +84,8 @@ class UnifiedCsvWriter:
         for method in self._methods:
             method_columns.append(f"{method.value} left angle")
             method_columns.append(f"{method.value} right angle")
+            for suffix in _extra_columns_for_method(method):
+                method_columns.append(f"{method.value} {suffix}")
         self.columns = list(self._VIDEO_COLUMNS) + method_columns
 
         header_needed = not (
@@ -82,6 +118,8 @@ class UnifiedCsvWriter:
             right = method_data.get(RIGHT_ANGLE)
             row.append(math.nan if left is None else left)
             row.append(math.nan if right is None else right)
+            for value in _extra_values_for_method(method, method_data):
+                row.append(math.nan if value is None else value)
 
         with open(self.path, "a", newline="") as f:
             csv.writer(f).writerow(row)
@@ -288,32 +326,30 @@ class CaDataProcessor:
                 ) from e
 
     def save_result(self, user_input_data: ExperimentalSetup, output_file_path: str):
-        for index, contact_angles in enumerate(self.results):
-            out = []
-            filepath = user_input_data.import_files[index]
-            if isinstance(filepath, tuple):
-                filepath = filepath[0]
-            out.append(str(filepath))
-            out.append(user_input_data.frame_interval * index)
-            header = []
-            header.append("Filename,")
-            header.append("Time (s),")
-            for key1 in contact_angles.keys():
-                for key2 in contact_angles[key1].keys():
-                    if "angle" in key2:
-                        header.append(key1 + " " + key2 + ",")
-                        out.append(str(contact_angles[key1][key2]))
-            string = ""
-            for heading in header:
-                string = string + heading
-            string = string[:-1]
-            array = np.array(out)
-            array = array.reshape(1, array.shape[0])
+        methods = [
+            m for m, enabled in user_input_data.analysis_methods_ca.items() if enabled
+        ]
+        columns = ["Filename", "Time (s)"]
+        for method in methods:
+            columns.append(f"{method.value} left angle")
+            columns.append(f"{method.value} right angle")
+            for suffix in _extra_columns_for_method(method):
+                columns.append(f"{method.value} {suffix}")
 
-            with open(output_file_path, "a") as f:
-                if index == 0:
-                    f.write(string + "\n")
-                # for val in array[0]:
-                for val in out:
-                    f.write(str(val) + ",")
-                f.write("\n")
+        with open(output_file_path, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(columns)
+            for index, contact_angles in enumerate(self.results):
+                filepath = user_input_data.import_files[index]
+                if isinstance(filepath, tuple):
+                    filepath = filepath[0]
+                row = [str(filepath), user_input_data.frame_interval * index]
+                for method in methods:
+                    method_data = contact_angles.get(method) or {}
+                    left = method_data.get(LEFT_ANGLE)
+                    right = method_data.get(RIGHT_ANGLE)
+                    row.append(math.nan if left is None else left)
+                    row.append(math.nan if right is None else right)
+                    for value in _extra_values_for_method(method, method_data):
+                        row.append(math.nan if value is None else value)
+                writer.writerow(row)

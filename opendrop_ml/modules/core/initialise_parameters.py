@@ -70,7 +70,6 @@ def calculate_Bond_number(xypoints, x_apex, y_apex, radius_apex):
             0.1756 * r_z2**2 + 0.5234 * r_z2**3 - 0.2563 * r_z2**4
         )  # interpolated from numerical data
         return bond
-    r_z1 = scaled_radius_at_scaled_height(xypoints, x_apex, y_apex, radius_apex, 1)
     #    if r_z1 > 0: #JB edit 26/3/15
     #        bond = 5.819 * (r_z1 - 1) # interpolated from numerical data
     #        return bond

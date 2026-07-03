@@ -2,7 +2,7 @@
 
 import numpy as np
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from opendrop_ml.modules.ML_model.prepare_experimental import (
     normalize_ds,

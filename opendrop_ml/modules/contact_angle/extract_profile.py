@@ -125,10 +125,7 @@ def detect_edges(
     indexed_contour_lengths = np.array(contour_lengths).argsort()[::-1]
     indexed_contours_to_return = indexed_contour_lengths[:n_contours]
 
-    image_height = raw_experiment.image.shape[0]
-
     offset = [0, 0]  # [0, image.shape[1]]
-    points = []
     for index in indexed_contours_to_return:
         current_contour = contours[index][:, 0]
         for i in range(current_contour.shape[0]):
@@ -175,14 +172,6 @@ def detect_edges(
 
         # plt.imshow(image, origin='upper', cmap = 'gray')
 
-    # find line between first and last contour points to estimate surface line
-    N = np.shape(contour_trimmed)[0]
-    A = 1
-    xx = np.concatenate((contour_trimmed[0:A, 0], contour_trimmed[N - A : N + 1, 0]))
-    yy = np.concatenate((contour_trimmed[0:A, 1], contour_trimmed[N - A : N + 1, 1]))
-
-    coefficients = np.polyfit(xx, yy, 1)
-    line = np.poly1d(coefficients)
     return contour_trimmed.astype(float), ret
     #
 

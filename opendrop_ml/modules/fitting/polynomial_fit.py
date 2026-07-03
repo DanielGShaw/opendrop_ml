@@ -208,7 +208,6 @@ def polynomial_fit_img(img, num_points=15, polynomial_degree=2, display=False):
     fit_start_time = time.time()
 
     # start the fit
-    Ndrop = np.shape(tangent_drop)[0]
     pts1 = tangent_drop[:num_points]
     pts2 = tangent_drop[-num_points:]
     pts2 = pts2[::-1]  # reverse so that CP is first
@@ -220,16 +219,8 @@ def polynomial_fit_img(img, num_points=15, polynomial_degree=2, display=False):
     line_local2 = np.poly1d(fit_local2)
 
     if polynomial_degree > 1:
-        x_local1 = np.array([min(pts1[:, 0]), max(pts1[:, 0])])
-        f_local1 = line_local1(x_local1)
         f_local1_prime = line_local1.deriv(1)
-
-        x_local2 = np.array([min(pts2[:, 0]) - 10, max(pts2[:, 0]) + 10])
-        f_local2 = line_local2(x_local2)
         f_local2_prime = line_local2.deriv(1)
-
-        tangent1 = f_local1_prime(pts1[0, 0]) * (x_local1 - pts1[0, 0]) + pts1[0, 1]
-        tangent2 = f_local2_prime(pts2[0, 0]) * (x_local2 - pts2[0, 0]) + pts2[0, 1]
 
         m1 = f_local1_prime(pts1[0, 0])
         m2 = f_local2_prime(pts2[0, 0])
@@ -238,7 +229,7 @@ def polynomial_fit_img(img, num_points=15, polynomial_degree=2, display=False):
         m2 = fit_local2[0]
 
     if display:
-        plt.plot(edges_pts[:, 0], edges_pts[:, 1], "o", color="pink")
+        plt.plot(longest_contour[:, 0], longest_contour[:, 1], "o", color="pink")
         plt.plot(pts1[:, 0], pts1[:, 1], "ro")
         plt.plot(pts1[:, 0], line_local1(pts1[:, 0]), "y-")
         plt.imshow(img)
@@ -250,7 +241,7 @@ def polynomial_fit_img(img, num_points=15, polynomial_degree=2, display=False):
         plt.show()
         plt.close()
 
-        plt.plot(edges_pts[:, 0], edges_pts[:, 1], "o", color="pink")
+        plt.plot(longest_contour[:, 0], longest_contour[:, 1], "o", color="pink")
         plt.plot(pts2[:, 0], pts2[:, 1], "ro")
         plt.plot(pts2[:, 0], line_local2(pts2[:, 0]), "y-")
         plt.imshow(img)
@@ -317,7 +308,6 @@ def polynomial_fit(profile, num_points=None, polynomial_degree=2, display=False)
 
     # start the fit
     tangent_drop = profile.copy()
-    Ndrop = np.shape(tangent_drop)[0]
     pts1 = tangent_drop[:num_points]
     pts2 = tangent_drop[-num_points:]
     pts2 = pts2[::-1]  # reverse so that CP is first
@@ -331,12 +321,10 @@ def polynomial_fit(profile, num_points=None, polynomial_degree=2, display=False)
     if polynomial_degree > 1:
         # x_local1 = np.array([min(pts1[:,0])-10,max(pts1[:,0])+10])
         x_local1 = np.array([min(pts1[:, 0]), max(pts1[:, 0])])
-        f_local1 = line_local1(x_local1)
         f_local1_prime = line_local1.deriv(1)
 
         # x_local2 = np.array([min(pts2[:,0])-10,max(pts2[:,0])+10])
         x_local2 = np.array([min(pts2[:, 0]), max(pts2[:, 0])])
-        f_local2 = line_local2(x_local2)
         f_local2_prime = line_local2.deriv(1)
 
         tangent1 = f_local1_prime(pts1[0, 0]) * (x_local1 - pts1[0, 0]) + pts1[0, 1]

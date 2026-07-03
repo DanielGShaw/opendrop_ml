@@ -26,7 +26,6 @@ from customtkinter import (
     IntVar,
     StringVar,
 )
-import threading
 from PIL import Image, ImageDraw, ImageFont
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 import numpy as np
@@ -254,8 +253,6 @@ class CaAnalysis(CTkFrame):
 
         # Get cropped image and process contact angles
         try:
-            image_path = self.user_input_data.import_files[index]
-
             cropped_cv = None
             if experimental_drop is not None:
                 cropped_cv = getattr(experimental_drop, "cropped_image", None)
