@@ -1951,6 +1951,27 @@ def CPID(contour, display=False):
                     f"low angle - angles preceding widest point are {widest1_top_angle}, {widest2_top_angle}"
                 )
             final_CPs = widest_points
+        # Drops near 75 deg on a reflective substrate measure a top angle just
+        # under the cascade's entry gate above, yet show the largest tangent
+        # step of all; without this the Lfit below searches near the CP
+        # guesses, which sit on the substrate inside the reflection.
+        elif (
+            65 < widest1_top_angle < 90 - error_margin
+            or 65 < widest2_top_angle < 90 - error_margin
+        ) and _reflective_kink(
+            widest1_top_angle, widest1_bottom_angle,
+            widest2_top_angle, widest2_bottom_angle,
+            widest_points, n_pts,
+        ):
+            if display:
+                print("kink at widest point - reflective")
+                print(
+                    f"angles preceding widest point are {widest1_top_angle}, {widest2_top_angle}"
+                )
+                print(
+                    f"angles proceeding widest point are {widest1_bottom_angle}, {widest2_bottom_angle}"
+                )
+            final_CPs = widest_points
         elif (
             65 < widest1_top_angle < 90 - error_margin
             or 65 < widest2_top_angle < 90 - error_margin
