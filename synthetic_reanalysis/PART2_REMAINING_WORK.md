@@ -1,9 +1,9 @@
 # Off-Grid Synthetic Reanalysis — Part 2: Remaining Work
 
-**Date**: 2026-09-13 (rev. 12)
+**Date**: 2026-09-13 (rev. 13)
 **Developer**: dgshaw
 **Status**: 6.0 done (rev. 11) — everything is committed on `fix/cpid-sparse-contour-crash` (5 commits ahead of `origin/develop`, not pushed). 6.4 done. 6.2 done. 6.3 skipped (training_files/ must stay unaltered). 6.1 Step 1 mapped, but a review (rev. 10) found the map cannot yet support the Step 2 decision.
-**Next, in order**: **6.1 Step 1b** (extend the sweep to both classes and record the discriminant values), then 6.1 Step 2. See "Working constraints" below and the session plan under 6.1 — this is now scoped as two focused sessions with a go/no-go between them.
+**Next, in order**: **6.1 Session 1** — the Step 1b scripts are written and smoke-tested (rev. 13); run them per the "Session 1 runbook" under 6.1, then read the verdict. Then 6.1 Step 2. See "Working constraints" below.
 **Prerequisite reading**: [PART1_ANALYSIS_AND_FINDINGS.md](PART1_ANALYSIS_AND_FINDINGS.md) — at minimum its "How to read this document" preamble and the "Revised verdict" at the end of the rev. 24 post-hoc review.
 
 ---
@@ -53,7 +53,7 @@ Ordered by user impact. **6.1 is the only one that silently returns a wrong answ
 
 | | Defect | Where | Severity |
 |---|---|---|---|
-| 6.1 | Reflective-surface branch misfires off the roughness grid | `preprocessing.py` ~2366–2438 | ⚠️ silent wrong answer, deployed |
+| 6.1 | Reflective-surface branch misfires off the roughness grid | `preprocessing.py` ~1825–1949 (was ~2366–2438 before 6.2's dead-code removal) | ⚠️ silent wrong answer, deployed |
 | 6.2 | `UnboundLocalError` on sparse contours | `preprocessing.py` `iterative_Lfit()` :1506 | crash, deployed |
 | 6.3 | `prepare_contour` IndexError + fold-blind CP snap | `training_files/create_contours_args6.py` | crash + quality, training only |
 
@@ -130,9 +130,9 @@ The `normalize_ds` docstring correction from PART1 rev. 2 (window-local, not ape
 
 ### The defect
 
-`opendrop_ml/modules/preprocessing/preprocessing.py`, inside `CPID()`, contains a reflective-vs-high-angle classification cascade at roughly lines 2366–2438. It is a chain of `if`/`elif` tests against hand-tuned scalar thresholds (`error_margin = 18`, `> 100`, `< 8`, `> 99`, `> 79`, `< 65`), none of which is aware of how strong the reflection is.
+`opendrop_ml/modules/preprocessing/preprocessing.py`, inside `CPID()`, contains a reflective-vs-high-angle classification cascade at roughly lines 1825–1949 (line numbers as of rev. 13; they were ~2366–2438 before 6.2 removed dead code above it). It is a chain of `if`/`elif` tests against hand-tuned scalar thresholds (`error_margin = 18`, `> 100`, `< 8`, `> 99`, `> 79`, `< 65`), none of which is aware of how strong the reflection is.
 
-For a reflective-baseline drop near 80°, the cascade reaches `preprocessing.py:2403`:
+For a reflective-baseline drop near 80°, the cascade reaches `preprocessing.py:1866`:
 
 ```python
 elif 180 - widest1_bottom_angle > 79 or 180 - widest2_bottom_angle > 79:
@@ -142,7 +142,7 @@ elif 180 - widest1_bottom_angle > 79 or 180 - widest2_bottom_angle > 79:
 
 and misclassifies the drop as a high-angle system. `CP_guesses` sit **inside the reflection**, so the contact point lands ~20 px below the true baseline. Every downstream consumer inherits the error — ML *and* all classical fits, YL included.
 
-The correct branch for these drops is `preprocessing.py:2371` (`final_CPs = widest_points`), reached when the cascade prints `"large angles under widest points - low angle reflective"`.
+The correct branch for these drops is `preprocessing.py:1834` (`final_CPs = widest_points`), reached when the cascade prints `"large angles under widest points - low angle reflective"`.
 
 ### Why it was believed fixed
 
@@ -315,12 +315,20 @@ Two consequences for how this fix is scoped:
 
 ### Session plan (rev. 12)
 
-**Session 1 — Step 1b and the separability read.**
-- Extend `phase6_reflective_sweep.py` per Step 1b (discriminant columns, angle 50–180, add zero/positive roughness, rename `ml_error` → `error_message`). ~1 h of coding; can be done ahead of the session.
-- Start the ~1700-cell run (~80 min, unattended).
-- While it runs: nothing else required (6.0 is done).
-- Plot the discriminant distributions for reflective sub-90° vs genuine high-angle, faceted by scaler. Also plot the discriminant against drop width in px, to see whether a scale-normalised threshold (a′) separates where a fixed one doesn't.
-- **Go/no-go at end of session**: does any fixed *or* scale-normalised threshold cleanly separate the classes? Record the answer in the changelog.
+**Session 1 — Step 1b and the separability read.** Scripts done and smoke-tested ahead of time (rev. 13).
+
+*Session 1 runbook* (from `OpenDrop_OP/synthetic_reanalysis/`, `opendrop_op` env):
+
+```bash
+python phase6_reflective_sweep.py          # 1782 cells, ~100 min, resumable; writes results/phase6_reflective_sweep_1b.csv
+python phase6_separability.py              # offline analysis -> stdout verdict, figures/phase6_separability_*.png, results/phase6_separability_summary.csv
+```
+
+- The sweep is the rev. 5 script extended per Step 1b: full angle range 50–180, roughness −0.080…−0.005 plus 0 and +0.002…+0.010 (22 values, one more than Step 1b's "21"), the four discriminants computed from the contour by mirroring `CPID`'s own code *and* cross-checked against what `CPID` prints (`disc_parse_ok`), `widest_points`/`CP_guesses` coordinates and each one's error vs GT, size covariates for (a′), a complete branch classifier, `ml_error` → `error_message`. It writes a **new** file so the rev. 5 map stays intact. `--smoke` runs the three repro cells plus one genuine 150° drop in ~1 min — use it if anything looks off; **do not read its verdict as a result** (any feature "separates" two points).
+- `phase6_separability.py` labels each decision cell by which of `widest_points`/`CP_guesses` was nearer GT (3 px margin), then for the current statistic, its width-normalised form (a′), and seven other quantities `CPID` already has in hand, finds the single threshold with fewest misassignments, per scaler and pooled. Every candidate is deployable — nothing uses `gt_*`. The first thing it reports is how many decision cells have `disc_max` **saturated at exactly 90** (vertical fit under the widest point).
+- **Watch for this first.** In the smoke run, `disc_max` was exactly 90.00 for both failing reflective cells *and* the genuine 150° drop. Four cells prove nothing, but if the full sweep shows the same, then `180 − widest_bottom_angle` is uninformative in this regime and **neither (a) nor (a′) can work on that statistic** — the fix becomes a one-branch swap to whichever other candidate the script finds separable, which is the same blast radius as (a) and still under the 6.4 harness.
+- Caveat the script states: cells below the `>79` threshold go to `iterative_Lfit`, not `widest_points`, so the `widest_points` error is a proxy for that side. Session 2's re-run uses the real path.
+- **Go/no-go at end of session**: the script prints it. Record the verdict, the winning feature and threshold (or the absence of one), and the saturation count in the changelog.
 
 **Session 2 (if go) — implement (a) or (a′) and guard it.**
 - Change the one branch at `preprocessing.py:2403`.
@@ -609,6 +617,7 @@ Collected from Part 1 so they aren't rediscovered the hard way.
 
 ## Changelog
 
+- **rev. 13 (2026-09-13)** — Session 1 prepared, not run. Rewrote `phase6_reflective_sweep.py` to the Step 1b spec (new output `phase6_reflective_sweep_1b.csv`; the rev. 5 CSV is untouched) and added `phase6_separability.py`, the offline analysis that produces the Step 2 input. Smoke-tested both end to end on the three 6.1 repro cells plus a genuine 150° non-reflective drop: the discriminants computed by mirroring `CPID` match its printed values 4/4; the repro cells fail and the 150° drop passes as expected. **One early flag**: `disc_max` was saturated at exactly 90 on all three cells that reached the `>79` test, both classes — if that holds across the sweep the statistic is uninformative and (a)/(a′) are ruled out on it; the separability script tests seven alternative deployable discriminants for that case. Corrected the cascade's line numbers throughout 6.1 (now ~1825–1949; `>79` at :1866; correct branch at :1834) after 6.2's dead-code removal shifted them. No `preprocessing.py` change.
 - **rev. 12 (2026-09-13)** — Planning only, no code or analysis changed. Added a "Working constraints" section recording the post-PhD scope: paper-neutral fix preferred, limitation-only outcome is the fallback not the target, two-session budget with a deliberate escalation decision. Added option (a′), a scale-normalised threshold, between (a) and (b) — motivated directly by Step 1a's finding that the failure window shifts with scaler. Added a two-session plan under 6.1 with an explicit go/no-go. Rescoped Phase 7: 7.1 is verification, 7.3/7.4 are optional and depend on a supervisor decision about adding the off-grid set to the paper.
 - **rev. 11 (2026-09-13)** — 6.0 done. Curated `training_files/` (dropped `check_imports.py`, `clean_output_file.py`, `data_check.py`, `shuffle_test.py`; kept `test_evaluation.py`/`test_model.sh` — a post-training held-out-test scorer, not a restart script as first remembered — and `examine_db.py` as the only reader for the kept `.db`), recorded the curation in its README, and committed it, the `prepare_experimental.py` docstring fix, and all of `synthetic_reanalysis/` including `data/` as three commits. Working tree is clean. No analysis changed. Decision on whether PART1/PART2 ship in the public repo deferred to merge time — PART1 is a working log and probably should not; PART2 could plausibly stay as a methodology/limitations record.
 - **rev. 10 (2026-08-14)** — Review pass over revs. 5–9, checking the sweep CSV directly rather than its summary. No code changed. **6.1 Step 2 is not ready to start**; three additions gate it.
