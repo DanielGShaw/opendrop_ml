@@ -1,10 +1,10 @@
 # Off-Grid Synthetic Reanalysis — Part 2: Remaining Work
 
-**Date**: 2026-09-13 (rev. 19)
+**Date**: 2026-09-13 (rev. 20)
 **Developer**: dgshaw
 **Status**: **6.1 fixed and regression-clean (rev. 17–18, commits `0c1adcd8` + `fa10d758`).** 6.0, 6.2, 6.4 done; 6.3 skipped. All on `fix/cpid-sparse-contour-crash`, not pushed.
 **Next, in order**:
-1. **6.1b (optional, dgshaw's call)** — the 85° high-resolution residue: measure whether a fit window scaled to drop width lowers the experimental noise floor without losing the step; details under "Rev. 18". If it does, it is a third pass under the same harness; if not, the residue is documented as is.
+1. ~~6.1b~~ — measured and declined (rev. 20): a longer or width-scaled window raises the experimental floor faster than it grows the step; the only rule that catches 85° at 560 px clears the floor by 0.3°. The residue |θ − 90°| ≲ 5° on reflective substrates stands as a physical limit at deployed resolution. **6.1 is closed.**
 2. **7.1** — the harness already proves the 324 + 171 paper images are unchanged, so `paper_results/results/` need not move. Still to run: the off-grid Phase 3/4 re-evaluation (`evaluate_offgrid.py`, `compare_grid_vs_offgrid.py`) so Part 1's off-grid numbers reflect the fixed preprocessing, and — per dgshaw — a regeneration of the paper's results/figures as a check that they are unchanged (expected, given the harness).
 3. **7.2** — fold `synthetic_reanalysis/` into `paper_results/`; decide whether PART1/PART2 ship in the public repo.
 4. **7.3/7.4** — optional paper additions (the reflective-substrate caveat is now one evidence-backed sentence; the off-grid set as a supplementary section is a supervisor decision).
@@ -427,6 +427,21 @@ Pooled over all 1260 decision cells this gives **57 misassignments vs 94 today, 
 
 **What the figures make plain about the residue** (`phase6_ex_unfixed_85deg_s1.0_85deg.png`): at 85° and 560 px the step is measured *exactly* as physics predicts — top 83.7°, bottom 93.1°, a 9.4° step, ratio 4.6 — and is excluded only by the 14° floor. The floor exists because real images show up to 11.8° of edge noise over a **fixed 10-row** fit, and on a 560 px drop 10 rows is a tiny baseline. That is the argument for scaling the fit window with drop width (dgshaw's original suggestion, set aside in rev. 15 on synthetic-only evidence): the noise should average down with a longer window while the step stays ~10°. **It must be measured on the 171 experimental images** — that is where the ratio-only rule failed. Not yet done; next candidate step.
 
+### Rev. 20 (2026-09-13) — 6.1b measured and declined
+
+`phase6_window_vs_noise.py` → `results/phase6_window_vs_noise.csv`. For fixed windows of 10–40 rows and width-scaled windows of 2–10 % of the widest-point span, measured the bottom-minus-top step on the 98 experimental drops that reach the decision (all genuine high-angle, so their max is the noise floor) and on synthetic reflective cells 75–95° at three resolutions plus a protected sample.
+
+| window | experimental max step | 85°@560 px step | reflective cells caught (of 43) | FP exp / syn |
+|---|---|---|---|---|
+| n = 10 (current) | 11.8° | 9.4° | 20 (75, 80 at all scalers; 85 at 200 px) | 0 / 0 |
+| n = 15 | 14.9° | 12.5° | 16 | 0 / 0 |
+| n = 20 | 19.0° | 14.7° | 10 | 0 / 0 |
+| n = 30 | 27.7° | 15.7° | 2 | 0 / 0 |
+| n = 3 % of width | 11.8° | 14.1° | 21 (+85° at 560 px, by **0.3°**) | 0 / 0 |
+| n = 5–10 % of width | 11.8–16.2° | 16.5° → −34° | 17 → 7 | 0 / 0 |
+
+**The premise was wrong**: the experimental floor does not average down with window length, it rises, because on the smaller experimental drops a longer window accrues arc curvature faster than it suppresses edge noise. Width-scaled windows hold the floor at ~12–16° while the 85°/560 px step only reaches 12–16.5°. The one rule that catches those cells (3 % of width) does so by 0.3° — a threshold landing, not a margin, and the exact pattern this study exists to remove. No rule reaches 90° or 95° at any resolution; none produces a false positive on either set, so the current thresholds are not near an edge. **No code change. 6.1 closed** with the residue stated as a physical limit: on reflective substrates, |θ − 90°| ≲ 5° cannot be resolved from a single static frame at deployed resolution; video CP tracking is the mitigation.
+
 Reflection depth note: in the generator, negative roughness sets the reflection depth as a fraction of drop size (≈ 20 px at −0.045 on a 560 px drop), and the CP guess lands at the strip corner at the bottom of it — which is why CP error in the residue grows linearly with |roughness| in fig. 1.
 - Change the one branch at `preprocessing.py:1866`.
 - Run the 6.4 harness before and after; require zero diffs on 324 + 171.
@@ -641,7 +656,7 @@ $PY synthetic_reanalysis/phase6_regression.py --capture-baseline
 - [x] **6.0 — repo hygiene: `training_files/` (curated), `synthetic_reanalysis/`, and the `prepare_experimental.py` fix all committed on `fix/cpid-sparse-contour-crash` (rev. 11)**
 - [x] 6.4 — regression harness built and verified clean against unmodified code (rev. 5)
 - [x] 6.1 — mapped (revs. 5–14), fix chosen from the map (revs. 15–16), implemented and regression-guarded (rev. 17, `0c1adcd8`), extended to the 75° gate (rev. 18, `fa10d758`); 0 changes on 324 + 171; sweep > 10 px cells 123 → 93, ML MAE 2.74° → 2.20°. Residue: |θ − 90°| ≲ 5° on reflective substrates (physical floor at deployed resolution) — see 6.1b
-- [ ] 6.1b (optional) — width-scaled fit window for the 85° high-resolution residue; measure the experimental noise floor vs window length first (rev. 18 note)
+- [x] 6.1b — measured (rev. 20, `phase6_window_vs_noise.py`) and **declined, no code change**: see the rev. 20 note under 6.1
 - [x] 6.2 — sparse-contour path fixed, low-confidence signal added, all three slice starts clamped, `video_two_pass.py:436` checked, dead twin (and 4 further orphans found by an extended sweep) resolved, regression test added, committed on `fix/cpid-sparse-contour-crash` (rev. 6, rev. 9)
 - [x] 6.3 — SKIPPED (rev. 8): `training_files/` must stay unaltered as the reproducible training record; see the 6.3 section header and rev. 7/8 changelog entries
 - [ ] 6.3 audit — training-grid CP-disagreement audit run and sized **(descopable — characterises a limitation, fixes nothing)**
@@ -715,6 +730,7 @@ Collected from Part 1 so they aren't rediscovered the hard way.
 
 ## Changelog
 
+- **rev. 20 (2026-09-13)** — 6.1b measured (`phase6_window_vs_noise.py`) and declined: longer/width-scaled fit windows raise the experimental noise floor (arc curvature on smaller real drops) faster than the reflective step grows; best case clears the floor by 0.3°. No code change; 6.1 closed with the |θ − 90°| ≲ 5° residue documented as a physical limit.
 - **rev. 19 (2026-09-13)** — Status bookkeeping only. Ticked 6.1 in the Phase 6 status list, added 6.1b (optional width-scaled window) as its residue, marked the 7.1 paper-image diff done (0 changes) and rewrote the header's "Next" as an ordered list reflecting that the paper numbers are unchanged and only the off-grid re-evaluation, the `run_all.py` check, and the 7.2 artefact move remain before the paper decisions.
 - **rev. 18 (2026-09-13)** — Explanatory figures added (`phase6_figures.py`, 7 PNGs). Diagnosed the 75° stripe as the `65 < top < 72` gate routing reflective drops to an Lfit centred on the substrate; applied the kink test there too (`fa10d758`). 0 changes on 324 + 171; sweep 75° failures 9 → 0, > 10 px cells 102 → 93, ML MAE 2.43° → 2.20°; five cells 0.5–1.2 → 4–6 px recorded. Figures regenerated against the rev. 18 code. The 85° high-resolution residue is confirmed to be the fixed 10-row window vs the real-image noise floor; a width-scaled window is the next candidate and must be measured on the experimental set first.
 - **rev. 17 (2026-09-13)** — **6.1 fixed** (`0c1adcd8`). Widened the sweep to 20–180° (2178 cells; angles < 50 never reach the decision). Implemented the arc-normalised kink branch; attempt 1 (ratio only) regressed 6 experimental high-angle drops because real-edge noise reaches 11.8° over 10 points — added a 14° absolute floor measured from all 171 experimental images. Attempt 2: 0 changes on 324 + 171; post-fix sweep 23 cells improved / 0 worsened, 80° failures 17 → 1; residual is 85–95° (physical floor) plus pre-existing failures in other branches. Repro images 21.8/6.1 px → 5.0 px (the widest-point estimate's own offset; ≤ 3 px criterion not met and recorded as such). Added `--out`/`--in` options to the sweep/analysis scripts and the `reflective_kink` branch label. Phase 6 effectively complete; Phase 7 rescoped to artefact moves and optional paper additions since paper numbers are unchanged.
