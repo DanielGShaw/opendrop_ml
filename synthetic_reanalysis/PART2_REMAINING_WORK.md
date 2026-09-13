@@ -1,9 +1,9 @@
 # Off-Grid Synthetic Reanalysis — Part 2: Remaining Work
 
-**Date**: 2026-09-13 (rev. 15)
+**Date**: 2026-09-13 (rev. 16)
 **Developer**: dgshaw
 **Status**: 6.0 done (rev. 11) — everything is committed on `fix/cpid-sparse-contour-crash` (5 commits ahead of `origin/develop`, not pushed). 6.4 done. 6.2 done. 6.3 skipped (training_files/ must stay unaltered). 6.1 Step 1 mapped, but a review (rev. 10) found the map cannot yet support the Step 2 decision.
-**Next, in order**: **6.1 Step 2 decision — 🔶 dgshaw's call.** Session 1 ran (rev. 14): the Step 1b verdict is **no-go for (a) and (a′)** — no scalar available inside `CPID` separates the classes, and the current statistic is saturated. Read "Session 1 result" under 6.1 and decide between (b″) an explicit baseline estimate, (b′), or documenting the map. Nothing in `preprocessing.py` has been touched.
+**Next, in order**: **6.1 Step 2 decision — 🔶 dgshaw's call, now with a concrete candidate.** Prototyping (revs. 14–16) converged on one fix: replace the saturated `>79` test with an arc-normalised kink test (see "Step 2 prototyping, part 2"). At ≥500 px drop width it fails only at exactly 90°; below ~200 px the irreducible band is 85–95°. If approved, Session 2 = implement it at `preprocessing.py:1866`, run the 6.4 harness, re-run the sweep. Nothing in `preprocessing.py` has been touched.
 **Prerequisite reading**: [PART1_ANALYSIS_AND_FINDINGS.md](PART1_ANALYSIS_AND_FINDINGS.md) — at minimum its "How to read this document" preamble and the "Revised verdict" at the end of the rev. 24 post-hoc review.
 
 ---
@@ -374,6 +374,28 @@ dgshaw's direction after Session 1: no YL fit (expensive, assumes symmetry, can 
 
 Ruled out by measurement: threshold retune (rev. 14), scale-normalised threshold (rev. 14), window length (rev. 15), mirror symmetry about the widest point (rev. 15). Ruled out by direction: YL-departure, Hough baseline as primary.
 
+### Step 2 prototyping, part 2 (rev. 16, 2026-09-13) — is it only quantisation, and does the kink fix it?
+
+dgshaw's condition: a near-90°/low-resolution caveat is acceptable **only if** that is the sole cause; any CPID failure at higher resolution must be fixed. Two scripts: `phase6_kink_refine.py` (180 band cells, option 2 and a per-cell failure listing) and an offline pass over the full 1782-cell sweep, whose n=10 angles already give the kink.
+
+**Option 2 (curvature-removed kink) is dead.** Worse than the raw 10-point kink at every resolution (34–38 vs 16 pooled on 139 cells); the ramp fits add noise faster than they remove curvature.
+
+**The raw 10-point kink** — `max(bottom − top)` over the two fits `CPID` already does — **fails only at 90° once resolution is adequate.** On the band subset at scaler 1.0 (559 px wide): 2/46 wrong, both at 90°. At 199 px: 4/47 — three at 90°, one at 85° with the weakest reflection. At 141 px: 7/46, all within 85–95°. On the full sweep, per-scaler thresholds give 8/424 at 531 px (all 90°), 16/436 at 189 px (85°×3, 90°×13), 19/400 at 133 px. The current code fails 94/1260 spread over 75–95°, including 19 at 80° and 29 at 85° — **a real high-resolution failure, which the kink removes.**
+
+**Why the threshold moves with resolution, and the fix for it:** a 10-row window covers more arc on a smaller drop, so the smooth-arc contribution to the kink is larger. Normalising by the expected arc kink over 10 rows at radius = widest width / 2, i.e. `arc = degrees(10 / (widest_width_px / 2))`, gives a single pooled rule:
+
+    kink_ratio = max(bottom − top) / arc  >  ~2.8   ⇒  reflective, use widest_points
+    (equivalently kink − arc > ~8.7°)
+
+Pooled over all 1260 decision cells this gives **57 misassignments vs 94 today, all inside 80–95°** (80°×1, 85°×11, 90°×34, 95°×11); at scaler 1.0 it reaches the per-scaler optimum (8, all 90°). Everything from 100° to 180° is correct — the class the `>79` branch exists to protect is untouched.
+
+**What this means for the caveat.** Exactly 90° is irreducible by any static single-frame geometry: the reflection of a hemisphere *is* the continued sphere. That is the video pipeline's job and is fine to state. The 85°/95° residue is resolution-dependent — present below ~200 px width (median experimental drop is 237 px, p10 122), gone at ≥500 px. The caveat is therefore: **reflective substrates, |θ − 90°| ≲ 5°, drop width below roughly 200 px; use video CP tracking**. That is a narrower and better-justified statement than the current implicit one, and it is now backed by a map.
+
+**Candidate fix for Session 2 — one branch, dgshaw's approval required before touching `preprocessing.py`:**
+- At `preprocessing.py:1866`, replace `180 - widest1_bottom_angle > 79 or 180 - widest2_bottom_angle > 79` with the kink-ratio test above (both sides, max), routing `> T` to `widest_points` and `≤ T` to `CP_guesses`. Uses only `widest{1,2}_{top,bottom}_angle` (already computed) and the widest-point width (available).
+- Keep the two branches above it (`bottom > 100`, "similar angles") — they already catch strong reflections.
+- **T is a tuned constant again**, so it must be regression-guarded: 6.4 harness before/after, zero changes on 324 + 171 or every change reviewed; re-run the 1782-cell sweep and confirm the failure set shrinks to the 80–95° residue; check the three repro images. Choose T from the pooled map (2.8), not from the three repro cells.
+
 **Session 2 (if go) — implement the chosen discriminator and guard it.**
 - Change the one branch at `preprocessing.py:1866`.
 - Run the 6.4 harness before and after; require zero diffs on 324 + 171.
@@ -661,6 +683,7 @@ Collected from Part 1 so they aren't rediscovered the hard way.
 
 ## Changelog
 
+- **rev. 16 (2026-09-13)** — Step 2 prototyping, part 2. Answered dgshaw's condition ("caveat acceptable only if the cause is purely near-90°/low-res; anything else must be fixed"). Option 2 (curvature-removed kink) measured and rejected. The raw 10-point kink, arc-normalised by drop width, fails only at exactly 90° at ≥500 px and within 85–95° below ~200 px, versus the current code's 75–95° including a real high-resolution failure at 80–85°. Pooled: 57/1260 vs 94/1260, all residual errors in 80–95°, 100–180° untouched. Proposed as the Session 2 one-branch fix at `preprocessing.py:1866` with a stated caveat (reflective, |θ−90°| ≲ 5°, width ≲ 200 px, use video). Added `phase6_kink_refine.py` + CSV. No `preprocessing.py` change.
 - **rev. 15 (2026-09-13)** — Step 2 prototyping, part 1. Added `phase6_window_sweep.py` (loads on-grid/off-grid PNGs where the cell exists, renders otherwise) and measured the two levers dgshaw proposed: a scale-aware/longer fit window and upper-vs-lower mirror symmetry. **Neither works, and the measurements say why**: longer windows remove the saturation but integrate arc curvature and bury the tangent step (errors rise 16→38/139 from n=10 to n=40); mirror symmetry about the widest point is locally identical for a reflection and a sphere's equator. Confirmed experimental images are at the same resolution as the renders (median drop width 237 px), so the failure is real at deployed resolution. Recorded three remaining levers — sub-pixel edge localisation (addresses the measured cause), curvature-removed kink (cheap, modest), or swap the saturated test for the short kink and document the band. Direction constraints recorded (no YL, Hough as tie-breaker at most). No `preprocessing.py` change.
 - **rev. 14 (2026-09-13)** — **Session 1 run.** Full Step 1b sweep (1782 cells, 27.7 min, 0 failures) and separability analysis. **Verdict: no-go for (a)/(a′).** The current `>79` statistic is saturated at exactly 90 in 923/1272 decision cells across both classes — uninformative rather than mis-tuned — and none of eleven deployable alternatives separates at any scaler. The GT-baseline aspect ratio *does* separate perfectly per scaler (≈0.46, "taller than a hemisphere"), which localises the problem to baseline estimation and motivates a new candidate (b″): estimate the substrate row from the contour (the baseline strip is present in every contour) and threshold the aspect on it. Also found: the failure is an angle band (75–90° at scaler ≤ 2.83, 90–95° at 4.0) uniform across reflective roughness, not an off-grid effect — the paper's set escapes by its 20° angle step and its scalers; (b′) as written isn't testable because the substrate strip terminates every contour. Fixed a `NameError` in the sweep's final print (after the CSV was complete), added `apex_y` to the sweep output, and replaced the analysis's non-deployable `aspect` with deployable variants plus `aspect_gt` as a labelled reference. **No `preprocessing.py` change. Step 2 decision left to dgshaw.**
 - **rev. 13 (2026-09-13)** — Session 1 prepared, not run. Rewrote `phase6_reflective_sweep.py` to the Step 1b spec (new output `phase6_reflective_sweep_1b.csv`; the rev. 5 CSV is untouched) and added `phase6_separability.py`, the offline analysis that produces the Step 2 input. Smoke-tested both end to end on the three 6.1 repro cells plus a genuine 150° non-reflective drop: the discriminants computed by mirroring `CPID` match its printed values 4/4; the repro cells fail and the 150° drop passes as expected. **One early flag**: `disc_max` was saturated at exactly 90 on all three cells that reached the `>79` test, both classes — if that holds across the sweep the statistic is uninformative and (a)/(a′) are ruled out on it; the separability script tests seven alternative deployable discriminants for that case. Corrected the cascade's line numbers throughout 6.1 (now ~1825–1949; `>79` at :1866; correct branch at :1834) after 6.2's dead-code removal shifted them. No `preprocessing.py` change.
