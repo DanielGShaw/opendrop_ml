@@ -1888,7 +1888,7 @@ def CPID(contour, display=False):
             # over the n_pts window. Normalising by that expected arc makes the
             # test resolution-independent. Thresholds from the 20-180 deg
             # synthetic sweep and the experimental edge-noise floor
-            # (synthetic_reanalysis, PART2 rev. 17); the residual ambiguity is
+            # (paper_results/offgrid, PART2 rev. 17); the residual ambiguity is
             # |theta - 90| <~ 5 deg, where the step is at the noise level.
             elif _reflective_kink(
                 widest1_top_angle, widest1_bottom_angle,

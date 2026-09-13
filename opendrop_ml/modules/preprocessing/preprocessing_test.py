@@ -63,8 +63,8 @@ def test_iterative_lfit_len_2_pre_split_contours_take_existing_branch():
 # angle=160, Bo=0.55, scaler=5.0, roughness=-0.015 is the deliberately-extreme
 # cell where CPID's restricted contour collapsed to 13 points and crashed.
 # The seed is `matrix_utils.cell_seed(160.0, 0.55, 5.0, -0.015)`, hardcoded
-# here so this test doesn't depend on synthetic_reanalysis/ (staging area,
-# not shipped code) remaining in place.
+# here so this test doesn't depend on paper_results/offgrid/ (the study that
+# found it, not shipped code) remaining in place.
 _REPRO_SEED = 3075006224
 
 

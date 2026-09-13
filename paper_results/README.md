@@ -33,6 +33,7 @@ Paths are configured in `config.py`. All datasets live in-tree under `paper_resu
 
 - **Experimental images**: `paper_results/data/experimental/` (171 images)
 - **Synthetic images**: `paper_results/data/synthetic/` (324 images)
+- **Off-grid synthetic images**: `paper_results/data/synthetic_offgrid/` (324) and `paper_results/data/synthetic_ongrid_control/` (324 + 5 × 72 replicates) — the generalisation study in `paper_results/offgrid/`, see its README
 - **Sensitivity images**: `paper_results/conan_model_repo/sensitivity data set/` (120 images — in the v03 clone, see Prerequisites)
 - **Video analysis datasets** (Isaac, Kristina, inverse-phase): `paper_results/data/video_analysis/` (gitignored, see deferred data-hosting item in `ML_MODEL_INTEGRATION_PLAN.md` Phase 7.4)
 
@@ -58,6 +59,10 @@ python paper_results/plot/plot_speed.py                   # → figures/experime
 # Sensitivity dataset — v03 vs v05.05 (requires evaluation output)
 python paper_results/evaluate/evaluate_sensitivity.py     # → results/sensitivity_results.csv
 python paper_results/plot/plot_sensitivity.py              # → figures/comparison/sensitivity_agreement.png
+
+# Off-grid synthetic study (see paper_results/offgrid/README.md)
+python paper_results/offgrid/evaluate_offgrid.py          # → results/offgrid/synthetic_offgrid_results.csv, ...
+python paper_results/offgrid/compare_grid_vs_offgrid.py   # → results/offgrid/phase4_summary.md
 ```
 
 ## Output
@@ -66,6 +71,7 @@ python paper_results/plot/plot_sensitivity.py              # → figures/compari
 - `experimental_results.csv` — 169 rows, all fitting method predictions + timings
 - `synthetic_results.csv` — 324 rows, all fitting method predictions + ground truth
 - `sensitivity_results.csv` — 120 rows, v03 and v05.05 predictions on sensitivity dataset (GT 110-180°)
+- `offgrid/` — the off-grid synthetic study: per-image results for the off-grid set, the on-grid control and its replicates, the Phase 4 comparison (`phase4_summary.md`), the CPID regression-harness baselines and the Phase 6 sweep outputs. `offgrid/pre_6.1/` is the pre-fix snapshot.
 
 ### Figures (`figures/`)
 
@@ -80,6 +86,10 @@ python paper_results/plot/plot_sensitivity.py              # → figures/compari
 
 **Comparison** (`figures/comparison/`):
 - `sensitivity_agreement.png` — 3-panel: v03 and v05.05 agreement + delta on sensitivity dataset
+
+**Off-grid study** (`figures/offgrid/`):
+- `phase6_fig1_cp_error_heatmaps.png`, `phase6_fig2_decision_space.png`, `phase6_ex_*.png` — the reflective-substrate CPID fix: before/after contact-point error, the decision statistic, worked examples
+- `phase6_separability_*.png` — per-feature class histograms from the separability analysis
 
 ## Methods Evaluated
 
@@ -98,4 +108,6 @@ python paper_results/plot/plot_sensitivity.py              # → figures/compari
 - Synthetic evaluation: ~11 minutes (324 images)
 - Sensitivity evaluation: ~3 minutes (120 images, both models)
 - Figures: ~1 minute
-- **Total**: ~25 minutes
+- Video-analysis evaluations (inverse phase, Isaac, Kristina): see each script
+- Off-grid synthetic evaluation: ~55 minutes (1008 images); comparison ~5 minutes
+- **Total**: ~25 minutes for the experimental + synthetic + sensitivity core; the off-grid step roughly doubles it

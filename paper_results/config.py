@@ -45,5 +45,17 @@ KRISTINA_REF_DIR = KRISTINA_DIR
 # --- Image file extensions ---
 IMAGE_EXTENSIONS = (".bmp", ".png", ".jpg", ".jpeg", ".tiff", ".tif")
 
+# --- Off-grid synthetic study (paper_results/offgrid/, see its README) ---
+TRAINING_FILES_DIR = os.path.join(OPENDROP_DIR, "training_files")
+SYNTHETIC_OFFGRID_DATA_DIR = os.path.join(PAPER_RESULTS_DIR, "data", "synthetic_offgrid")
+SYNTHETIC_ONGRID_CONTROL_DIR = os.path.join(PAPER_RESULTS_DIR, "data", "synthetic_ongrid_control")
+OFFGRID_RESULTS_DIR = os.path.join(RESULTS_DIR, "offgrid")
+OFFGRID_FIGURES_DIR = os.path.join(FIGURES_DIR, "offgrid")
+OFFGRID_MATRIX_CSV = os.path.join(OFFGRID_RESULTS_DIR, "offgrid_matrix.csv")
+OFFGRID_DPI = 64  # matches the on-grid set / create_contours_args6.py's create_contour()
+OFFGRID_N_PTS_DROP = 5000  # matches create_contour()'s call to draw_drop()
+OFFGRID_BOOTSTRAP_SEED = 20260813
+OFFGRID_LHS_SEED = 20260813
+
 # --- Video file extensions ---
 VIDEO_EXTENSIONS = (".avi", ".mp4", ".mov")
