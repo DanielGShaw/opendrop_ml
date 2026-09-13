@@ -1,9 +1,9 @@
 # Off-Grid Synthetic Reanalysis — Part 2: Remaining Work
 
-**Date**: 2026-09-13 (rev. 11)
+**Date**: 2026-09-13 (rev. 12)
 **Developer**: dgshaw
 **Status**: 6.0 done (rev. 11) — everything is committed on `fix/cpid-sparse-contour-crash` (5 commits ahead of `origin/develop`, not pushed). 6.4 done. 6.2 done. 6.3 skipped (training_files/ must stay unaltered). 6.1 Step 1 mapped, but a review (rev. 10) found the map cannot yet support the Step 2 decision.
-**Next, in order**: **6.1 Step 1b** (extend the sweep to both classes and record the discriminant values), then 6.1 Step 2.
+**Next, in order**: **6.1 Step 1b** (extend the sweep to both classes and record the discriminant values), then 6.1 Step 2. See "Working constraints" below and the session plan under 6.1 — this is now scoped as two focused sessions with a go/no-go between them.
 **Prerequisite reading**: [PART1_ANALYSIS_AND_FINDINGS.md](PART1_ANALYSIS_AND_FINDINGS.md) — at minimum its "How to read this document" preamble and the "Revised verdict" at the end of the rev. 24 post-hoc review.
 
 ---
@@ -25,6 +25,16 @@ PY=/Users/dgshaw/miniconda3/envs/opendrop_op/bin/python
 ```
 
 All commands run from `OpenDrop_OP/`. The scratch directory for throwaway output is `synthetic_reanalysis/scratch/`.
+
+## Working constraints (rev. 12, 2026-09-13)
+
+Recorded so the scope doesn't drift. This is unpaid, post-PhD portfolio work done in a few concentrated sessions, not an ongoing research effort.
+
+1. **The supervisor's paper draft is written around the existing `paper_results/` figures.** Regenerating figures means rewriting paper sections. The preferred outcome is therefore a **paper-neutral fix**: 6.1's acceptance criterion of zero regressions on the 324 on-grid + 171 experimental images is not just a safety check, it is the goal. If it holds, the existing figures stand and the draft needs no rewrite.
+2. **Ground rule 3 below still applies if a fix *does* move a paper number** — adopt and report, don't hide it — but a fix that moves paper numbers is a worse fix, all else equal, and the choice in Step 2 should weight that.
+3. **Merely stating the reflective-surface limitation in the paper is not the preferred outcome.** It waters down the result when a real fix likely exists. It is the fallback if (a)/(a′) fail and (b′) is judged too large.
+4. **Phase 7 is rescoped** (see its header): 7.1 is a verification that nothing moved, and 7.3's paper-output updates are optional additions, decided after the fix lands.
+5. **Budget: two focused sessions** (a few hours each) for 6.1 if (a)/(a′) work. Escalation to (b′) is a deliberate decision taken at the end of session 1, not drifted into — it is realistically 3–4 further sessions because of the video-dataset validation burden.
 
 ## Ground rules
 
@@ -275,6 +285,8 @@ Three candidates, in increasing order of ambition:
 
 **(a) Retune the `> 79` boundary at `preprocessing.py:2403`.** Cheapest. Moves the boundary; does not remove the class of bug. Only acceptable if the map shows a wide, clean margin between true high-angle drops and reflective sub-90° drops on that statistic.
 
+**(a′) Scale-normalise the threshold (added rev. 12).** Step 1a item 3 shows the failure window *shifts with scaler* — the discriminant tracks apparent image scale, not contact angle — which is exactly why a fixed `79` can't work everywhere. Before abandoning the retune, test replacing the constant with a function of drop size in pixels (e.g. CP-to-CP width, or the `profile_length` already computed in `prepare_experimental.py`). Same one-branch blast radius as (a), same harness, same regression guard. It targets the pattern the map actually showed. Note it still cannot reach the ~13% of failure cells outside the `>79` branch (Step 1a) — shrinking the failure region from a grid coincidence to a small, documented residue is the realistic win.
+
 **(b) Add a symmetry-based discriminator.** A reflection is a vertical mirror of the drop about the baseline; a genuine high-angle drop's lower profile is not. Test the candidate region's symmetry *about the baseline* instead of thresholding an angle: take contour points within ±N rows of the candidate baseline, reflect the lower set about it, and measure agreement with the upper set at matched heights (e.g. mean absolute x-difference, normalised by drop width), **per side**. High agreement ⇒ reflective ⇒ use `widest_points`.
 
 > **Note — this is upper-vs-lower, not left-vs-right.** A tilted/sliding drop with different advancing and receding angles is therefore fine: each side is compared only against its own reflection.
@@ -299,7 +311,25 @@ Two consequences for how this fix is scoped:
 
 ### Preference order (revised 2026-08-14)
 
-**Try (a) first.** If a retune of the boundary fixes the failure region without regressions, take it — it is the minimal change to a hard, well-understood discrimination.
+**Try (a) first, then (a′).** If a retune of the boundary — fixed or scale-normalised — fixes the failure region without regressions, take it: it is the minimal change to a hard, well-understood discrimination, and it is the only path that keeps the paper draft untouched.
+
+### Session plan (rev. 12)
+
+**Session 1 — Step 1b and the separability read.**
+- Extend `phase6_reflective_sweep.py` per Step 1b (discriminant columns, angle 50–180, add zero/positive roughness, rename `ml_error` → `error_message`). ~1 h of coding; can be done ahead of the session.
+- Start the ~1700-cell run (~80 min, unattended).
+- While it runs: nothing else required (6.0 is done).
+- Plot the discriminant distributions for reflective sub-90° vs genuine high-angle, faceted by scaler. Also plot the discriminant against drop width in px, to see whether a scale-normalised threshold (a′) separates where a fixed one doesn't.
+- **Go/no-go at end of session**: does any fixed *or* scale-normalised threshold cleanly separate the classes? Record the answer in the changelog.
+
+**Session 2 (if go) — implement (a) or (a′) and guard it.**
+- Change the one branch at `preprocessing.py:2403`.
+- Run the 6.4 harness before and after; require zero diffs on 324 + 171.
+- Re-run the sweep; confirm the failure region is gone or materially shrunk.
+- Confirm the three reproduction images give CP error ≤ 3 px.
+- Commit. Then 7.1 verification (re-run paper results, confirm unchanged) can be a short follow-up.
+
+**If no-go**: stop and decide deliberately between (b′) with its full validation burden, or documenting the limitation with the map as an SI figure. Do not start (b′) in the same session.
 
 **(b)/(b′) only if (a) cannot.** These are global changes to the algorithm's logic, and per dgshaw's constraint they require verification against **all system types**, not just the reflective corner:
 
@@ -516,6 +546,8 @@ $PY synthetic_reanalysis/phase6_regression.py --capture-baseline
 
 Fold the surviving work into `paper_results/` and update the paper's outputs. **Runs after Phase 6.**
 
+> **Rescoped rev. 12.** Under the working constraints, 7.1 is a **verification** that the paper's existing numbers are unchanged by the fix — the expected outcome, not a regeneration. 7.2 (moving artefacts) is still worth doing for a tidy public repo. 7.3 (paper-output updates) and 7.4 (framing) are **optional**: they only apply if the off-grid set is added to the paper as a supplementary robustness section, which is a separate decision to take with the supervisor after the fix lands. Nothing in 7.3/7.4 blocks merging the fix.
+
 ## 7.1 — Re-run what Phase 6 invalidates
 
 - [ ] Re-run Phase 3 evaluation on the off-grid set and the on-grid control with the fixed preprocessing:
@@ -577,6 +609,7 @@ Collected from Part 1 so they aren't rediscovered the hard way.
 
 ## Changelog
 
+- **rev. 12 (2026-09-13)** — Planning only, no code or analysis changed. Added a "Working constraints" section recording the post-PhD scope: paper-neutral fix preferred, limitation-only outcome is the fallback not the target, two-session budget with a deliberate escalation decision. Added option (a′), a scale-normalised threshold, between (a) and (b) — motivated directly by Step 1a's finding that the failure window shifts with scaler. Added a two-session plan under 6.1 with an explicit go/no-go. Rescoped Phase 7: 7.1 is verification, 7.3/7.4 are optional and depend on a supervisor decision about adding the off-grid set to the paper.
 - **rev. 11 (2026-09-13)** — 6.0 done. Curated `training_files/` (dropped `check_imports.py`, `clean_output_file.py`, `data_check.py`, `shuffle_test.py`; kept `test_evaluation.py`/`test_model.sh` — a post-training held-out-test scorer, not a restart script as first remembered — and `examine_db.py` as the only reader for the kept `.db`), recorded the curation in its README, and committed it, the `prepare_experimental.py` docstring fix, and all of `synthetic_reanalysis/` including `data/` as three commits. Working tree is clean. No analysis changed. Decision on whether PART1/PART2 ship in the public repo deferred to merge time — PART1 is a working log and probably should not; PART2 could plausibly stay as a methodology/limitations record.
 - **rev. 10 (2026-08-14)** — Review pass over revs. 5–9, checking the sweep CSV directly rather than its summary. No code changed. **6.1 Step 2 is not ready to start**; three additions gate it.
 
