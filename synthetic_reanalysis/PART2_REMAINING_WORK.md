@@ -1,9 +1,9 @@
 # Off-Grid Synthetic Reanalysis — Part 2: Remaining Work
 
-**Date**: 2026-08-14 (rev. 10)
+**Date**: 2026-09-13 (rev. 11)
 **Developer**: dgshaw
-**Status**: 6.4 done. 6.2 done and committed (`fix/cpid-sparse-contour-crash`, not pushed). 6.3 skipped (training_files/ must stay unaltered). 6.1 Step 1 mapped, but a review (rev. 10) found the map cannot yet support the Step 2 decision.
-**Next, in order**: **6.0** (commit the uncommitted work — 🔴 it exists only in a working tree), then **6.1 Step 1b** (extend the sweep to both classes and record the discriminant values), then 6.1 Step 2.
+**Status**: 6.0 done (rev. 11) — everything is committed on `fix/cpid-sparse-contour-crash` (5 commits ahead of `origin/develop`, not pushed). 6.4 done. 6.2 done. 6.3 skipped (training_files/ must stay unaltered). 6.1 Step 1 mapped, but a review (rev. 10) found the map cannot yet support the Step 2 decision.
+**Next, in order**: **6.1 Step 1b** (extend the sweep to both classes and record the discriminant values), then 6.1 Step 2.
 **Prerequisite reading**: [PART1_ANALYSIS_AND_FINDINGS.md](PART1_ANALYSIS_AND_FINDINGS.md) — at minimum its "How to read this document" preamble and the "Revised verdict" at the end of the rev. 24 post-hoc review.
 
 ---
@@ -97,22 +97,22 @@ Proposed split — **confirm before acting**:
 
 **Record the curation in `training_files/README.md`.** PART1's provenance argument rests on this directory matching the archival copy at `files_from_old_computer/_mse_0.4218772351741791/training_files/`; after curation it becomes a *deliberate subset*, not a full mirror. Say so explicitly, and note that the archival copy remains the untouched reference — otherwise a future reader will read the missing files as loss rather than choice.
 
-- [ ] Curation confirmed with dgshaw and applied
-- [ ] `training_files/README.md` updated to describe what was kept, what was removed, and why
-- [ ] Committed on its own branch, message carrying the provenance reasoning from PART1 rev. 1
+- [x] Curation confirmed with dgshaw and applied (rev. 11) — the four dev utilities dropped; `test_evaluation.py`/`test_model.sh` and `examine_db.py` kept
+- [x] `training_files/README.md` updated to describe what was kept, what was removed, and why
+- [x] Committed (`9df6306b`), message carrying the provenance reasoning from PART1 rev. 1
 
 ### 6.0.2 — `synthetic_reanalysis/` is entirely untracked
 
 All the code, the 324 off-grid images, every result CSV, and both PART1/PART2 documents. **Phase 7.2 plans to delete this directory** once its contents are moved — so it is currently one `rm` away from gone, with no recovery.
 
-- [ ] Commit at minimum the code, result CSVs and both documents
-- [ ] Decide separately how to handle `data/` (648 PNGs) — git, Git LFS, or an out-of-tree archive with its path recorded in the docs. Do not let the size question block committing everything else.
+- [x] Committed in full (`f5fede87`) — code, result CSVs, both documents, and `data/`
+- [x] `data/` committed directly to git (9.4 MB; `paper_results/data/synthetic/` is already tracked the same way, so there is precedent and no LFS needed)
 
 ### 6.0.3 — `prepare_experimental.py` docstring fix is uncommitted
 
 The `normalize_ds` docstring correction from PART1 rev. 2 (window-local, not apex-relative). Small, but it pairs with the identical fix in `create_contours_args6.py` and the two should land together or the cross-reference in each points at nothing.
 
-- [ ] Committed
+- [x] Committed (`268c0bfb`)
 
 ---
 
@@ -503,7 +503,7 @@ $PY synthetic_reanalysis/phase6_regression.py --capture-baseline
 
 ## Phase 6 status
 
-- [ ] **6.0 — repo hygiene: commit `training_files/` (curated), `synthetic_reanalysis/`, and the `prepare_experimental.py` fix. 🔴 Do first — this work exists only in a working tree (rev. 10)**
+- [x] **6.0 — repo hygiene: `training_files/` (curated), `synthetic_reanalysis/`, and the `prepare_experimental.py` fix all committed on `fix/cpid-sparse-contour-crash` (rev. 11)**
 - [x] 6.4 — regression harness built and verified clean against unmodified code (rev. 5)
 - [ ] 6.1 — sweep mapped (rev. 5) and its reading corrected (rev. 10); **Step 1b instrumentation outstanding**, then fix chosen and justified, regression-guarded, post-fix sweep clean
 - [x] 6.2 — sparse-contour path fixed, low-confidence signal added, all three slice starts clamped, `video_two_pass.py:436` checked, dead twin (and 4 further orphans found by an extended sweep) resolved, regression test added, committed on `fix/cpid-sparse-contour-crash` (rev. 6, rev. 9)
@@ -577,6 +577,7 @@ Collected from Part 1 so they aren't rediscovered the hard way.
 
 ## Changelog
 
+- **rev. 11 (2026-09-13)** — 6.0 done. Curated `training_files/` (dropped `check_imports.py`, `clean_output_file.py`, `data_check.py`, `shuffle_test.py`; kept `test_evaluation.py`/`test_model.sh` — a post-training held-out-test scorer, not a restart script as first remembered — and `examine_db.py` as the only reader for the kept `.db`), recorded the curation in its README, and committed it, the `prepare_experimental.py` docstring fix, and all of `synthetic_reanalysis/` including `data/` as three commits. Working tree is clean. No analysis changed. Decision on whether PART1/PART2 ship in the public repo deferred to merge time — PART1 is a working log and probably should not; PART2 could plausibly stay as a methodology/limitations record.
 - **rev. 10 (2026-08-14)** — Review pass over revs. 5–9, checking the sweep CSV directly rather than its summary. No code changed. **6.1 Step 2 is not ready to start**; three additions gate it.
 
   **New 6.0 — repo hygiene, marked do-first.** All of the following exist only in a working tree: the `training_files/` correction (PART1's foundational finding — the superseded pipeline deleted, the recovered real one untracked), the entire `synthetic_reanalysis/` directory (code, 324 images, every result CSV, both documents — and Phase 7.2 plans to *delete* that directory), and the `prepare_experimental.py` docstring fix. Added a curation step per dgshaw: several `training_files/` entries (`check_imports.py`, `clean_output_file.py`, `data_check.py`, `shuffle_test.py`, `examine_db.py`) were development-time utilities rather than part of the pipeline that generated data or trained the model, and needn't be in the repo — proposed keep/remove split recorded, with `test_evaluation.py`/`test_model.sh` and `examine_db.py` (the only reader of the retained `hyperparameter_study.db`) flagged as judgement calls. Noted that curation makes `training_files/` a deliberate subset rather than a mirror of the archival copy, which must be said in its README so future readers don't read absence as loss.
