@@ -109,20 +109,20 @@ Proposed split — **confirm before acting**:
 
 - [x] Curation confirmed with dgshaw and applied (rev. 11) — the four dev utilities dropped; `test_evaluation.py`/`test_model.sh` and `examine_db.py` kept
 - [x] `training_files/README.md` updated to describe what was kept, what was removed, and why
-- [x] Committed (`9df6306b`), message carrying the provenance reasoning from PART1 rev. 1
+- [x] Committed (`28d2e449`), message carrying the provenance reasoning from PART1 rev. 1
 
 ### 6.0.2 — `synthetic_reanalysis/` is entirely untracked
 
 All the code, the 324 off-grid images, every result CSV, and both PART1/PART2 documents. **Phase 7.2 plans to delete this directory** once its contents are moved — so it is currently one `rm` away from gone, with no recovery.
 
-- [x] Committed in full (`f5fede87`) — code, result CSVs, both documents, and `data/`
+- [x] Committed in full (`9ee844f2`) — code, result CSVs, both documents, and `data/`
 - [x] `data/` committed directly to git (9.4 MB; `paper_results/data/synthetic/` is already tracked the same way, so there is precedent and no LFS needed)
 
 ### 6.0.3 — `prepare_experimental.py` docstring fix is uncommitted
 
 The `normalize_ds` docstring correction from PART1 rev. 2 (window-local, not apex-relative). Small, but it pairs with the identical fix in `create_contours_args6.py` and the two should land together or the cross-reference in each points at nothing.
 
-- [x] Committed (`268c0bfb`)
+- [x] Committed (`867ce288`)
 
 ---
 
