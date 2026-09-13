@@ -1691,6 +1691,26 @@ def check_for_high_angle(contour, display=False):
     return CP_guesses, widest_points
 
 
+KINK_RATIO_THRESHOLD = 3.0
+# Edge noise on real images produces bottom-minus-top steps of up to ~12 deg
+# over a 10-point window even at a smooth equator (max 11.8 deg over 98
+# experimental high-angle drops); the ratio alone amplifies that on large
+# drops, so a step must also clear this floor in degrees.
+KINK_MIN_DEG = 14.0
+
+
+def _reflective_kink(top1, bottom1, top2, bottom2, widest_points, n_pts):
+    """True when the tangent step at the widest point is too large to be the
+    arc curvature of a smooth drop over an n_pts window at radius = half the
+    width, and also above the real-image edge-noise floor."""
+    width = abs(float(widest_points[1][0]) - float(widest_points[0][0]))
+    if width < 1:
+        return False
+    arc_deg = np.degrees(n_pts / (width / 2))
+    kink_deg = max(bottom1 - top1, bottom2 - top2)
+    return kink_deg > KINK_MIN_DEG and kink_deg / arc_deg > KINK_RATIO_THRESHOLD
+
+
 def CPID(contour, display=False):
     """
     Identifies the contact points (CPs) from a given contour based on its shape and angles.
@@ -1854,6 +1874,29 @@ def CPID(contour, display=False):
                     print(
                         "angles on either side of widest points are similar - reflective"
                     )
+                    print(
+                        f"angles preceding widest point are {widest1_top_angle}, {widest2_top_angle}"
+                    )
+                    print(
+                        f"angles proceeding widest point are {widest1_bottom_angle}, {widest2_bottom_angle}"
+                    )
+                final_CPs = widest_points
+
+            # A reflection meets the drop at the contact line with a tangent
+            # step of ~2*(90 - theta); a genuine high-angle drop's equator is
+            # smooth, so its bottom-minus-top angle is only the arc curvature
+            # over the n_pts window. Normalising by that expected arc makes the
+            # test resolution-independent. Thresholds from the 20-180 deg
+            # synthetic sweep and the experimental edge-noise floor
+            # (synthetic_reanalysis, PART2 rev. 17); the residual ambiguity is
+            # |theta - 90| <~ 5 deg, where the step is at the noise level.
+            elif _reflective_kink(
+                widest1_top_angle, widest1_bottom_angle,
+                widest2_top_angle, widest2_bottom_angle,
+                widest_points, n_pts,
+            ):
+                if display:
+                    print("kink at widest point - reflective")
                     print(
                         f"angles preceding widest point are {widest1_top_angle}, {widest2_top_angle}"
                     )
