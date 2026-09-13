@@ -18,17 +18,12 @@ branch placed the contact point ~20 px inside the reflection for 75–95° drops
 roughness values the on-grid set never samples. The fix (an arc-normalised
 tangent-step test at the widest point) changes nothing on the paper's 324 + 171
 images and removes the failure everywhere except |θ − 90°| ≲ 5°, which is a
-physical limit of single-frame geometry at deployed resolution. See
-`PART2_REMAINING_WORK.md` §6.1 for the full trail.
+physical limit of single-frame geometry at deployed resolution. The fix and
+its verification are described in commits `0c1adcd8` and `fa10d758`.
 
-The two long documents are the study's record:
-
-- `PART1_ANALYSIS_AND_FINDINGS.md` — the working log: design, every phase's
-  measurements, the post-hoc review and revised verdict. Read its "How to read
-  this document" preamble first; the rest is in chronological order and earlier
-  sections are superseded by later ones.
-- `PART2_REMAINING_WORK.md` — the prescriptive record of the fixes (Phase 6) and
-  the fold into `paper_results/` (Phase 7), with a changelog and a list of traps.
+The study's working notes (design log, every phase's measurements, the
+post-hoc review) are kept outside the repository; this README carries what a
+reader of the results needs.
 
 ## Datasets
 
@@ -108,6 +103,6 @@ reports the old numbers.
 | in-domain / out-of-domain ML MAE | 1.71° / 2.65° |
 | hardest out-of-domain axes | scaler (0.95/5.0 pooled, 3.3°), bond × scaler corner (6.4°) |
 
-`results/offgrid/pre_6.1/` holds the same outputs from before the CPID fix, for
-the before/after comparison in PART2 §7.1. The only images that changed are 11
-at 80° on reflective roughness (all improved) and one recovered crash.
+`results/offgrid/pre_6.1/` holds the same outputs from before the CPID fix. The
+only images that changed are 11 at 80° on reflective roughness (all improved)
+and one recovered crash.
