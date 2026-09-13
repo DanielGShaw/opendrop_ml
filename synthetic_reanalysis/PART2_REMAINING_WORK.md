@@ -1,9 +1,13 @@
 # Off-Grid Synthetic Reanalysis — Part 2: Remaining Work
 
-**Date**: 2026-09-13 (rev. 18)
+**Date**: 2026-09-13 (rev. 19)
 **Developer**: dgshaw
 **Status**: **6.1 fixed and regression-clean (rev. 17–18, commits `0c1adcd8` + `fa10d758`).** 6.0, 6.2, 6.4 done; 6.3 skipped. All on `fix/cpid-sparse-contour-crash`, not pushed.
-**Next, in order**: Phase 6 is complete bar the descopable 6.3 audit. **Phase 7**: 7.1 is now a formality (the harness already shows 0 changes on both paper sets — `paper_results/results/` need not be regenerated); 7.2 (move artefacts) and the optional 7.3/7.4 (paper additions) remain and are dgshaw's call.
+**Next, in order**:
+1. **6.1b (optional, dgshaw's call)** — the 85° high-resolution residue: measure whether a fit window scaled to drop width lowers the experimental noise floor without losing the step; details under "Rev. 18". If it does, it is a third pass under the same harness; if not, the residue is documented as is.
+2. **7.1** — the harness already proves the 324 + 171 paper images are unchanged, so `paper_results/results/` need not move. Still to run: the off-grid Phase 3/4 re-evaluation (`evaluate_offgrid.py`, `compare_grid_vs_offgrid.py`) so Part 1's off-grid numbers reflect the fixed preprocessing, and — per dgshaw — a regeneration of the paper's results/figures as a check that they are unchanged (expected, given the harness).
+3. **7.2** — fold `synthetic_reanalysis/` into `paper_results/`; decide whether PART1/PART2 ship in the public repo.
+4. **7.3/7.4** — optional paper additions (the reflective-substrate caveat is now one evidence-backed sentence; the off-grid set as a supplementary section is a supervisor decision).
 **Prerequisite reading**: [PART1_ANALYSIS_AND_FINDINGS.md](PART1_ANALYSIS_AND_FINDINGS.md) — at minimum its "How to read this document" preamble and the "Revised verdict" at the end of the rev. 24 post-hoc review.
 
 ---
@@ -636,7 +640,8 @@ $PY synthetic_reanalysis/phase6_regression.py --capture-baseline
 
 - [x] **6.0 — repo hygiene: `training_files/` (curated), `synthetic_reanalysis/`, and the `prepare_experimental.py` fix all committed on `fix/cpid-sparse-contour-crash` (rev. 11)**
 - [x] 6.4 — regression harness built and verified clean against unmodified code (rev. 5)
-- [ ] 6.1 — sweep mapped (rev. 5) and its reading corrected (rev. 10); **Step 1b instrumentation outstanding**, then fix chosen and justified, regression-guarded, post-fix sweep clean
+- [x] 6.1 — mapped (revs. 5–14), fix chosen from the map (revs. 15–16), implemented and regression-guarded (rev. 17, `0c1adcd8`), extended to the 75° gate (rev. 18, `fa10d758`); 0 changes on 324 + 171; sweep > 10 px cells 123 → 93, ML MAE 2.74° → 2.20°. Residue: |θ − 90°| ≲ 5° on reflective substrates (physical floor at deployed resolution) — see 6.1b
+- [ ] 6.1b (optional) — width-scaled fit window for the 85° high-resolution residue; measure the experimental noise floor vs window length first (rev. 18 note)
 - [x] 6.2 — sparse-contour path fixed, low-confidence signal added, all three slice starts clamped, `video_two_pass.py:436` checked, dead twin (and 4 further orphans found by an extended sweep) resolved, regression test added, committed on `fix/cpid-sparse-contour-crash` (rev. 6, rev. 9)
 - [x] 6.3 — SKIPPED (rev. 8): `training_files/` must stay unaltered as the reproducible training record; see the 6.3 section header and rev. 7/8 changelog entries
 - [ ] 6.3 audit — training-grid CP-disagreement audit run and sized **(descopable — characterises a limitation, fixes nothing)**
@@ -655,7 +660,7 @@ Fold the surviving work into `paper_results/` and update the paper's outputs. **
       `$PY synthetic_reanalysis/evaluate_offgrid.py`
 - [ ] Re-run Phase 4's comparison: `$PY synthetic_reanalysis/compare_grid_vs_offgrid.py`
 - [ ] Check whether the bounded-null primary endpoint survives. It **should** — 6.1 removes a discrete failure, it doesn't change the graded-effect question — but confirm rather than assume, and expect the off-grid MAE to *improve* toward the 2.069° figure Part 1 measured with the reflective corner excluded.
-- [ ] Re-run the **existing** on-grid 324 and the 171 experimental images and diff against `paper_results/results/`. 6.1 changes deployed preprocessing, so the paper's current numbers may move even though those images take the correct branch today. This is the 6.4 harness; reuse it. **Per the ground rules, adopt the new numbers** — overwrite `paper_results/results/synthetic_results.csv` and `experimental_results.csv`, and record the before/after deltas in the changelog so the paper rewrite has a reference.
+- [x] Re-run the **existing** on-grid 324 and the 171 experimental images and diff against `paper_results/results/` — **done as part of 6.1 (revs. 17–18): 0 changed cells on both sets** (`results/phase6_regression_diff.csv` is empty; the rejected ratio-only attempt's 6-image diff is kept as `phase6_regression_diff_attempt1_ratio_only.csv`). `paper_results/results/*.csv` are therefore already the post-fix numbers; nothing to overwrite. dgshaw still intends to regenerate results/figures through `paper_results/run_all.py` as an end-to-end check — expected outcome: identical.
 - [ ] **Do not re-run the Phase 2A contour-level sweep** — it is faithful to training preprocessing and is unaffected.
 
 ## 7.2 — Move the artefacts
@@ -689,7 +694,7 @@ The rev. 24 verdict pulls both ways: the latter for **accuracy** claims (no grad
 
 ## Phase 7 status
 
-- [ ] 7.1 — re-runs complete, bounded null re-confirmed, paper-number diff reviewed
+- [ ] 7.1 — paper-number diff reviewed ✔ (0 changes, revs. 17–18); off-grid re-runs and bounded-null re-check still to do; `run_all.py` regeneration as a check still to do
 - [ ] 7.2 — artefacts moved, config/run_all updated, `synthetic_reanalysis/` deleted
 - [ ] 7.3 — figures, captions and paper text updated; per-axis estimates bootstrapped
 - [ ] 7.4 — framing decided and applied consistently
@@ -710,6 +715,7 @@ Collected from Part 1 so they aren't rediscovered the hard way.
 
 ## Changelog
 
+- **rev. 19 (2026-09-13)** — Status bookkeeping only. Ticked 6.1 in the Phase 6 status list, added 6.1b (optional width-scaled window) as its residue, marked the 7.1 paper-image diff done (0 changes) and rewrote the header's "Next" as an ordered list reflecting that the paper numbers are unchanged and only the off-grid re-evaluation, the `run_all.py` check, and the 7.2 artefact move remain before the paper decisions.
 - **rev. 18 (2026-09-13)** — Explanatory figures added (`phase6_figures.py`, 7 PNGs). Diagnosed the 75° stripe as the `65 < top < 72` gate routing reflective drops to an Lfit centred on the substrate; applied the kink test there too (`fa10d758`). 0 changes on 324 + 171; sweep 75° failures 9 → 0, > 10 px cells 102 → 93, ML MAE 2.43° → 2.20°; five cells 0.5–1.2 → 4–6 px recorded. Figures regenerated against the rev. 18 code. The 85° high-resolution residue is confirmed to be the fixed 10-row window vs the real-image noise floor; a width-scaled window is the next candidate and must be measured on the experimental set first.
 - **rev. 17 (2026-09-13)** — **6.1 fixed** (`0c1adcd8`). Widened the sweep to 20–180° (2178 cells; angles < 50 never reach the decision). Implemented the arc-normalised kink branch; attempt 1 (ratio only) regressed 6 experimental high-angle drops because real-edge noise reaches 11.8° over 10 points — added a 14° absolute floor measured from all 171 experimental images. Attempt 2: 0 changes on 324 + 171; post-fix sweep 23 cells improved / 0 worsened, 80° failures 17 → 1; residual is 85–95° (physical floor) plus pre-existing failures in other branches. Repro images 21.8/6.1 px → 5.0 px (the widest-point estimate's own offset; ≤ 3 px criterion not met and recorded as such). Added `--out`/`--in` options to the sweep/analysis scripts and the `reflective_kink` branch label. Phase 6 effectively complete; Phase 7 rescoped to artefact moves and optional paper additions since paper numbers are unchanged.
 - **rev. 16 (2026-09-13)** — Step 2 prototyping, part 2. Answered dgshaw's condition ("caveat acceptable only if the cause is purely near-90°/low-res; anything else must be fixed"). Option 2 (curvature-removed kink) measured and rejected. The raw 10-point kink, arc-normalised by drop width, fails only at exactly 90° at ≥500 px and within 85–95° below ~200 px, versus the current code's 75–95° including a real high-resolution failure at 80–85°. Pooled: 57/1260 vs 94/1260, all residual errors in 80–95°, 100–180° untouched. Proposed as the Session 2 one-branch fix at `preprocessing.py:1866` with a stated caveat (reflective, |θ−90°| ≲ 5°, width ≲ 200 px, use video). Added `phase6_kink_refine.py` + CSV. No `preprocessing.py` change.
