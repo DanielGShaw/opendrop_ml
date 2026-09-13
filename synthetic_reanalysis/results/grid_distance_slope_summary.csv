@@ -1,0 +1,11 @@
+metric,value
+n,5724
+ols_slope,0.1976007343255064
+ols_intercept,0.6920864229380097
+ols_slope_ci_lo,0.1487970613370755
+ols_slope_ci_hi,0.2524742004160101
+theilsen_slope,0.13547951795719004
+theilsen_intercept,0.44011024498489887
+max_grid_distance,4.996700242607262
+predicted_increase_at_max_ols,0.6769505402450064
+contour_level_bar,0.2
