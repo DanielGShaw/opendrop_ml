@@ -25,7 +25,8 @@ What Step 1b adds over the rev. 5 run:
     ground truth -- so for every cell you can read off which choice the
     cascade *should* have made, without re-running anything;
   * size covariates for a scale-normalised threshold (option a'):
-    gt_width_px, widest_width_px, drop_height_px, contour_len;
+    gt_width_px, widest_width_px, apex_y, drop_height_px, contour_len
+    (gt_* and drop_height_px use the GT baseline and are NOT deployable);
   * a complete branch classifier (rev. 5 missed "low angle", "assumed
     hydrophobic" and the Lfit path);
   * `ml_error` renamed `error_message` (Step 1a item 4).
@@ -191,7 +192,8 @@ def evaluate_cell(angle, bond, scaler, roughness, model):
         text = buf.getvalue()
         row["branch"] = _branch_from_stdout(text)
         row["contour_len"] = int(len(contour))
-        row["drop_height_px"] = float(gl_y - np.min(contour[:, 1]))
+        row["apex_y"] = float(np.min(contour[:, 1]))
+        row["drop_height_px"] = float(gl_y - row["apex_y"])  # GT-based; not deployable
 
         cpid_l = (int(CPs[0, 0]), int(CPs[0, 1]))
         cpid_r = (int(CPs[1, 0]), int(CPs[1, 1]))
@@ -273,7 +275,7 @@ def _summarise(df):
         checked = ok["disc_parse_ok"].dropna()
         print(f"\ndiscriminant cross-check: {int(checked.sum())}/{len(checked)} cells match "
               f"CPID's printed values ({len(ok) - len(checked)} cells printed none)")
-    print("\nNext: python phase6_separability.py" + (" --smoke" if smoke else ""))
+    print("\nNext: python phase6_separability.py")
 
 
 def main():

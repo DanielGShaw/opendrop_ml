@@ -1,9 +1,9 @@
 # Off-Grid Synthetic Reanalysis — Part 2: Remaining Work
 
-**Date**: 2026-09-13 (rev. 13)
+**Date**: 2026-09-13 (rev. 14)
 **Developer**: dgshaw
 **Status**: 6.0 done (rev. 11) — everything is committed on `fix/cpid-sparse-contour-crash` (5 commits ahead of `origin/develop`, not pushed). 6.4 done. 6.2 done. 6.3 skipped (training_files/ must stay unaltered). 6.1 Step 1 mapped, but a review (rev. 10) found the map cannot yet support the Step 2 decision.
-**Next, in order**: **6.1 Session 1** — the Step 1b scripts are written and smoke-tested (rev. 13); run them per the "Session 1 runbook" under 6.1, then read the verdict. Then 6.1 Step 2. See "Working constraints" below.
+**Next, in order**: **6.1 Step 2 decision — 🔶 dgshaw's call.** Session 1 ran (rev. 14): the Step 1b verdict is **no-go for (a) and (a′)** — no scalar available inside `CPID` separates the classes, and the current statistic is saturated. Read "Session 1 result" under 6.1 and decide between (b″) an explicit baseline estimate, (b′), or documenting the map. Nothing in `preprocessing.py` has been touched.
 **Prerequisite reading**: [PART1_ANALYSIS_AND_FINDINGS.md](PART1_ANALYSIS_AND_FINDINGS.md) — at minimum its "How to read this document" preamble and the "Revised verdict" at the end of the rev. 24 post-hoc review.
 
 ---
@@ -330,8 +330,31 @@ python phase6_separability.py              # offline analysis -> stdout verdict,
 - Caveat the script states: cells below the `>79` threshold go to `iterative_Lfit`, not `widest_points`, so the `widest_points` error is a proxy for that side. Session 2's re-run uses the real path.
 - **Go/no-go at end of session**: the script prints it. Record the verdict, the winning feature and threshold (or the absence of one), and the saturation count in the changelog.
 
-**Session 2 (if go) — implement (a) or (a′) and guard it.**
-- Change the one branch at `preprocessing.py:2403`.
+### Session 1 result (rev. 14, 2026-09-13) — no-go for (a)/(a′)
+
+Sweep: 1782/1782 cells ok, zero hard failures, 27.7 min (much faster than the 100 min estimate). Discriminant cross-check: 1577/1577 cells where `CPID` printed values match the mirrored computation exactly; the other 205 took the pre-cascade Lfit path and print nothing. Analysis: `phase6_separability.py` → `results/phase6_separability_summary.csv`, `figures/phase6_separability_*.png`.
+
+**1. The current statistic is uninformative, not mis-tuned.** 1272 cells reach the `>79` test. In **923 of them `180 − widest_bottom_angle` is exactly 90** — the 10-point fit under the widest point is vertical — in *both* classes (854 of the cells that should take `CP_guesses`, 59 of the 94 that should take `widest_points`). No threshold on it, fixed or scale-normalised, can do better than 88 misassignments out of 94. **(a) and (a′) are dead on this statistic.** The on-grid success at roughness −0.03 was not a threshold landing in a margin; there is no margin.
+
+**2. No other quantity `CPID` has in hand separates either.** Eleven deployable candidates were tried — the top angles, top-minus-bottom kink, the CP-guess/widest-point vertical gap (raw and width-normalised), height-above-widest-point / width, height-to-CP-guess / width, CP-guess width / widest width. Best pooled is 69/94 wrong; best per-scaler is 8/28 (`disc_min` at scaler 1.0). None is separable at any scaler.
+
+**3. But the classes *are* separable given the true baseline.** `aspect_gt` = (GT baseline − apex) / widest width separates **perfectly within each scaler** at thresholds 0.454 / 0.457 / 0.489 — physically, "is the drop taller than a hemisphere" ⇔ "is θ > 90°". This is not deployable (it uses the GT contact-point row), but it localises the problem exactly: **the decision is easy once you know where the substrate is, and `CPID` currently has no estimate of that.** Every quantity it does have is measured relative to the widest point or the CP guess, both of which are themselves wrong in the failing class.
+
+**4. The failure is an angle band, not an off-grid-roughness effect.** The 94 failing cells are spread almost uniformly over roughness −0.080 … −0.010. They sit at **75–90° for scaler ≤ 2.83 and 90–95° for scaler 4.0**. The paper's on-grid set escapes them because its angles step by 20° and its scalers are 1.0 and 4.0: at (80°, −0.03) the sweep passes at scalers 1.0 and 4.0 (3.1 px, 0.5 px) and fails at 2.83 (14.4 px). Mean CPID error in the failing cells is 23.8 px (max 41.8).
+
+**5. The contour includes the substrate strip.** In every cell the contour's lowest rows are the image's baseline line at y=460, wider than the drop. So the reflection is clipped by the strip and the "termination shape" (b′) cannot be read as mirrored-apex-vs-flat-cut on these contours — both classes terminate in the strip. (b′) as written in Step 2 would need re-specifying before it could be tried.
+
+**What this means for Step 2 — decision for dgshaw, not taken here:**
+
+- **(b″) Estimate the substrate row explicitly and threshold `aspect` on it — the new preferred candidate.** Item 3 says the decision is trivial given the baseline; item 5 says the baseline strip is *in the contour*. So the deployable version of `aspect_gt` is: find the substrate row (the widest horizontal run in the contour, or the row where width jumps above the drop's widest width), take (substrate row − apex) / widest width, and route to `widest_points` below ~0.46, `CP_guesses` above. One branch, same blast radius as (a). **Risk:** relies on a baseline line being present in the contour, which is true of these renders and may not be of real images — `isolate_contour` already runs Hough baseline detection and `tilt_correction`, so a substrate estimate may already exist upstream; check before writing a new one. Must be validated on the 171 experimental images, not just synthetic.
+- **(b′)** as specified is not testable on these contours (item 5).
+- **(b) symmetry** remains an option but is the larger change the preference order already warns about.
+- **Document the map** — the SI-figure outcome. Items 1–4 are already the content of that figure.
+
+Recommendation recorded for the decision: try **(b″)** in Session 2, under the 6.4 harness, with the experimental-image check as a hard gate. If `isolate_contour` already yields a baseline estimate, this may be a one-line discriminant swap.
+
+**Session 2 (if go) — implement the chosen discriminator and guard it.**
+- Change the one branch at `preprocessing.py:1866`.
 - Run the 6.4 harness before and after; require zero diffs on 324 + 171.
 - Re-run the sweep; confirm the failure region is gone or materially shrunk.
 - Confirm the three reproduction images give CP error ≤ 3 px.
@@ -362,8 +385,8 @@ Budget for that accordingly: it is a substantially larger piece of work than (a)
 
 - [x] `results/phase6_reflective_sweep.csv` exists and the failure region is characterised (rev. 5)
 - [x] Map reading corrected — fourth branch, non-cascade failures, scaler-shifting failure window (rev. 10, Step 1a)
-- [ ] **Step 1b**: sweep extended to both classes and full angle range, discriminant values recorded, `ml_error` column renamed
-- [ ] **Step 1b analysis**: separability of the two classes stated per scaler — the direct input to the choice below
+- [x] **Step 1b**: sweep extended to both classes and full angle range, discriminant values recorded, `ml_error` column renamed (rev. 14 — `results/phase6_reflective_sweep_1b.csv`, 1782/1782 ok, 27.7 min)
+- [x] **Step 1b analysis**: separability stated per scaler (rev. 14 — **not separable by any deployable scalar**; see "Session 1 result")
 - [ ] Fix chosen with recorded justification
 - [ ] Regression harness: 0 changes on 324 on-grid + 171 experimental (or every change individually reviewed and accepted in writing)
 - [ ] Post-fix sweep shows the failure region gone or materially reduced
@@ -617,6 +640,7 @@ Collected from Part 1 so they aren't rediscovered the hard way.
 
 ## Changelog
 
+- **rev. 14 (2026-09-13)** — **Session 1 run.** Full Step 1b sweep (1782 cells, 27.7 min, 0 failures) and separability analysis. **Verdict: no-go for (a)/(a′).** The current `>79` statistic is saturated at exactly 90 in 923/1272 decision cells across both classes — uninformative rather than mis-tuned — and none of eleven deployable alternatives separates at any scaler. The GT-baseline aspect ratio *does* separate perfectly per scaler (≈0.46, "taller than a hemisphere"), which localises the problem to baseline estimation and motivates a new candidate (b″): estimate the substrate row from the contour (the baseline strip is present in every contour) and threshold the aspect on it. Also found: the failure is an angle band (75–90° at scaler ≤ 2.83, 90–95° at 4.0) uniform across reflective roughness, not an off-grid effect — the paper's set escapes by its 20° angle step and its scalers; (b′) as written isn't testable because the substrate strip terminates every contour. Fixed a `NameError` in the sweep's final print (after the CSV was complete), added `apex_y` to the sweep output, and replaced the analysis's non-deployable `aspect` with deployable variants plus `aspect_gt` as a labelled reference. **No `preprocessing.py` change. Step 2 decision left to dgshaw.**
 - **rev. 13 (2026-09-13)** — Session 1 prepared, not run. Rewrote `phase6_reflective_sweep.py` to the Step 1b spec (new output `phase6_reflective_sweep_1b.csv`; the rev. 5 CSV is untouched) and added `phase6_separability.py`, the offline analysis that produces the Step 2 input. Smoke-tested both end to end on the three 6.1 repro cells plus a genuine 150° non-reflective drop: the discriminants computed by mirroring `CPID` match its printed values 4/4; the repro cells fail and the 150° drop passes as expected. **One early flag**: `disc_max` was saturated at exactly 90 on all three cells that reached the `>79` test, both classes — if that holds across the sweep the statistic is uninformative and (a)/(a′) are ruled out on it; the separability script tests seven alternative deployable discriminants for that case. Corrected the cascade's line numbers throughout 6.1 (now ~1825–1949; `>79` at :1866; correct branch at :1834) after 6.2's dead-code removal shifted them. No `preprocessing.py` change.
 - **rev. 12 (2026-09-13)** — Planning only, no code or analysis changed. Added a "Working constraints" section recording the post-PhD scope: paper-neutral fix preferred, limitation-only outcome is the fallback not the target, two-session budget with a deliberate escalation decision. Added option (a′), a scale-normalised threshold, between (a) and (b) — motivated directly by Step 1a's finding that the failure window shifts with scaler. Added a two-session plan under 6.1 with an explicit go/no-go. Rescoped Phase 7: 7.1 is verification, 7.3/7.4 are optional and depend on a supervisor decision about adding the off-grid set to the paper.
 - **rev. 11 (2026-09-13)** — 6.0 done. Curated `training_files/` (dropped `check_imports.py`, `clean_output_file.py`, `data_check.py`, `shuffle_test.py`; kept `test_evaluation.py`/`test_model.sh` — a post-training held-out-test scorer, not a restart script as first remembered — and `examine_db.py` as the only reader for the kept `.db`), recorded the curation in its README, and committed it, the `prepare_experimental.py` docstring fix, and all of `synthetic_reanalysis/` including `data/` as three commits. Working tree is clean. No analysis changed. Decision on whether PART1/PART2 ship in the public repo deferred to merge time — PART1 is a working log and probably should not; PART2 could plausibly stay as a methodology/limitations record.

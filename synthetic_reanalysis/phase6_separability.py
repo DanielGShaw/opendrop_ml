@@ -47,9 +47,10 @@ CURRENT_THRESHOLD = 79.0  # preprocessing.py:1866  `180 - widest_bottom_angle > 
 # two reflective `elif`s). Only these are affected by moving that threshold.
 DECISION_BRANCHES = {"high_angle_cp_guesses", "reflective_lfit"}
 
-# Candidate one-branch discriminants. Every one must be computable inside CPID()
-# from what it already has (contour, widest_points, CP_guesses) -- gt_* columns
-# are deliberately excluded. Direction is searched both ways.
+# Candidate one-branch discriminants. Every one except aspect_gt is computable
+# inside CPID() from what it already has (contour, widest_points, CP_guesses).
+# aspect_gt uses the ground-truth baseline and is kept only to show whether the
+# classes are separable *given* the baseline. Direction is searched both ways.
 FEATURES = {
     "disc_max": "current statistic: max(180 - widest_bottom_angle)",
     "disc_min": "min(180 - widest_bottom_angle)",
@@ -58,9 +59,13 @@ FEATURES = {
     "top_angle_min": "min(widest_top_angle)",
     "top_minus_bottom_max": "max(widest_top_angle - widest_bottom_angle)",
     "cpg_below_wp_px": "mean vertical gap CP_guesses below widest_points, px",
-    "cpg_below_wp_frac": "that gap / drop_height_px",
-    "aspect": "drop_height_px / widest_width_px",
+    "cpg_below_wp_frac": "that gap / widest_width_px",
+    "aspect_wp": "(widest_points y - apex y) / widest_width_px",
+    "aspect_cpg": "(CP_guesses y - apex y) / widest_width_px",
+    "cpg_width_frac": "CP_guesses width / widest_width_px",
+    "aspect_gt": "REFERENCE ONLY, uses the GT baseline: drop_height_px / widest_width_px",
 }
+NON_DEPLOYABLE = {"aspect_gt"}
 
 
 def load(path):
@@ -86,8 +91,15 @@ def load(path):
         df["widest2_top_angle"] - df["widest2_bottom_angle"],
     )
     df["cpg_below_wp_px"] = ((df["cpg_l_y"] - df["wp_l_y"]) + (df["cpg_r_y"] - df["wp_r_y"])) / 2
-    df["cpg_below_wp_frac"] = df["cpg_below_wp_px"] / df["drop_height_px"]
-    df["aspect"] = df["drop_height_px"] / df["widest_width_px"]
+    df["cpg_below_wp_frac"] = df["cpg_below_wp_px"] / df["widest_width_px"]
+    if "apex_y" not in df.columns:  # rev. 13 CSV predates the column; recover it
+        df["apex_y"] = df["gt_cpl_y"] - df["drop_height_px"]
+    wp_y = (df["wp_l_y"] + df["wp_r_y"]) / 2
+    cpg_y = (df["cpg_l_y"] + df["cpg_r_y"]) / 2
+    df["aspect_wp"] = (wp_y - df["apex_y"]) / df["widest_width_px"]
+    df["aspect_cpg"] = (cpg_y - df["apex_y"]) / df["widest_width_px"]
+    df["cpg_width_frac"] = (df["cpg_r_x"] - df["cpg_l_x"]) / df["widest_width_px"]
+    df["aspect_gt"] = df["drop_height_px"] / df["widest_width_px"]
     return df
 
 
@@ -191,7 +203,14 @@ def main():
         print(summary.round(3).to_string(index=False))
 
     # ---- 5. Verdict ----
-    pooled = summary[summary["scaler"] == "pooled"].sort_values("min_errors")
+    ref = summary[(summary["feature"].isin(NON_DEPLOYABLE)) & (summary["scaler"] != "pooled")]
+    if len(ref):
+        print(f"\nReference (not deployable): aspect_gt separable per scaler = "
+              f"{bool(ref['separable'].all())}, thresholds "
+              f"{ref['best_T'].round(3).tolist()} -- i.e. the classes ARE separable given the true "
+              f"baseline; the difficulty is entirely in estimating that baseline.")
+    summary_dep = summary[~summary["feature"].isin(NON_DEPLOYABLE)]
+    pooled = summary_dep[summary_dep["scaler"] == "pooled"].sort_values("min_errors")
     print("\n=== Step 1b verdict ===")
     if pooled.empty:
         print("No labelled decision cells -- nothing to separate.")
@@ -203,7 +222,7 @@ def main():
         print("-> go for Session 2: option (a) if feature is disc_max, otherwise a one-branch "
               "swap of the discriminant. Regression-guard with the 6.4 harness.")
     else:
-        per_scaler = summary[(summary["scaler"] != "pooled") & summary["separable"]]
+        per_scaler = summary_dep[(summary_dep["scaler"] != "pooled") & summary_dep["separable"]]
         print(f"NOT cleanly separable pooled. Best: `{top['feature']}` with "
               f"{int(top['min_errors'])} misassignments on n={top['n']}.")
         if len(per_scaler):
