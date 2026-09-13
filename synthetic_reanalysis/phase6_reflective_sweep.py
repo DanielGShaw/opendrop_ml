@@ -5,12 +5,12 @@ Measurement only. Does NOT modify preprocessing.py and does not choose or
 implement a fix -- it produces the table the fix is chosen from offline.
 
 Sweep (Step 1b ranges):
-  angle     50 .. 180 step 5                          (27 values)
+  angle     20 .. 180 step 5                          (33 values)
   roughness -0.005 .. -0.080 step 0.005, plus 0.0,
             plus +0.002 .. +0.010 step 0.002         (22 values)
   scaler    {1.0, 2.83, 4.0}                          (3 values)
   bond      0.55 fixed
-  = 1782 cells.  Expect ~100 min at Phase 3's ~3.4 s/cell.
+  = 2178 cells.  ~1 s/cell measured (rev. 14).
 
 For each cell: render with draw_drop(dpi=64), seeded via matrix_utils.cell_seed
 (same scheme as generate_offgrid_synthetic.py), run isolate_contour + CPID with
@@ -41,6 +41,7 @@ in PART2_REMAINING_WORK.md).
 Run from OpenDrop_OP/synthetic_reanalysis/:
     python phase6_reflective_sweep.py            # full sweep, resumable
     python phase6_reflective_sweep.py --smoke    # 4 cells -> results/phase6_reflective_sweep_smoke.csv
+    python phase6_reflective_sweep.py --out phase6_reflective_sweep_postfix.csv   # after a preprocessing.py change
 """
 
 import contextlib
@@ -81,7 +82,10 @@ from opendrop_ml.modules.ML_model.prepare_experimental import (  # noqa: E402
     experimental_pred,
 )
 
-OUT_CSV = os.path.join(RESULTS_DIR, "phase6_reflective_sweep_1b.csv")
+_out_name = "phase6_reflective_sweep_1b.csv"
+if "--out" in sys.argv:  # e.g. --out phase6_reflective_sweep_postfix.csv (post-fix re-run)
+    _out_name = sys.argv[sys.argv.index("--out") + 1]
+OUT_CSV = os.path.join(RESULTS_DIR, _out_name)
 SMOKE_CSV = os.path.join(RESULTS_DIR, "phase6_reflective_sweep_smoke.csv")
 
 BOND = 0.55
@@ -90,7 +94,7 @@ ROUGHNESS_VALUES = (
     + [0.0]
     + [round(0.002 * i, 4) for i in range(1, 6)]       # +0.002 .. +0.010 (jitter)
 )
-ANGLE_VALUES = list(range(50, 181, 5))  # 50 .. 180
+ANGLE_VALUES = list(range(20, 181, 5))  # 20 .. 180 (rev. 17: widened from 50)
 SCALER_VALUES = [1.0, 2.83, 4.0]
 
 # Every distinct print string the cascade in CPID() can emit, in the order
@@ -100,6 +104,7 @@ SCALER_VALUES = [1.0, 2.83, 4.0]
 BRANCH_PATTERNS = [
     ("large angles under widest points - low angle reflective", "reflective_large_bottom"),
     ("angles on either side of widest points are similar - reflective", "reflective_similar"),
+    ("kink at widest point - reflective", "reflective_kink"),
     ("looks reflective but is high angle", "high_angle_cp_guesses"),
     ("assumed low angle reflective", "reflective_lfit"),
     ("low angle - angles preceding", "low_angle"),

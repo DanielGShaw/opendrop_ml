@@ -45,7 +45,7 @@ CURRENT_THRESHOLD = 79.0  # preprocessing.py:1866  `180 - widest_bottom_angle > 
 
 # Branches whose cells reached the `>79` test (passed the first `if`, failed the
 # two reflective `elif`s). Only these are affected by moving that threshold.
-DECISION_BRANCHES = {"high_angle_cp_guesses", "reflective_lfit"}
+DECISION_BRANCHES = {"high_angle_cp_guesses", "reflective_lfit", "reflective_kink"}
 
 # Candidate one-branch discriminants. Every one except aspect_gt is computable
 # inside CPID() from what it already has (contour, widest_points, CP_guesses).
@@ -149,8 +149,10 @@ def plot_feature(dec, feat, desc, out_path):
 
 def main():
     smoke = "--smoke" in sys.argv
-    path = os.path.join(RESULTS_DIR, "phase6_reflective_sweep_smoke.csv" if smoke
-                        else "phase6_reflective_sweep_1b.csv")
+    name = "phase6_reflective_sweep_1b.csv"
+    if "--in" in sys.argv:
+        name = sys.argv[sys.argv.index("--in") + 1]
+    path = os.path.join(RESULTS_DIR, "phase6_reflective_sweep_smoke.csv" if smoke else name)
     os.makedirs(FIGURES_DIR, exist_ok=True)
     df = load(path)
     print(f"{len(df)} ok cells from {os.path.basename(path)}")
