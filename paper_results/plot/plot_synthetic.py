@@ -1,9 +1,21 @@
 #!/usr/bin/env python
 """Generate synthetic dataset figures.
 
+The synthetic set is placed off the training grid (PART2 §7.3.2), so each
+image carries an `in_domain` label (results/synthetic_matrix.csv):
+in-domain cells fall between training-grid points, out-of-domain cells lie
+beyond it. Per PART2 §7.3.3/D1′, these are reported as two separate,
+independently labelled figures rather than one panel with marked points --
+the in-domain set (216 images) is the main-text synthetic evaluation, and
+the out-of-domain set (108 images) is a supplementary robustness figure
+documenting how error behaves beyond the training grid.
+
 Produces:
-  - figures/synthetic/synthetic_agreement_5panel.png (3x2 multi-panel F2)
-  - figures/synthetic/synthetic_bias_and_disagreement.png (S5)
+  - figures/synthetic/synthetic_agreement_5panel.png (main text, in-domain)
+  - figures/synthetic/synthetic_bias_and_disagreement.png (main text, in-domain)
+  - figures/synthetic/synthetic_agreement_5panel_si_outdomain.png (SI)
+  - figures/synthetic/synthetic_bias_and_disagreement_si_outdomain.png (SI)
+  - results/synthetic_domain_split_mae.csv (per-method MAE, both variants)
 
 Run from OpenDrop_OP/:
     python paper_results/plot/plot_synthetic.py
@@ -36,14 +48,58 @@ from plot_utils import (
 
 SUBDIR = "synthetic"
 
+METHODS_FOR_MAE = ["ml", "yl", "tangent", "circular", "ellipse", "polynomial"]
+
+DOMAIN_VARIANTS = [
+    # (in_domain value, filename suffix, suptitle label)
+    (True, "", "Main text — in-domain synthetic set"),
+    (False, "_si_outdomain", "Supplementary — out-of-domain (beyond training grid) set"),
+]
+
 
 def load_data():
-    """Load synthetic results CSV."""
+    """Load synthetic results and join the per-image in_domain label."""
     df = pd.read_csv(os.path.join(RESULTS_DIR, "synthetic_results.csv"))
+    matrix = pd.read_csv(os.path.join(RESULTS_DIR, "synthetic_matrix.csv"))
+    in_domain_lookup = matrix.set_index("filename")["in_domain"]
+    df["in_domain"] = df["image_name"].map(in_domain_lookup)
+    if df["in_domain"].isna().any():
+        unmatched = df.loc[df["in_domain"].isna(), "image_name"].tolist()
+        raise ValueError(
+            "image_name(s) not found in synthetic_matrix.csv: {}".format(unmatched)
+        )
     return df
 
 
-def plot_agreement_5panel(df):
+def mae_table(df):
+    """Per-method MAE (all-angle and excluding 180°), pooled over both sides."""
+    gt = df["gt_angle"].values
+    gt_doubled = np.concatenate([gt, gt])
+    rows = []
+    for method in METHODS_FOR_MAE:
+        left = df["{}_left_angle".format(method)].values
+        right = df["{}_right_angle".format(method)].values
+        err_all = np.concatenate([np.abs(left - gt), np.abs(right - gt)])
+        err_ex180 = err_all[gt_doubled != 180]
+        rows.append(
+            {
+                "method": method,
+                "mae_all_angle": np.nanmean(err_all),
+                "mae_excluding_180": np.nanmean(err_ex180),
+                "n_sides": len(err_all),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def domain_suptitle(label, df, mt):
+    ml_row = mt.loc[mt.method == "ml"].iloc[0]
+    return "{}  |  n = {} images  |  ML MAE: {:.3f}° (all), {:.3f}° (ex-180°)".format(
+        label, len(df), ml_row["mae_all_angle"], ml_row["mae_excluding_180"]
+    )
+
+
+def plot_agreement_5panel(df, suptitle, filename_suffix):
     """3x2 multi-panel agreement scatter (5 methods, 6th panel removed).
 
     Matches legacy plot_synthetic_results.py In[13] layout:
@@ -83,10 +139,11 @@ def plot_agreement_5panel(df):
     for idx in range(len(FIGURE_METHODS), len(axes)):
         fig.delaxes(axes[idx])
 
-    save_figure(fig, SUBDIR, "synthetic_agreement_5panel.png")
+    fig.suptitle(suptitle, fontsize=10, y=1.01)
+    save_figure(fig, SUBDIR, "synthetic_agreement_5panel{}.png".format(filename_suffix))
 
 
-def plot_bias_and_disagreement(df):
+def plot_bias_and_disagreement(df, suptitle, filename_suffix):
     """Two-panel figure: bias vs true angle (YL + ML) and ML-YL disagreement.
 
     Reproduces legacy pred_vs_true_plots_experimental.py lines 1031-1053
@@ -208,7 +265,8 @@ def plot_bias_and_disagreement(df):
             fontweight="bold",
         )
 
-    save_figure(fig, SUBDIR, "synthetic_bias_and_disagreement.png")
+    fig.suptitle(suptitle, fontsize=10, y=1.04)
+    save_figure(fig, SUBDIR, "synthetic_bias_and_disagreement{}.png".format(filename_suffix))
 
 
 # -----------------------------------------------------------------------
@@ -226,8 +284,25 @@ def main():
     df = load_data()
     print("Loaded {} images".format(len(df)))
 
-    plot_agreement_5panel(df)
-    plot_bias_and_disagreement(df)
+    summary_rows = []
+    for in_domain, suffix, label in DOMAIN_VARIANTS:
+        subset = df[df["in_domain"] == in_domain].copy()
+        mt = mae_table(subset)
+        suptitle = domain_suptitle(label, subset, mt)
+        print()
+        print(suptitle)
+
+        mt.insert(0, "variant", "in_domain" if in_domain else "out_of_domain")
+        mt.insert(1, "n_images", len(subset))
+        summary_rows.append(mt)
+
+        plot_agreement_5panel(subset, suptitle, suffix)
+        plot_bias_and_disagreement(subset, suptitle, suffix)
+
+    summary_path = os.path.join(RESULTS_DIR, "synthetic_domain_split_mae.csv")
+    pd.concat(summary_rows, ignore_index=True).to_csv(summary_path, index=False)
+    print()
+    print("Wrote per-method MAE summary to {}".format(summary_path))
 
     print()
     print("All synthetic figures generated.")

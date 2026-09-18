@@ -71,6 +71,8 @@ figure-regeneration pipeline above.
 - `synthetic_results.csv` — 324 rows, all fitting method predictions + ground truth
 - `sensitivity_results.csv` — 120 rows, v03 and v05.05 predictions on sensitivity dataset (GT 110-180°)
 - `synthetic_matrix.csv` — the synthetic set's design: per-cell (Bond, scaler, roughness), `in_domain`/`ood_axis` labels, and the seed/filename each cell rendered to
+- `synthetic_domain_split_mae.csv` — per-method MAE (all-angle and excluding 180°) computed separately for the in-domain and out-of-domain subsets (see figures below)
+- `training_domain_bounds.csv` — the training grid's own scaler/Bond envelope (36 rendered cells), used by the training-domain-coverage figure
 
 ### Figures (`figures/`)
 
@@ -80,8 +82,8 @@ figure-regeneration pipeline above.
 - `experimental_speed.png` — 2x2 timing breakdown (preprocessing, total, fit time, fit vs contour length)
 
 **Synthetic** (`figures/synthetic/`):
-- `synthetic_agreement_5panel.png` — 3x2 grid: per-method agreement scatter (tangent, circle, ellipse, YL, ML)
-- `synthetic_bias_and_disagreement.png` — Bias vs true angle and ML-YL disagreement
+- `synthetic_agreement_5panel.png`, `synthetic_bias_and_disagreement.png` — main-text figures, in-domain cells only (n=216): 3x2 per-method agreement scatter, and bias vs true angle / ML-YL disagreement
+- `synthetic_agreement_5panel_si_outdomain.png`, `synthetic_bias_and_disagreement_si_outdomain.png` — supplementary figures, out-of-domain cells only (n=108, beyond the training grid) — same layout, reported separately rather than marked on the main-text panel (PART2 §7.3.3)
 
 **Comparison** (`figures/comparison/`):
 - `sensitivity_agreement.png` — 3-panel: v03 and v05.05 agreement + delta on sensitivity dataset
