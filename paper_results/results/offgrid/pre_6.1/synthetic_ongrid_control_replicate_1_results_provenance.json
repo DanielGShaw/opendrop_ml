@@ -1,9 +1,0 @@
-{
-  "saved_model_pb_md5": "cd23a74197a3dfe1f16e77bb8e6119aa",
-  "tensorflow_version": "2.13.0",
-  "numpy_version": "1.22.4",
-  "cv2_version": "4.8.1",
-  "seed_scheme": "matrix_utils.cell_seed(angle, bond, scaler, roughness) via np.random.seed() immediately before each draw_drop() call; replicates use cell_seed(...) + replicate_index (see A.3)",
-  "git_head": "2fd67a91a208444ed0b1eb47d55bb93eb4b54bb3",
-  "timestamp": "2026-08-13T15:04:00"
-}

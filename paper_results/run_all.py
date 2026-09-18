@@ -29,8 +29,6 @@ STEPS = [
     ("Kristina evaluation", "evaluate/evaluate_kristina.py"),
     ("Video analysis figures", "plot/plot_video_analysis.py"),
     ("CP-comparison composite figures", "plot/plot_cp_comparison.py"),
-    ("Off-grid synthetic evaluation", "offgrid/evaluate_offgrid.py"),
-    ("Off-grid vs on-grid comparison", "offgrid/compare_grid_vs_offgrid.py"),
 ]
 
 

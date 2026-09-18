@@ -32,8 +32,7 @@ gitignored — each reproducer clones it locally.
 Paths are configured in `config.py`. All datasets live in-tree under `paper_results/`:
 
 - **Experimental images**: `paper_results/data/experimental/` (171 images)
-- **Synthetic images**: `paper_results/data/synthetic/` (324 images)
-- **Off-grid synthetic images**: `paper_results/data/synthetic_offgrid/` (324) and `paper_results/data/synthetic_ongrid_control/` (324 + 5 × 72 replicates) — the generalisation study in `paper_results/offgrid/`, see its README
+- **Synthetic images**: `paper_results/data/synthetic/` (324 images) — 36 (Bond, scaler, roughness) cells x 9 angles, placed off the training grid (24 cells between training-grid points, 12 beyond it) so accuracy is measured between and beyond the values the model was trained on, not at them. Built by `paper_results/synthetic_generation/` (see its README); `results/synthetic_matrix.csv` records each cell's design and its `in_domain`/`ood_axis` label.
 - **Sensitivity images**: `paper_results/conan_model_repo/sensitivity data set/` (120 images — in the v03 clone, see Prerequisites)
 - **Video analysis datasets** (Isaac, Kristina, inverse-phase): `paper_results/data/video_analysis/` (gitignored, see deferred data-hosting item in `ML_MODEL_INTEGRATION_PLAN.md` Phase 7.4)
 
@@ -59,11 +58,11 @@ python paper_results/plot/plot_speed.py                   # → figures/experime
 # Sensitivity dataset — v03 vs v05.05 (requires evaluation output)
 python paper_results/evaluate/evaluate_sensitivity.py     # → results/sensitivity_results.csv
 python paper_results/plot/plot_sensitivity.py              # → figures/comparison/sensitivity_agreement.png
-
-# Off-grid synthetic study (see paper_results/offgrid/README.md)
-python paper_results/offgrid/evaluate_offgrid.py          # → results/offgrid/synthetic_offgrid_results.csv, ...
-python paper_results/offgrid/compare_grid_vs_offgrid.py   # → results/offgrid/phase4_summary.md
 ```
+
+The regression harness that gates any `preprocessing.py` change lives in
+`paper_results/regression/` (see its own docstring) — not part of the
+figure-regeneration pipeline above.
 
 ## Output
 
@@ -71,7 +70,7 @@ python paper_results/offgrid/compare_grid_vs_offgrid.py   # → results/offgrid/
 - `experimental_results.csv` — 169 rows, all fitting method predictions + timings
 - `synthetic_results.csv` — 324 rows, all fitting method predictions + ground truth
 - `sensitivity_results.csv` — 120 rows, v03 and v05.05 predictions on sensitivity dataset (GT 110-180°)
-- `offgrid/` — the off-grid synthetic study: per-image results for the off-grid set, the on-grid control and its replicates, the Phase 4 comparison (`phase4_summary.md`), the CPID regression-harness baselines and the Phase 6 sweep outputs. `offgrid/pre_6.1/` is the pre-fix snapshot.
+- `synthetic_matrix.csv` — the synthetic set's design: per-cell (Bond, scaler, roughness), `in_domain`/`ood_axis` labels, and the seed/filename each cell rendered to
 
 ### Figures (`figures/`)
 
@@ -86,10 +85,6 @@ python paper_results/offgrid/compare_grid_vs_offgrid.py   # → results/offgrid/
 
 **Comparison** (`figures/comparison/`):
 - `sensitivity_agreement.png` — 3-panel: v03 and v05.05 agreement + delta on sensitivity dataset
-
-**Off-grid study** (`figures/offgrid/`):
-- `phase6_fig1_cp_error_heatmaps.png`, `phase6_fig2_decision_space.png`, `phase6_ex_*.png` — the reflective-substrate CPID fix: before/after contact-point error, the decision statistic, worked examples
-- `phase6_separability_*.png` — per-feature class histograms from the separability analysis
 
 ## Methods Evaluated
 
@@ -109,5 +104,4 @@ python paper_results/offgrid/compare_grid_vs_offgrid.py   # → results/offgrid/
 - Sensitivity evaluation: ~3 minutes (120 images, both models)
 - Figures: ~1 minute
 - Video-analysis evaluations (inverse phase, Isaac, Kristina): see each script
-- Off-grid synthetic evaluation: ~55 minutes (1008 images); comparison ~5 minutes
-- **Total**: ~25 minutes for the experimental + synthetic + sensitivity core; the off-grid step roughly doubles it
+- **Total**: ~25 minutes for the experimental + synthetic + sensitivity core
