@@ -4,11 +4,13 @@
 The synthetic set is placed off the training grid (PART2 §7.3.2), so each
 image carries an `in_domain` label (results/synthetic_matrix.csv):
 in-domain cells fall between training-grid points, out-of-domain cells lie
-beyond it. Per PART2 §7.3.3/D1′, these are reported as two separate,
-independently labelled figures rather than one panel with marked points --
-the in-domain set (216 images) is the main-text synthetic evaluation, and
-the out-of-domain set (108 images) is a supplementary robustness figure
-documenting how error behaves beyond the training grid.
+beyond it. Per PART2 §7.3.3/D1′, these are reported as two separate figures
+rather than one panel with marked points -- the in-domain set (216 images)
+is the main-text synthetic evaluation, and the out-of-domain set (108
+images) is a supplementary robustness figure documenting how error behaves
+beyond the training grid. Which figure is which, and the n/MAE for each,
+is stated in the paper's own figure caption/title rather than drawn on the
+image (see domain_summary_line() below for the numbers to quote there).
 
 Produces:
   - figures/synthetic/synthetic_agreement_5panel.png (main text, in-domain)
@@ -92,14 +94,20 @@ def mae_table(df):
     return pd.DataFrame(rows)
 
 
-def domain_suptitle(label, df, mt):
+# n and MAE are not drawn on the figures themselves -- the paper's own
+# figure caption/title states which set is which (main text vs SI) along
+# with these numbers, so baking them into the image would duplicate and
+# risk drifting from the caption text. domain_summary_line() is used only
+# for the console log below and for anyone regenerating these figures to
+# quote the same numbers in the caption.
+def domain_summary_line(label, df, mt):
     ml_row = mt.loc[mt.method == "ml"].iloc[0]
     return "{}  |  n = {} images  |  ML MAE: {:.3f}° (all), {:.3f}° (ex-180°)".format(
         label, len(df), ml_row["mae_all_angle"], ml_row["mae_excluding_180"]
     )
 
 
-def plot_agreement_5panel(df, suptitle, filename_suffix):
+def plot_agreement_5panel(df, filename_suffix):
     """3x2 multi-panel agreement scatter (5 methods, 6th panel removed).
 
     Matches legacy plot_synthetic_results.py In[13] layout:
@@ -139,11 +147,10 @@ def plot_agreement_5panel(df, suptitle, filename_suffix):
     for idx in range(len(FIGURE_METHODS), len(axes)):
         fig.delaxes(axes[idx])
 
-    fig.suptitle(suptitle, fontsize=10, y=1.01)
     save_figure(fig, SUBDIR, "synthetic_agreement_5panel{}.png".format(filename_suffix))
 
 
-def plot_bias_and_disagreement(df, suptitle, filename_suffix):
+def plot_bias_and_disagreement(df, filename_suffix):
     """Two-panel figure: bias vs true angle (YL + ML) and ML-YL disagreement.
 
     Reproduces legacy pred_vs_true_plots_experimental.py lines 1031-1053
@@ -234,25 +241,65 @@ def plot_bias_and_disagreement(df, suptitle, filename_suffix):
     axes[1].legend()
 
     # i)-iv) annotations linking to the curated systems shown in
-    # figures/CA_tangent_plots/synthetic_composite.png
+    # figures/CA_tangent_plots/synthetic_composite.png. Selected from the
+    # in-domain set (post PART2 7.3.2/7.3.3) by ML bias (ml_angle - gt_angle)
+    # per side: i) highest-bias 40 deg system, ii) highest-|bias| 100 deg
+    # system, iii) a high-but-not-the-single-highest-|bias| 120 deg system,
+    # iv) the highest-bias 180 deg system.
     composite_systems = [
         (
             "i)",
-            "20.0_0.6000000000000001_4.0_0.006_CPL_302_461_CPR_442_461_.png",
-            "left",
-            (0, 10),
+            "40.0_0.9500_2.8300_0.0090_CPL_273_461_CPR_471_461_.png",
+            "right",
+            (-12, 10),  # panel a: top-left
+            (-12, 10),  # panel b: top-left
         ),
-        ("ii)", "100.0_0.8_4.0_0.0_CPL_303_461_CPR_441_461_.png", "left", (-6, -26)),
-        ("iii)", "160.0_0.8_4.0_-0.03_CPL_331_447_CPR_413_447_.png", "left", (-6, 10)),
-        ("iv)", "180.0_1.0_1.0_0.006_CPL_234_461_CPR_510_461_.png", "left", (12, -14)),
+        (
+            "ii)",
+            "100.0_0.9500_2.8300_0.0030_CPL_274_461_CPR_470_461_.png",
+            "right",
+            (-12, -10),  # panel a: bottom-left
+            (-12, -10),  # panel b: bottom-left
+        ),
+        (
+            "iii)",
+            "120.0_0.1500_1.4100_0.0030_CPL_207_461_CPR_537_461_.png",
+            "left",
+            (-15, -10),  # panel a: bottom-left
+            (-15, -10),  # panel b: bottom-left
+        ),
+        (
+            # Maximum (signed, not absolute) 180 deg ML bias: ml_left_angle
+            # is exactly 180.0 here, i.e. bias == 0.0 -- an exact boundary
+            # clip (known trap), not a genuine near-perfect prediction. The
+            # next-highest genuine (non-clipped) value is -1.73 deg, at
+            # 180.0_0.9500_2.8300_0.0090 right.
+            "iv)",
+            "180.0_0.5500_1.4100_0.0090_CPL_296_461_CPR_448_461_.png",
+            "left",
+            (-13, -10),  # panel a: bottom-left
+            (15, -10),  # panel b: bottom-right
+        ),
     ]
-    for label, image_name, side, offset_b in composite_systems:
+    for label, image_name, side, offset_a, offset_b in composite_systems:
         row = df.loc[df["image_name"] == image_name]
         if row.empty:
             continue
         row = row.iloc[0]
+        gt_angle = row["gt_angle"]
         yl_angle = row[f"yl_{side}_angle"]
         ml_angle = row[f"ml_{side}_angle"]
+
+        # Panel a): Bias (ML - GT) vs true angle
+        axes[0].annotate(
+            label,
+            xy=(gt_angle, ml_angle - gt_angle),
+            xytext=offset_a,
+            textcoords="offset points",
+            ha="center",
+            fontsize=12,
+            fontweight="bold",
+        )
 
         # Panel b): (theta_ML - theta_YL) vs theta_YL
         axes[1].annotate(
@@ -265,7 +312,6 @@ def plot_bias_and_disagreement(df, suptitle, filename_suffix):
             fontweight="bold",
         )
 
-    fig.suptitle(suptitle, fontsize=10, y=1.04)
     save_figure(fig, SUBDIR, "synthetic_bias_and_disagreement{}.png".format(filename_suffix))
 
 
@@ -288,16 +334,15 @@ def main():
     for in_domain, suffix, label in DOMAIN_VARIANTS:
         subset = df[df["in_domain"] == in_domain].copy()
         mt = mae_table(subset)
-        suptitle = domain_suptitle(label, subset, mt)
         print()
-        print(suptitle)
+        print(domain_summary_line(label, subset, mt))
 
         mt.insert(0, "variant", "in_domain" if in_domain else "out_of_domain")
         mt.insert(1, "n_images", len(subset))
         summary_rows.append(mt)
 
-        plot_agreement_5panel(subset, suptitle, suffix)
-        plot_bias_and_disagreement(subset, suptitle, suffix)
+        plot_agreement_5panel(subset, suffix)
+        plot_bias_and_disagreement(subset, suffix)
 
     summary_path = os.path.join(RESULTS_DIR, "synthetic_domain_split_mae.csv")
     pd.concat(summary_rows, ignore_index=True).to_csv(summary_path, index=False)

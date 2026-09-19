@@ -64,11 +64,16 @@ EXPERIMENTAL_IMAGES = [
 ]
 
 # File names (with extension) relative to paper_results/data/synthetic/
+# Curated from the in-domain set (PART2 7.3.2/7.3.3) by ML bias
+# (ml_angle - gt_angle) per side, matching plot_synthetic.py's
+# composite_systems: i) highest-bias 40 deg, ii) highest-|bias| 100 deg,
+# iii) high-but-not-the-single-highest-|bias| 120 deg, iv) maximum
+# (signed) bias 180 deg.
 SYNTHETIC_IMAGES = [
-    "20.0_0.6000000000000001_4.0_0.006_CPL_302_461_CPR_442_461_.png",
-    "100.0_0.8_4.0_0.0_CPL_303_461_CPR_441_461_.png",
-    "160.0_0.8_4.0_-0.03_CPL_331_447_CPR_413_447_.png",
-    "180.0_1.0_1.0_0.006_CPL_234_461_CPR_510_461_.png",
+    "40.0_0.9500_2.8300_0.0090_CPL_273_461_CPR_471_461_.png",
+    "100.0_0.9500_2.8300_0.0030_CPL_274_461_CPR_470_461_.png",
+    "120.0_0.1500_1.4100_0.0030_CPL_207_461_CPR_537_461_.png",
+    "180.0_0.5500_1.4100_0.0090_CPL_296_461_CPR_448_461_.png",
 ]
 
 # Panel labels overlaid on the top-left of each *_overview.svg (aligned to the
