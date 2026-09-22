@@ -64,7 +64,7 @@ EXPERIMENTAL_IMAGES = [
 ]
 
 # File names (with extension) relative to paper_results/data/synthetic/
-# Curated from the in-domain set (PART2 7.3.2/7.3.3) by ML bias
+# Curated from the in-domain synthetic set by ML bias
 # (ml_angle - gt_angle) per side, matching plot_synthetic.py's
 # composite_systems: i) highest-bias 40 deg, ii) highest-|bias| 100 deg,
 # iii) high-but-not-the-single-highest-|bias| 120 deg, iv) maximum

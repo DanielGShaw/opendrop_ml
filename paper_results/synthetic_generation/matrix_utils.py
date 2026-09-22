@@ -1,7 +1,7 @@
-"""Shared grid-distance and seeding utilities (SYNTHETIC_DATA_REANALYSIS.md, A.2 / A.3).
+"""Shared grid-distance and seeding utilities.
 
-Kept separate from offgrid_matrix.py so contour_level_sweep.py and
-generate_offgrid_synthetic.py can both import it without duplicating.
+Kept separate from offgrid_matrix.py so other scripts can import it without
+duplicating.
 """
 
 import hashlib

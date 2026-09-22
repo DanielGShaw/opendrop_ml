@@ -1,8 +1,8 @@
-"""Build the off-grid parameter matrix (SYNTHETIC_DATA_REANALYSIS.md, Appendix A.1).
+"""Build the off-grid parameter matrix.
 
 36 (Bo, scaler, roughness) cells x 9 fixed angles = up to 324 images,
 matching the existing on-grid set's size. Cells are dropped (not
-substituted) if they fail Phase-1 asserts in generate_offgrid_synthetic.py;
+substituted) if they fail the render asserts in generate_offgrid_synthetic.py;
 this module only builds the intended matrix.
 
 Run standalone to (re)write results/synthetic_matrix.csv:

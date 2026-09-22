@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 """Combine the bias/disagreement plot and the CP close-up composite into one
-image, matching the old paper's single-figure layout for Figure 3
-(PART2 §7.3.5, item C).
+image, matching the paper's single-figure layout for Figure 3.
 
 Reads the two already-generated figures:
   - figures/synthetic/synthetic_bias_and_disagreement.png (panels a, b)

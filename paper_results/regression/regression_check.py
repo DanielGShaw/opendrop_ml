@@ -1,5 +1,4 @@
-"""Regression harness for the paper's static-image results (PART2_REMAINING_WORK.md,
-section 6.4; moved out of offgrid/ and renamed from phase6_regression.py at 7.3.2).
+"""Regression harness for the paper's static-image results.
 
 Re-runs evaluate_image() over the 324 synthetic images and the 171
 experimental images and compares the result against a frozen baseline.
@@ -14,9 +13,9 @@ Then, after any change to preprocessing.py:
     python regression_check.py
 
 The baseline is captured as a frozen copy under paper_results/regression/
-rather than read live from paper_results/results/, because Phase 7 later
-overwrites paper_results/results/*.csv with improved numbers (per the ground
-rules) -- the frozen copy keeps this harness meaningful after that happens.
+rather than read live from paper_results/results/, because later work
+overwrites paper_results/results/*.csv with improved numbers -- the frozen
+copy keeps this harness meaningful after that happens.
 
 Run from OpenDrop_OP/paper_results/regression/:
     python regression_check.py --capture-baseline

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Render the training envelope for the coverage figure (PART2 §7.3.2a).
+"""Render the training envelope for the coverage figure.
 
 The synthetic evaluation set's scalers (0.95, 1.41, 2.83, 5.0) do not match
 the training grid's scaler range (geomspace(1, 4, 7), i.e. [1, 4] -- see

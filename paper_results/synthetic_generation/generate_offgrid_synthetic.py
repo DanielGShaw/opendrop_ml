@@ -1,15 +1,14 @@
-"""Historical generator for the paper's synthetic set (originally Phase 1 of
-the off-grid reanalysis; see synthetic_generation/README.md). The 324-cell
-off-grid matrix it renders is what now lives at paper_results/data/synthetic/
-(renamed from data/synthetic_offgrid/ in PART2 7.3.2) -- the images already
+"""Historical generator for the paper's synthetic set (see
+synthetic_generation/README.md). The 324-cell off-grid matrix it renders is
+what now lives at paper_results/data/synthetic/ -- the images already
 exist in the tree, so re-running this script is only needed to reproduce the
 generation from scratch.
 
 The on-grid-control code path (parse_ongrid_params / generate_ongrid_control)
 parses parameters out of an existing on-grid set's filenames; that set was
-pruned in the same commit (PART2 7.3.2/7.3.6 -- the harness never needed it)
-and is only recoverable from git history, so that path is not runnable as-is
-without checking out the pre-prune data/synthetic/ from history first.
+pruned (the harness never needed it) and is only recoverable from git
+history, so that path is not runnable as-is without checking out the
+pre-prune data/synthetic/ from history first.
 
 Run (after `python offgrid_matrix.py`, and only after acceptance_gate.py
 has passed):
@@ -42,14 +41,14 @@ from create_contours_args6 import draw_drop, extract_edges_CV, prepare_contour  
 from matrix_utils import cell_seed
 from offgrid_matrix import MATRIX_COLUMNS
 
-RESOLUTION_FLOOR_PX = 2  # degenerate-render guard only, not a resolution filter — see
-# SYNTHETIC_DATA_REANALYSIS.md Findings: the scaler axis exists to simulate camera-
-# resolution differences, so filtering *out* low drop_height_px would remove exactly
-# the real-world-relevant regime under test. drop_height_px is instead recorded on
-# every row (pass or fail) as a covariate for Phase 4 to stratify/weight by. With a
-# minimum angle of 20 deg, drop_height_px should never legitimately hit single digits;
-# this floor only catches genuinely degenerate renders (e.g. a rendering bug), not
-# "just small" drops.
+RESOLUTION_FLOOR_PX = 2  # degenerate-render guard only, not a resolution filter --
+# the scaler axis exists to simulate camera-resolution differences, so filtering
+# *out* low drop_height_px would remove exactly the real-world-relevant regime
+# under test. drop_height_px is instead recorded on every row (pass or fail) as
+# a covariate for downstream evaluation to stratify/weight by. With a minimum
+# angle of 20 deg, drop_height_px should never legitimately hit single digits;
+# this floor only catches genuinely degenerate renders (e.g. a rendering bug),
+# not "just small" drops.
 WINDOW_DROP_POINTS = 40  # window_size(50) - surface_points(10); see A.4 note 4
 FILENAME_RE = re.compile(
     r"^(.+?)_CPL_(\d+)_(\d+)_CPR_(\d+)_(\d+)_?$"
@@ -270,7 +269,7 @@ def main():
     from offgrid_matrix import build_matrix, write_matrix_csv
 
     print("=" * 60)
-    print("Phase 1: off-grid matrix")
+    print("Off-grid matrix")
     print("=" * 60)
     matrix_rows = build_matrix()
     n_ok, n_dropped = generate_matrix(matrix_rows, SYNTHETIC_DATA_DIR)

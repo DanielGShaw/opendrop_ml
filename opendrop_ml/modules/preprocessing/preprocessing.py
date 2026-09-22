@@ -1886,10 +1886,10 @@ def CPID(contour, display=False):
             # step of ~2*(90 - theta); a genuine high-angle drop's equator is
             # smooth, so its bottom-minus-top angle is only the arc curvature
             # over the n_pts window. Normalising by that expected arc makes the
-            # test resolution-independent. Thresholds from the 20-180 deg
-            # synthetic sweep and the experimental edge-noise floor
-            # (paper_results/offgrid, PART2 rev. 17); the residual ambiguity is
-            # |theta - 90| <~ 5 deg, where the step is at the noise level.
+            # test resolution-independent. Thresholds calibrated against the
+            # 20-180 deg synthetic sweep and the experimental edge-noise floor;
+            # the residual ambiguity is |theta - 90| <~ 5 deg, where the step
+            # is at the noise level.
             elif _reflective_kink(
                 widest1_top_angle, widest1_bottom_angle,
                 widest2_top_angle, widest2_bottom_angle,

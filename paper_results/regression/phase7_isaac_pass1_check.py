@@ -1,12 +1,12 @@
-"""Phase 7.1 follow-up: why did isaac_MS_APTES_S2_0001's right contact line
-move by 1 px when the paper pipeline was regenerated after the 6.1 fix?
+"""Why did isaac_MS_APTES_S2_0001's right contact line move by 1 px when the
+paper pipeline was regenerated after the CPID reflective-kink fix?
 
 The Isaac two-pass pipeline takes its contact lines from the *median* of
 CPID's per-frame output over the Pass-1 sample (every ``median_step``-th
 frame). Re-runs Pass 1 on one Isaac dataset with the reflective kink branch
-enabled (deployed) and disabled (pre-6.1 behaviour, via the module constant
-``KINK_MIN_DEG`` -- the same switch phase6_figures.py uses), and reports
-per-frame CP differences, which branch fired, and the resulting medians.
+enabled (deployed) and disabled (pre-fix behaviour, via the module constant
+``KINK_MIN_DEG``), and reports per-frame CP differences, which branch fired,
+and the resulting medians.
 
 Run from OpenDrop_OP/:
     python paper_results/regression/phase7_isaac_pass1_check.py [dataset]

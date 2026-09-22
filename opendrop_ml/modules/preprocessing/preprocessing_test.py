@@ -16,7 +16,7 @@ TRAINING_FILES_DIR = os.path.join(
 sys.path.insert(0, TRAINING_FILES_DIR)
 
 
-# ===== iterative_Lfit sparse-contour fallback (PART2_REMAINING_WORK.md, 6.2) =====
+# ===== iterative_Lfit sparse-contour fallback =====
 #
 # A restricted contour with a point count outside {>=110, ==2} used to leave
 # `left`/`right` unassigned and crash with UnboundLocalError at `contours =
@@ -58,13 +58,13 @@ def test_iterative_lfit_len_2_pre_split_contours_take_existing_branch():
         pass
 
 
-# ===== CPID reproduction case (PART2_REMAINING_WORK.md, 6.2 Reproduction) =====
+# ===== CPID reproduction case =====
 #
 # angle=160, Bo=0.55, scaler=5.0, roughness=-0.015 is the deliberately-extreme
 # cell where CPID's restricted contour collapsed to 13 points and crashed.
 # The seed is `matrix_utils.cell_seed(160.0, 0.55, 5.0, -0.015)`, hardcoded
-# here so this test doesn't depend on paper_results/offgrid/ (the study that
-# found it, not shipped code) remaining in place.
+# here so this test doesn't depend on paper_results/synthetic_generation/
+# output remaining in place.
 _REPRO_SEED = 3075006224
 
 

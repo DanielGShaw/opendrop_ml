@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 """Generate synthetic dataset figures.
 
-The synthetic set is placed off the training grid (PART2 §7.3.2), so each
+The synthetic set is placed off the training grid, so each
 image carries an `in_domain` label (results/synthetic_matrix.csv):
 in-domain cells fall between training-grid points, out-of-domain cells lie
-beyond it. Per PART2 §7.3.3/D1′, these are reported as two separate figures
+beyond it. These are reported as two separate figures
 rather than one panel with marked points -- the in-domain set (216 images)
 is the main-text synthetic evaluation, and the out-of-domain set (108
 images) is a supplementary robustness figure documenting how error behaves
@@ -242,7 +242,7 @@ def plot_bias_and_disagreement(df, filename_suffix):
 
     # i)-iv) annotations linking to the curated systems shown in
     # figures/CA_tangent_plots/synthetic_composite.png. Selected from the
-    # in-domain set (post PART2 7.3.2/7.3.3) by ML bias (ml_angle - gt_angle)
+    # in-domain set by ML bias (ml_angle - gt_angle)
     # per side: i) highest-bias 40 deg system, ii) highest-|bias| 100 deg
     # system, iii) a high-but-not-the-single-highest-|bias| 120 deg system,
     # iv) the highest-bias 180 deg system.

@@ -6,7 +6,7 @@ domain against the ML model's training domain:
 
   (a) Drop profile length vs YL angle — per-angle training min/max bounds,
       rendered directly from the training grid's scaler/Bond endpoints
-      (results/training_domain_bounds.csv, PART2 §7.3.2a), drawn over the
+      (results/training_domain_bounds.csv), drawn over the
       experimental population.
   (b) YL Bond number vs YL angle (RMSE < 1 px) — training Bo bounds
       [0, 1] drawn over the experimental population.
@@ -46,8 +46,8 @@ TRAIN_BO_MAX = 1.0
 def load_data():
     """Return (df_exp, df_bounds) — both sourced from paper_results/results/.
 
-    `df_bounds` is the training envelope (results/training_domain_bounds.csv,
-    PART2 §7.3.2a): scaler in {1, 4} x Bond in {0, 1} x roughness 0, rendered
+    `df_bounds` is the training envelope (results/training_domain_bounds.csv):
+    scaler in {1, 4} x Bond in {0, 1} x roughness 0, rendered
     directly from the training grid's own endpoints rather than derived from
     the evaluation set, whose scalers (0.95-5.0) extend beyond the training
     grid's [1, 4] and would otherwise widen the band past what was trained on.
