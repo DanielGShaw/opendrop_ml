@@ -715,8 +715,8 @@ def parse_cmdline(argv=None):
     return args
 
 def main(argv=None):
-    '''Create a pkl file of a single angle and single roughness value, with 21
-    scaler and 11 roughness values.
+    '''Create a pkl file of a single angle and single roughness value, with 11
+    Bond and 7 scaler values.
     '''
     args = parse_cmdline(argv)
 
