@@ -14,13 +14,6 @@ import numpy as np
 import pandas as pd
 import cv2
 
-# Diagnostic-only: set OPENDROP_DISABLE_CV2_OPTIMIZATION=1 to disable OpenCV's
-# CPU-optimized/IPP code paths, to test whether platform-dependent
-# cv2.findContours() results (see ML_MODEL_INTEGRATION_PLAN.md Phase 7.3) are
-# caused by IPP acceleration. Not used in normal runs.
-if os.environ.get("OPENDROP_DISABLE_CV2_OPTIMIZATION") == "1":
-    cv2.setUseOptimized(False)
-
 # Ensure imports work regardless of working directory
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PAPER_RESULTS_DIR = os.path.dirname(SCRIPT_DIR)

@@ -50,17 +50,9 @@ jobs:
           python .github/workflows/diff_experimental_results.py \
             "$RUNNER_TEMP/macos_reference.csv" paper_results/results/experimental_results.csv
 
-      - name: Diagnostic - regenerate with cv2 optimizations (incl. IPP) disabled and diff
+      - name: Diagnostic - contour/OPTICS call-level dump for cross-platform comparison
         if: always()
-        run: |
-          cp paper_results/results/experimental_results.csv "$RUNNER_TEMP/windows_ipp_enabled.csv"
-          OPENDROP_DISABLE_CV2_OPTIMIZATION=1 python paper_results/evaluate/evaluate_experimental.py
-          cp paper_results/results/experimental_results.csv "$RUNNER_TEMP/windows_ipp_disabled.csv"
-          echo "--- Diff vs macOS reference, cv2 optimizations disabled ---"
-          python .github/workflows/diff_experimental_results.py \
-            "$RUNNER_TEMP/macos_reference.csv" "$RUNNER_TEMP/windows_ipp_disabled.csv" || true
-          cp "$RUNNER_TEMP/windows_ipp_enabled.csv" paper_results/results/experimental_results_ipp_enabled.csv
-          cp "$RUNNER_TEMP/windows_ipp_disabled.csv" paper_results/results/experimental_results_ipp_disabled.csv
+        run: python paper_results/evaluate/diagnose_contour_platform.py
 
       - name: Upload regenerated results as an artifact
         if: always()
@@ -69,5 +61,5 @@ jobs:
           name: windows-experimental-results
           path: |
             paper_results/results/experimental_results.csv
-            paper_results/results/experimental_results_ipp_enabled.csv
-            paper_results/results/experimental_results_ipp_disabled.csv
+            paper_results/results/contour_diag_windows.csv
+            paper_results/results/optics_diag_windows.csv
