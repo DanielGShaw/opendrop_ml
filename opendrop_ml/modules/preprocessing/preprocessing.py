@@ -1575,11 +1575,17 @@ def check_for_high_angle(contour, display=False):
             )
             right = right[start:]
     else:
-        if display:
-            print(
-                f"Number of contours is not correct for check_for_high_angle, contour.shape[0] == {contour.shape[0]}"
-            )
-            print("Taking first 2 contours")
+        # Too few points to apex-split (needs >110) and not already a
+        # pre-split [left, right] pair (==2). Raise rather than falling
+        # through with left/right unassigned (that used to raise
+        # UnboundLocalError at `for i, edge in enumerate([left, right])`
+        # below) -- same fix as iterative_Lfit's identical sparse-contour
+        # case.
+        raise ValueError(
+            f"check_for_high_angle: contour has {len(contour)} points, which is "
+            "neither >110 (full apex-split) nor exactly 2 (pre-split [left, right] "
+            "pair)."
+        )
     CP_guesses = []
     widest_points = []
 
@@ -1591,6 +1597,12 @@ def check_for_high_angle(contour, display=False):
         elif i == 1:
             edge = find_leftmost_coordinates(edge)
 
+        if len(edge) <= 10:
+            raise ValueError(
+                f"check_for_high_angle: {'left' if i == 0 else 'right'} edge has "
+                f"{len(edge)} points after filtering, need >10 to skip the apex "
+                "region and read the widest point at index 10."
+            )
         widest = edge[10]
         CP_guess = None
 

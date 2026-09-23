@@ -8,7 +8,12 @@ matplotlib.use("Agg")
 import numpy as np
 import pytest
 
-from opendrop_ml.modules.preprocessing.preprocessing import CPID, iterative_Lfit, isolate_contour
+from opendrop_ml.modules.preprocessing.preprocessing import (
+    CPID,
+    check_for_high_angle,
+    iterative_Lfit,
+    isolate_contour,
+)
 
 TRAINING_FILES_DIR = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "training_files"
@@ -56,6 +61,32 @@ def test_iterative_lfit_len_2_pre_split_contours_take_existing_branch():
         pytest.fail("len(contour) == 2 case regressed onto the sparse-contour fallback path")
     except Exception:
         pass
+
+
+# ===== check_for_high_angle sparse-contour/short-edge errors =====
+#
+# Same defect shape as iterative_Lfit's fix above -- left/right used to be
+# left unassigned (UnboundLocalError) when the contour was neither >110
+# points (apex-split) nor exactly 2 (pre-split pair), and `edge[10]` used
+# to raise a raw IndexError when a side had <=10 points after filtering.
+# Both now raise a clear, named ValueError instead.
+
+
+def test_check_for_high_angle_wrong_contour_length_raises_clear_error():
+    contour = np.array([[float(i), float(100 - i)] for i in range(50)])
+    with pytest.raises(ValueError, match="check_for_high_angle"):
+        check_for_high_angle(contour, display=False)
+
+
+def test_check_for_high_angle_short_edge_raises_clear_error():
+    # A pre-split [left, right] pair (len(contour) == 2) where each side
+    # already starts at its highest point (skips the apex-reorder branch)
+    # but has too few points to reach index 10 after
+    # find_rightmost_coordinates/find_leftmost_coordinates filtering.
+    left = np.array([[0.0, float(y)] for y in range(5)])
+    right = np.array([[10.0, float(y)] for y in range(5)])
+    with pytest.raises(ValueError, match="check_for_high_angle"):
+        check_for_high_angle([left, right], display=False)
 
 
 # ===== CPID reproduction case =====
