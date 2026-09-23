@@ -45,6 +45,7 @@ _current_image = {
     "call_index": 0,
     "optics_call_index": 0,
     "hough_call_index": 0,
+    "threshold_call_index": 0,
 }
 
 _real_findContours = cv2.findContours
@@ -125,9 +126,15 @@ def _instrumented_HoughLines(image, *args, **kwargs):
     lines = _real_HoughLines(image, *args, **kwargs)
     n = 0 if lines is None else len(lines)
     first = None
+    full_hash = None
     if lines is not None and n > 0:
         rho, theta = lines[0][0]
         first = f"rho={rho:.4f},theta={theta:.6f}"
+        # Round before hashing: rho/theta are float32, and we only care
+        # whether the *set* of detected lines differs meaningfully, not
+        # about noise below Hough's own quantization.
+        rounded = np.round(lines.reshape(-1, 2).astype(np.float64), 4)
+        full_hash = hashlib.md5(rounded.tobytes()).hexdigest()[:12]
     _hough_records.append(
         {
             "image_name": _current_image["name"],
@@ -135,6 +142,7 @@ def _instrumented_HoughLines(image, *args, **kwargs):
             "kind": "HoughLines",
             "n_results": n,
             "first_result": first,
+            "full_hash": full_hash,
         }
     )
     _current_image["hough_call_index"] += 1
@@ -145,9 +153,12 @@ def _instrumented_HoughCircles(image, *args, **kwargs):
     circles = _real_HoughCircles(image, *args, **kwargs)
     n = 0 if circles is None else circles.shape[1]
     first = None
+    full_hash = None
     if circles is not None and n > 0:
         x, y, r = circles[0, 0]
         first = f"x={x:.4f},y={y:.4f},r={r:.4f}"
+        rounded = np.round(circles.reshape(-1, 3).astype(np.float64), 4)
+        full_hash = hashlib.md5(rounded.tobytes()).hexdigest()[:12]
     _hough_records.append(
         {
             "image_name": _current_image["name"],
@@ -155,21 +166,88 @@ def _instrumented_HoughCircles(image, *args, **kwargs):
             "kind": "HoughCircles",
             "n_results": n,
             "first_result": first,
+            "full_hash": full_hash,
         }
     )
     _current_image["hough_call_index"] += 1
     return circles
 
 
+_threshold_records = []
+_real_threshold = cv2.threshold
+
+
+def _instrumented_threshold(src, thresh, maxval, type_, *args, **kwargs):
+    ret, dst = _real_threshold(src, thresh, maxval, type_, *args, **kwargs)
+    is_otsu = bool(type_ & cv2.THRESH_OTSU)
+    dst_hash = hashlib.md5(dst.tobytes()).hexdigest()[:12]
+    _threshold_records.append(
+        {
+            "image_name": _current_image["name"],
+            "call_index": _current_image["threshold_call_index"],
+            "is_otsu": is_otsu,
+            "input_shape": str(src.shape),
+            "ret": ret,
+            "output_hash": dst_hash,
+        }
+    )
+    _current_image["threshold_call_index"] += 1
+    return ret, dst
+
+
+_real_selected = {}
+
+
+def _make_instrumented_hough_baseline(real_hough_baseline):
+    def _instrumented(edges, *args, **kwargs):
+        result = real_hough_baseline(edges, *args, **kwargs)
+        line = np.asarray(result).flatten()
+        _hough_selected_records.append(
+            {
+                "image_name": _current_image["name"],
+                "kind": "hough_baseline",
+                "value": ",".join(f"{v:.4f}" for v in line),
+            }
+        )
+        return result
+
+    return _instrumented
+
+
+def _make_instrumented_hough_circle(real_hough_circle):
+    def _instrumented(edges, display):
+        center, radius = real_hough_circle(edges, display)
+        _hough_selected_records.append(
+            {
+                "image_name": _current_image["name"],
+                "kind": "hough_circle",
+                "value": f"center={center},radius={radius}",
+            }
+        )
+        return center, radius
+
+    return _instrumented
+
+
+_hough_selected_records = []
+
+
 def main():
     cv2.findContours = _instrumented_findContours
     cv2.HoughLines = _instrumented_HoughLines
     cv2.HoughCircles = _instrumented_HoughCircles
+    cv2.threshold = _instrumented_threshold
 
     import opendrop_ml.modules.preprocessing.preprocessing as preprocessing
 
     preprocessing.cluster_OPTICS = _make_instrumented_cluster_OPTICS(
         preprocessing.cluster_OPTICS
+    )
+    preprocessing.hough_baseline = _make_instrumented_hough_baseline(
+        preprocessing.hough_baseline
+    )
+    preprocessing.hough_circle = _make_instrumented_hough_circle(
+        preprocessing.hough_circle
     )
     isolate_contour = preprocessing.isolate_contour
 
@@ -186,6 +264,7 @@ def main():
         _current_image["call_index"] = 0
         _current_image["optics_call_index"] = 0
         _current_image["hough_call_index"] = 0
+        _current_image["threshold_call_index"] = 0
         print(f"  [{i + 1}/{len(images)}] {img_name}")
 
         img = cv2.imread(img_path)
@@ -245,7 +324,14 @@ def main():
     print(f"Wrote {len(_optics_records)} cluster_OPTICS() call records to {optics_out_path}")
 
     hough_out_path = os.path.join(RESULTS_DIR, f"hough_diag_{plat}.csv")
-    hough_fieldnames = ["image_name", "call_index", "kind", "n_results", "first_result"]
+    hough_fieldnames = [
+        "image_name",
+        "call_index",
+        "kind",
+        "n_results",
+        "first_result",
+        "full_hash",
+    ]
     with open(hough_out_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=hough_fieldnames)
         writer.writeheader()
@@ -253,6 +339,36 @@ def main():
             writer.writerow(record)
 
     print(f"Wrote {len(_hough_records)} Hough call records to {hough_out_path}")
+
+    hough_selected_out_path = os.path.join(RESULTS_DIR, f"hough_selected_diag_{plat}.csv")
+    hough_selected_fieldnames = ["image_name", "kind", "value"]
+    with open(hough_selected_out_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=hough_selected_fieldnames)
+        writer.writeheader()
+        for record in _hough_selected_records:
+            writer.writerow(record)
+
+    print(
+        f"Wrote {len(_hough_selected_records)} selected-baseline/circle records "
+        f"to {hough_selected_out_path}"
+    )
+
+    threshold_out_path = os.path.join(RESULTS_DIR, f"threshold_diag_{plat}.csv")
+    threshold_fieldnames = [
+        "image_name",
+        "call_index",
+        "is_otsu",
+        "input_shape",
+        "ret",
+        "output_hash",
+    ]
+    with open(threshold_out_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=threshold_fieldnames)
+        writer.writeheader()
+        for record in _threshold_records:
+            writer.writerow(record)
+
+    print(f"Wrote {len(_threshold_records)} threshold() call records to {threshold_out_path}")
 
 
 if __name__ == "__main__":

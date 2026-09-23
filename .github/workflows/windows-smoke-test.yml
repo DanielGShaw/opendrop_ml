@@ -64,3 +64,5 @@ jobs:
             paper_results/results/contour_diag_windows.csv
             paper_results/results/optics_diag_windows.csv
             paper_results/results/hough_diag_windows.csv
+            paper_results/results/hough_selected_diag_windows.csv
+            paper_results/results/threshold_diag_windows.csv
