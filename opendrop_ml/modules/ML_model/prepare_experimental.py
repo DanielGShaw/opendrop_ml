@@ -114,11 +114,16 @@ def experimental_pred(pred_ds, model, side="both", cluster=True, display=False):
 
 
 def normalize_ds(ds):
-    """Normalize contour windows so the drop apex is at z=1.
+    """Normalize each contour window by its own maximum z value.
 
     For each contour window: flip y (image coords → Cartesian), divide by
-    the apex height, then translate so the minimum x value is 0.
-    This matches the normalization used during model training.
+    the window's highest point, then translate so the minimum x value is 0.
+
+    NOTE: this operates on fixed-length windows around the contact point,
+    so maxz is the top of the *window*, not the drop apex — the
+    normalisation is window-local. This matches normalize_ds() in
+    training_files/create_contours_args6.py; do not change it to a true
+    apex normalisation without retraining the model.
     """
     output = []
     for contour in ds:

@@ -45,5 +45,17 @@ KRISTINA_REF_DIR = KRISTINA_DIR
 # --- Image file extensions ---
 IMAGE_EXTENSIONS = (".bmp", ".png", ".jpg", ".jpeg", ".tiff", ".tif")
 
+# --- Synthetic set generator (paper_results/synthetic_generation/, see its README).
+# The set itself now lives at SYNTHETIC_DATA_DIR above; SYNTHETIC_ONGRID_CONTROL_DIR
+# is kept only as a regeneration target for the (pruned) on-grid control replicates. ---
+TRAINING_FILES_DIR = os.path.join(OPENDROP_DIR, "training_files")
+SYNTHETIC_ONGRID_CONTROL_DIR = os.path.join(PAPER_RESULTS_DIR, "data", "synthetic_ongrid_control")
+SYNTHETIC_MATRIX_CSV = os.path.join(RESULTS_DIR, "synthetic_matrix.csv")
+OFFGRID_DPI = 64  # matches the on-grid set / create_contours_args6.py's create_contour()
+OFFGRID_N_PTS_DROP = 5000  # matches create_contour()'s call to draw_drop()
+
+# --- Regression harness (paper_results/regression/) ---
+REGRESSION_DIR = os.path.join(PAPER_RESULTS_DIR, "regression")
+
 # --- Video file extensions ---
 VIDEO_EXTENSIONS = (".avi", ".mp4", ".mov")

@@ -4,8 +4,10 @@
 Two-panel SI/main figure comparing the experimental dataset's operating
 domain against the ML model's training domain:
 
-  (a) Drop profile length vs YL angle — per-angle training min/max bounds
-      drawn over the experimental population.
+  (a) Drop profile length vs YL angle — per-angle training min/max bounds,
+      rendered directly from the training grid's scaler/Bond endpoints
+      (results/training_domain_bounds.csv), drawn over the
+      experimental population.
   (b) YL Bond number vs YL angle (RMSE < 1 px) — training Bo bounds
       [0, 1] drawn over the experimental population.
 
@@ -42,21 +44,23 @@ TRAIN_BO_MAX = 1.0
 
 
 def load_data():
-    """Return (df_exp, df_syn) — both sourced from paper_results/results/.
+    """Return (df_exp, df_bounds) — both sourced from paper_results/results/.
 
-    `df_syn` is the synthetic evaluation set (324 images across 9 ground-truth
-    angles × 4 Bond × 2 scales × 4 roughnesses); training-domain bounds are
-    derived from it.
+    `df_bounds` is the training envelope (results/training_domain_bounds.csv):
+    scaler in {1, 4} x Bond in {0, 1} x roughness 0, rendered
+    directly from the training grid's own endpoints rather than derived from
+    the evaluation set, whose scalers (0.95-5.0) extend beyond the training
+    grid's [1, 4] and would otherwise widen the band past what was trained on.
     """
     df_exp = pd.read_csv(os.path.join(RESULTS_DIR, "experimental_results.csv"))
-    df_syn = pd.read_csv(os.path.join(RESULTS_DIR, "synthetic_results.csv"))
-    return df_exp, df_syn
+    df_bounds = pd.read_csv(os.path.join(RESULTS_DIR, "training_domain_bounds.csv"))
+    return df_exp, df_bounds
 
 
-def training_profile_length_bounds(df_syn):
-    """Return (angles, min_lengths, max_lengths) grouped by ground-truth angle."""
+def training_profile_length_bounds(df_bounds):
+    """Return (angles, min_lengths, max_lengths) grouped by angle."""
     grouped = (
-        df_syn.groupby("gt_angle")["profile_length"].agg(["min", "max"]).sort_index()
+        df_bounds.groupby("angle")["profile_length"].agg(["min", "max"]).sort_index()
     )
     angles = grouped.index.tolist()
     min_lengths = grouped["min"].tolist()
@@ -64,9 +68,9 @@ def training_profile_length_bounds(df_syn):
     return angles, min_lengths, max_lengths
 
 
-def plot_training_coverage(df_exp, df_syn):
+def plot_training_coverage(df_exp, df_bounds):
     """Build the 1x2 training-coverage figure and return the Figure."""
-    angles, min_lens, max_lens = training_profile_length_bounds(df_syn)
+    angles, min_lens, max_lens = training_profile_length_bounds(df_bounds)
 
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
@@ -125,11 +129,11 @@ def plot_training_coverage(df_exp, df_syn):
 def main():
     setup_matplotlib()
 
-    print("Loading experimental and synthetic results from paper_results/results/")
-    df_exp, df_syn = load_data()
-    print(f"  Experimental rows: {len(df_exp)}   Synthetic rows: {len(df_syn)}")
+    print("Loading experimental results and training-domain bounds from paper_results/results/")
+    df_exp, df_bounds = load_data()
+    print(f"  Experimental rows: {len(df_exp)}   Training-bounds rows: {len(df_bounds)}")
 
-    fig = plot_training_coverage(df_exp, df_syn)
+    fig = plot_training_coverage(df_exp, df_bounds)
     save_figure(fig, SUBDIR, OUT_FILENAME)
 
 

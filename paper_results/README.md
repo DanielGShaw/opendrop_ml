@@ -32,7 +32,7 @@ gitignored — each reproducer clones it locally.
 Paths are configured in `config.py`. All datasets live in-tree under `paper_results/`:
 
 - **Experimental images**: `paper_results/data/experimental/` (171 images)
-- **Synthetic images**: `paper_results/data/synthetic/` (324 images)
+- **Synthetic images**: `paper_results/data/synthetic/` (324 images) — 36 (Bond, scaler, roughness) cells x 9 angles, placed off the training grid (24 cells between training-grid points, 12 beyond it) so accuracy is measured between and beyond the values the model was trained on, not at them. Built by `paper_results/synthetic_generation/` (see its README); `results/synthetic_matrix.csv` records each cell's design and its `in_domain`/`ood_axis` label.
 - **Sensitivity images**: `paper_results/conan_model_repo/sensitivity data set/` (120 images — in the v03 clone, see Prerequisites)
 - **Video analysis datasets** (Isaac, Kristina, inverse-phase): `paper_results/data/video_analysis/` (gitignored, see deferred data-hosting item in `ML_MODEL_INTEGRATION_PLAN.md` Phase 7.4)
 
@@ -60,12 +60,19 @@ python paper_results/evaluate/evaluate_sensitivity.py     # → results/sensitiv
 python paper_results/plot/plot_sensitivity.py              # → figures/comparison/sensitivity_agreement.png
 ```
 
+The regression harness that gates any `preprocessing.py` change lives in
+`paper_results/regression/` (see its own docstring) — not part of the
+figure-regeneration pipeline above.
+
 ## Output
 
 ### Results (`results/`)
-- `experimental_results.csv` — 169 rows, all fitting method predictions + timings
+- `experimental_results.csv` — 171 rows, all fitting method predictions + timings
 - `synthetic_results.csv` — 324 rows, all fitting method predictions + ground truth
 - `sensitivity_results.csv` — 120 rows, v03 and v05.05 predictions on sensitivity dataset (GT 110-180°)
+- `synthetic_matrix.csv` — the synthetic set's design: per-cell (Bond, scaler, roughness), `in_domain`/`ood_axis` labels, and the seed/filename each cell rendered to
+- `synthetic_domain_split_mae.csv` — per-method MAE (all-angle and excluding 180°) computed separately for the in-domain and out-of-domain subsets (see figures below)
+- `training_domain_bounds.csv` — the training grid's own scaler/Bond envelope (36 rendered cells), used by the training-domain-coverage figure
 
 ### Figures (`figures/`)
 
@@ -75,8 +82,8 @@ python paper_results/plot/plot_sensitivity.py              # → figures/compari
 - `experimental_speed.png` — 2x2 timing breakdown (preprocessing, total, fit time, fit vs contour length)
 
 **Synthetic** (`figures/synthetic/`):
-- `synthetic_agreement_5panel.png` — 3x2 grid: per-method agreement scatter (tangent, circle, ellipse, YL, ML)
-- `synthetic_bias_and_disagreement.png` — Bias vs true angle and ML-YL disagreement
+- `synthetic_agreement_5panel.png`, `synthetic_bias_and_disagreement.png` — main-text figures, in-domain cells only (n=216): 3x2 per-method agreement scatter, and bias vs true angle / ML-YL disagreement
+- `synthetic_agreement_5panel_si_outdomain.png`, `synthetic_bias_and_disagreement_si_outdomain.png` — supplementary figures, out-of-domain cells only (n=108, beyond the training grid) — same layout, reported separately rather than marked on the main-text panel
 
 **Comparison** (`figures/comparison/`):
 - `sensitivity_agreement.png` — 3-panel: v03 and v05.05 agreement + delta on sensitivity dataset
@@ -98,4 +105,5 @@ python paper_results/plot/plot_sensitivity.py              # → figures/compari
 - Synthetic evaluation: ~11 minutes (324 images)
 - Sensitivity evaluation: ~3 minutes (120 images, both models)
 - Figures: ~1 minute
-- **Total**: ~25 minutes
+- Video-analysis evaluations (inverse phase, Isaac, Kristina): see each script
+- **Total**: ~25 minutes for the experimental + synthetic + sensitivity core
