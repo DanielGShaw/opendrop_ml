@@ -63,3 +63,4 @@ jobs:
             paper_results/results/experimental_results.csv
             paper_results/results/contour_diag_windows.csv
             paper_results/results/optics_diag_windows.csv
+            paper_results/results/hough_diag_windows.csv

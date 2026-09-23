@@ -40,7 +40,12 @@ sys.path.insert(0, PAPER_RESULTS_DIR)
 from config import EXPERIMENTAL_DATA_DIR, RESULTS_DIR, IMAGE_EXTENSIONS
 
 _records = []
-_current_image = {"name": None, "call_index": 0, "optics_call_index": 0}
+_current_image = {
+    "name": None,
+    "call_index": 0,
+    "optics_call_index": 0,
+    "hough_call_index": 0,
+}
 
 _real_findContours = cv2.findContours
 
@@ -111,8 +116,55 @@ def _make_instrumented_cluster_OPTICS(real_cluster_OPTICS):
     return _instrumented
 
 
+_hough_records = []
+_real_HoughLines = cv2.HoughLines
+_real_HoughCircles = cv2.HoughCircles
+
+
+def _instrumented_HoughLines(image, *args, **kwargs):
+    lines = _real_HoughLines(image, *args, **kwargs)
+    n = 0 if lines is None else len(lines)
+    first = None
+    if lines is not None and n > 0:
+        rho, theta = lines[0][0]
+        first = f"rho={rho:.4f},theta={theta:.6f}"
+    _hough_records.append(
+        {
+            "image_name": _current_image["name"],
+            "call_index": _current_image["hough_call_index"],
+            "kind": "HoughLines",
+            "n_results": n,
+            "first_result": first,
+        }
+    )
+    _current_image["hough_call_index"] += 1
+    return lines
+
+
+def _instrumented_HoughCircles(image, *args, **kwargs):
+    circles = _real_HoughCircles(image, *args, **kwargs)
+    n = 0 if circles is None else circles.shape[1]
+    first = None
+    if circles is not None and n > 0:
+        x, y, r = circles[0, 0]
+        first = f"x={x:.4f},y={y:.4f},r={r:.4f}"
+    _hough_records.append(
+        {
+            "image_name": _current_image["name"],
+            "call_index": _current_image["hough_call_index"],
+            "kind": "HoughCircles",
+            "n_results": n,
+            "first_result": first,
+        }
+    )
+    _current_image["hough_call_index"] += 1
+    return circles
+
+
 def main():
     cv2.findContours = _instrumented_findContours
+    cv2.HoughLines = _instrumented_HoughLines
+    cv2.HoughCircles = _instrumented_HoughCircles
 
     import opendrop_ml.modules.preprocessing.preprocessing as preprocessing
 
@@ -133,6 +185,7 @@ def main():
         _current_image["name"] = img_name
         _current_image["call_index"] = 0
         _current_image["optics_call_index"] = 0
+        _current_image["hough_call_index"] = 0
         print(f"  [{i + 1}/{len(images)}] {img_name}")
 
         img = cv2.imread(img_path)
@@ -190,6 +243,16 @@ def main():
             writer.writerow(record)
 
     print(f"Wrote {len(_optics_records)} cluster_OPTICS() call records to {optics_out_path}")
+
+    hough_out_path = os.path.join(RESULTS_DIR, f"hough_diag_{plat}.csv")
+    hough_fieldnames = ["image_name", "call_index", "kind", "n_results", "first_result"]
+    with open(hough_out_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=hough_fieldnames)
+        writer.writeheader()
+        for record in _hough_records:
+            writer.writerow(record)
+
+    print(f"Wrote {len(_hough_records)} Hough call records to {hough_out_path}")
 
 
 if __name__ == "__main__":
