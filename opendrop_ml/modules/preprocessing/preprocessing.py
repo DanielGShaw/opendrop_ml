@@ -701,7 +701,12 @@ def isolate_contour(img_orig, crop=True, DISPLAY=False, blur=True):
 
     groups = cluster_OPTICS(edges, xi=0.8)
     keys = sorted(groups.keys(), key=lambda k: len(groups[k]), reverse=True)
-    maxkey = keys[0]
+    # Rank (index into `keys`, largest-cluster-first) of the group judged to be
+    # the drop, not a raw dict key -- cluster_OPTICS() labels are internal to
+    # each independent OPTICS fit and aren't guaranteed to mean the same thing
+    # across two separate fits (see the re-fit after tilt correction below).
+    chosen_rank = 0
+    maxkey = keys[chosen_rank]
     longest_contour = np.array(groups[maxkey])
 
     if crop == False:
@@ -743,7 +748,8 @@ def isolate_contour(img_orig, crop=True, DISPLAY=False, blur=True):
             # if dist between these points is less than 15% of image width, it's probably the needle
             # 5< in case there is a lighting issue that isn't the needle
             if 5 < right_of_midpoint - left_of_midpoint < img_orig.shape[1] * 0.10:
-                maxkey = keys[1]
+                chosen_rank = 1
+                maxkey = keys[chosen_rank]
                 longest_contour = np.array(groups[maxkey])
 
         if DISPLAY:
@@ -779,9 +785,19 @@ def isolate_contour(img_orig, crop=True, DISPLAY=False, blur=True):
             else:
                 img = tilt_correction(img_orig, hough_line)
 
-            # Recompute edge image after tilt correction
+            # Recompute edge image after tilt correction. cluster_OPTICS() is
+            # an independent OPTICS fit over different edge points, so its
+            # cluster labels aren't guaranteed to line up with the labels
+            # from the fit above -- reusing the old `maxkey` here previously
+            # picked an unrelated (and platform-dependent, since OPTICS'
+            # internal label assignment isn't guaranteed stable) cluster, or
+            # raised a KeyError, discarding the needle-interference check's
+            # rank-1 correction above. Re-sort the new fit's groups and take
+            # the same *rank* the needle check chose, not the old label.
             edges = extract_edges_CV(img, blur=blur)
             groups = cluster_OPTICS(edges, xi=0.8)
+            keys = sorted(groups.keys(), key=lambda k: len(groups[k]), reverse=True)
+            maxkey = keys[min(chosen_rank, len(keys) - 1)]
             longest_contour = np.array(groups[maxkey])
             canny_input = np.zeros(
                 (img_orig.shape[0], img_orig.shape[1]), dtype=np.uint8
