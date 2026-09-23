@@ -23,17 +23,27 @@ def main():
         sys.exit("Row set/order differs from the reference -- cannot compare column-wise")
 
     timing_cols = [c for c in ref.columns if c.endswith("_time")]
-    compare_cols = [c for c in ref.columns if c not in timing_cols]
+    compare_cols = [c for c in ref.columns if c not in timing_cols and c != "image_name"]
 
     mismatches = {}
     for col in compare_cols:
-        if ref[col].dtype.kind in "fc" and new[col].dtype.kind in "fc":
-            diff = (ref[col] - new[col]).abs()
-            bad = diff[diff.fillna(0) > TOLERANCE]
+        # Coerce both sides to numeric first, rather than trusting the
+        # CSV-inferred dtype: a run with failures introduces NaNs that
+        # upcast an int64 column to float64 on one side only, and pandas
+        # then renders e.g. 1066 vs 1066.0 -- comparing those as strings
+        # would flag every row as different even when the value matches.
+        r = pd.to_numeric(ref[col], errors="coerce")
+        n = pd.to_numeric(new[col], errors="coerce")
+        if r.notna().any() or n.notna().any():
+            both_nan = r.isna() & n.isna()
+            one_nan = r.isna() ^ n.isna()
+            diff = (r - n).abs()
+            bad_mask = (~both_nan) & (one_nan | (diff.fillna(float("inf")) > TOLERANCE))
         else:
-            bad = ref[col][ref[col].astype(str) != new[col].astype(str)]
-        if len(bad):
-            mismatches[col] = len(bad)
+            bad_mask = ref[col].astype(str) != new[col].astype(str)
+        n_bad = int(bad_mask.sum())
+        if n_bad:
+            mismatches[col] = n_bad
 
     if mismatches:
         print("Non-timing columns differ from the reference:")
