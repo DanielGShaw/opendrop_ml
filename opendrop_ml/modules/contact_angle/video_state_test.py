@@ -39,8 +39,9 @@ def _sample_result(include_rotated=True):
 
 def test_save_state_writes_json_and_png_sidecar(tmp_path):
     result = _sample_result(include_rotated=True)
+    given_source_path = "/videos/input.mp4"
     json_path = save_state(
-        result, str(tmp_path), "run1", source_path="/videos/input.mp4"
+        result, str(tmp_path), "run1", source_path=given_source_path
     )
 
     assert os.path.isfile(json_path)
@@ -49,7 +50,11 @@ def test_save_state_writes_json_and_png_sidecar(tmp_path):
     with open(json_path) as f:
         payload = json.load(f)
     assert payload["has_rotated_first_frame"] is True
-    assert payload["source_path"] == "/videos/input.mp4"
+    # save_state stores os.path.abspath(source_path); compare against that
+    # rather than the raw literal so this passes on Windows too, where
+    # abspath resolves a leading-slash path onto the current drive and
+    # uses backslash separators.
+    assert payload["source_path"] == os.path.abspath(given_source_path)
     assert "rotated_first_frame_file" not in payload
     assert payload["median_tilt_angle"] == 60.0
     assert payload["frames_processed"] == 20
@@ -70,7 +75,7 @@ def test_save_state_omits_png_when_no_rotated_frame(tmp_path):
 
 def test_save_state_records_absolute_source_path(tmp_path):
     result = _sample_result(include_rotated=False)
-    cwd_relative = "some/relative/path.mp4"
+    cwd_relative = os.path.join("some", "relative", "path.mp4")
     save_state(result, str(tmp_path), "run_prov", source_path=cwd_relative)
 
     with open(str(tmp_path / "run_prov_state.json")) as f:
@@ -84,7 +89,8 @@ def test_load_state_follows_renamed_bundle(tmp_path):
     load_state derives the sidecar path from the JSON filename rather
     than a stored pointer."""
     result = _sample_result(include_rotated=True)
-    save_state(result, str(tmp_path), "original", source_path="/in.mp4")
+    given_source_path = "/in.mp4"
+    save_state(result, str(tmp_path), "original", source_path=given_source_path)
 
     os.rename(
         str(tmp_path / "original_state.json"),
@@ -98,7 +104,7 @@ def test_load_state_follows_renamed_bundle(tmp_path):
     loaded = load_state(str(tmp_path / "renamed_state.json"))
     assert isinstance(loaded["rotated_first_frame"], np.ndarray)
     assert loaded["rotated_first_frame"].shape == (60, 80, 3)
-    assert loaded["source_path"] == "/in.mp4"
+    assert loaded["source_path"] == os.path.abspath(given_source_path)
 
 
 def test_load_state_handles_missing_sidecar_gracefully(tmp_path):
