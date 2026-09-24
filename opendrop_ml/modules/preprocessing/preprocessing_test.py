@@ -13,6 +13,7 @@ from opendrop_ml.modules.preprocessing.preprocessing import (
     check_for_high_angle,
     iterative_Lfit,
     isolate_contour,
+    line_circle_intersection,
 )
 
 TRAINING_FILES_DIR = os.path.join(
@@ -113,3 +114,45 @@ def test_cpid_does_not_crash_on_reproducing_sparse_contour_image():
     for x, y in CPs:
         assert 0 <= x < w
         assert 0 <= y < h
+
+
+# ===== line_circle_intersection integer overflow =====
+#
+# isolate_contour() passes the Hough circle as uint16 and the Hough baseline
+# as platform-default ints. On Windows numpy's default int is 32-bit, so the
+# quadratic's integer arithmetic (b**2 is ~1e12) used to wrap, dropping or
+# corrupting the drop's chord. These tests force int32 inputs so the overflow
+# reproduces on any platform.
+
+
+def _float_reference_intersections(p1, p2, center, radius):
+    p1, p2, center = (np.asarray(v, dtype=float) for v in (p1, p2, center))
+    d, f = p2 - p1, p1 - center
+    a, b = d @ d, 2 * (f @ d)
+    disc = b**2 - 4 * a * (f @ f - float(radius) ** 2)
+    ts = [(-b - np.sqrt(disc)) / (2 * a), (-b + np.sqrt(disc)) / (2 * a)]
+    return np.array(sorted((p1 + t * d for t in ts), key=lambda p: p[0]))
+
+
+@pytest.mark.parametrize("line_dtype", [np.int32, np.int64])
+def test_line_circle_intersection_matches_float_reference(line_dtype):
+    baseline = np.array([[0, 600], [1023, 601]], dtype=line_dtype)
+    center = (np.uint16(500), np.uint16(450))
+    radius = np.uint16(300)
+
+    result = line_circle_intersection(baseline[0], baseline[1], center, radius)
+
+    expected = _float_reference_intersections(baseline[0], baseline[1], center, 300)
+    np.testing.assert_allclose(result, expected)
+
+
+def test_line_circle_intersection_int32_products_do_not_overflow():
+    # |f|^2 alone exceeds 2**31 here, so int32 arithmetic would wrap.
+    p1 = np.array([0, 60000], dtype=np.int32)
+    p2 = np.array([60000, 60001], dtype=np.int32)
+    center = (np.uint16(30000), np.uint16(60000))
+
+    result = line_circle_intersection(p1, p2, center, np.uint16(20000))
+
+    expected = _float_reference_intersections(p1, p2, center, 20000)
+    np.testing.assert_allclose(result, expected)

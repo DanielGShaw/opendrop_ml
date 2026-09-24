@@ -605,10 +605,13 @@ def line_circle_intersection(line_point1, line_point2, circle_center, circle_rad
     list: List of intersection points (can be empty, have one point, or two points)
     """
 
-    # Convert inputs to numpy arrays for easier calculation
-    p1 = np.array(line_point1)
-    p2 = np.array(line_point2)
-    c = np.array(circle_center)
+    # Convert inputs to float64: callers pass Hough output as integer arrays,
+    # and on Windows (numpy's default int is 32-bit) the integer arithmetic
+    # below overflows -- b**2 alone is ~1e12 for a full-width baseline.
+    p1 = np.asarray(line_point1, dtype=np.float64)
+    p2 = np.asarray(line_point2, dtype=np.float64)
+    c = np.asarray(circle_center, dtype=np.float64)
+    circle_radius = float(circle_radius)
 
     # Calculate the direction vector of the line
     direction = p2 - p1
