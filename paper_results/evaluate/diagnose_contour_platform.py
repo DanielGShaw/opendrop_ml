@@ -24,6 +24,7 @@ contour set itself first differs.
 
 import csv
 import hashlib
+import json
 import os
 import platform
 import sys
@@ -232,6 +233,42 @@ def _make_instrumented_hough_circle(real_hough_circle):
 _hough_selected_records = []
 
 
+def _jsonify(value):
+    """Make a value from isolate_contour()'s debug hook JSON-serializable,
+    summarizing large point arrays down to a hash + count instead of
+    dumping every point."""
+    if isinstance(value, np.ndarray):
+        if value.ndim == 2 and value.shape[1] == 2 and len(value) > 8:
+            sorted_pts = value[np.lexsort((value[:, 1], value[:, 0]))]
+            return {
+                "n_points": len(value),
+                "set_hash": hashlib.md5(
+                    sorted_pts.astype(np.int32).tobytes()
+                ).hexdigest()[:12],
+            }
+        return value.tolist()
+    if isinstance(value, (np.integer,)):
+        return int(value)
+    if isinstance(value, (np.floating,)):
+        return float(value)
+    if isinstance(value, (list, tuple)):
+        return [_jsonify(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _jsonify(v) for k, v in value.items()}
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    return str(value)
+
+
+_bounds_debug_records = []
+
+
+def _bounds_debug_hook(event, kwargs):
+    record = {"image_name": _current_image["name"], "event": event}
+    record.update({k: _jsonify(v) for k, v in kwargs.items()})
+    _bounds_debug_records.append(record)
+
+
 def main():
     cv2.findContours = _instrumented_findContours
     cv2.HoughLines = _instrumented_HoughLines
@@ -249,6 +286,7 @@ def main():
     preprocessing.hough_circle = _make_instrumented_hough_circle(
         preprocessing.hough_circle
     )
+    preprocessing._ISOLATE_CONTOUR_DEBUG_HOOK = _bounds_debug_hook
     isolate_contour = preprocessing.isolate_contour
 
     images = sorted(
@@ -369,6 +407,16 @@ def main():
             writer.writerow(record)
 
     print(f"Wrote {len(_threshold_records)} threshold() call records to {threshold_out_path}")
+
+    bounds_out_path = os.path.join(RESULTS_DIR, f"bounds_diag_{plat}.jsonl")
+    with open(bounds_out_path, "w") as f:
+        for record in _bounds_debug_records:
+            f.write(json.dumps(record) + "\n")
+
+    print(
+        f"Wrote {len(_bounds_debug_records)} isolate_contour() internal debug events "
+        f"to {bounds_out_path}"
+    )
 
 
 if __name__ == "__main__":
