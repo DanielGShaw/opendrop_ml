@@ -22,11 +22,8 @@ TOLERANCE = 1e-6
 CROSS_PLATFORM_TOLERANCES = {"ml_left_angle": 1e-3, "ml_right_angle": 1e-3}
 
 # --cross-platform only. Images whose pipeline sits on a knife-edge that
-# sub-ULP float differences can tip. The contour is identical on every
-# platform, but contact-point identification picks a pixel 1px away.
-KNOWN_PLATFORM_SENSITIVE = {
-    "PS3.BMP": "~90 deg drop; CPID right contact point flips by 1px on Windows",
-}
+# sub-ULP float differences can tip, as {image_name: reason}. None at present.
+KNOWN_PLATFORM_SENSITIVE = {}
 
 
 def main():

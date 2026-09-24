@@ -1291,9 +1291,15 @@ def iterative_Lfit(
             if str(m) == "inf" or str(m) == "-inf":
                 gradients[i] = gradients[i - 1]
 
+        # A symmetric corner gives two adjacent windows mathematically equal
+        # RMSEs, which ODR's convergence tolerance leaves ~1e-10 apart in an
+        # order that differs by platform. Rounding makes such ties exact
+        # plateaus, which find_peaks and index() resolve deterministically.
+        RMSEs_for_peaks = np.round(RMSEs, 6).tolist()
+
         ### return the indices of each RMSE peak
         RMSE_peaks_indices = signal.find_peaks(
-            RMSEs, height=max(RMSEs) * 0.3, prominence=0.3, width=5
+            RMSEs_for_peaks, height=max(RMSEs_for_peaks) * 0.3, prominence=0.3, width=5
         )[0]
         RMSE_peaks_indices = sorted(RMSE_peaks_indices.tolist())
         if display == True:
@@ -1302,7 +1308,7 @@ def iterative_Lfit(
                 print("No peaks found in RMSE plot")
 
         # return the index of the max RMSE point, often this is missed by the signal package - so add it manually
-        max_RMSE_idx = RMSEs.index(np.nanmax(RMSEs))
+        max_RMSE_idx = RMSEs_for_peaks.index(np.nanmax(RMSEs_for_peaks))
         if max_RMSE_idx not in RMSE_peaks_indices:
             RMSE_peaks_indices.append(max_RMSE_idx)
         RMSE_peaks_indices = sorted(RMSE_peaks_indices)

@@ -156,3 +156,38 @@ def test_line_circle_intersection_int32_products_do_not_overflow():
 
     expected = _float_reference_intersections(p1, p2, center, 20000)
     np.testing.assert_allclose(result, expected)
+
+
+# ===== iterative_Lfit RMSE-peak ties =====
+#
+# PS3.BMP's right contact corner is symmetric, so two adjacent fit windows
+# have mathematically equal RMSEs that ODR leaves ~1e-10 apart, in an order
+# that differed between macOS and Windows/Linux and moved the contact point
+# by 1px. CPID must give the same answer under that level of noise.
+
+PS3_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "..", "..", "..", "paper_results", "data", "experimental", "PS3.BMP",
+)
+
+
+@pytest.mark.skipif(not os.path.exists(PS3_PATH), reason="PS3.BMP not available")
+def test_cpid_stable_under_odr_convergence_noise(monkeypatch):
+    import cv2
+    from opendrop_ml.modules.preprocessing import preprocessing
+
+    _, contour, _, _ = isolate_contour(cv2.imread(PS3_PATH), DISPLAY=False, blur=True)
+    expected = CPID(contour).tolist()
+
+    real_linear_fit = preprocessing.linear_fit
+    for seed in range(10):
+        rng = np.random.default_rng(seed)
+
+        def jittered_linear_fit(coords, display=False):
+            outputs = real_linear_fit(coords)
+            return tuple(
+                v * (1 + rng.normal() * 1e-9) if np.isfinite(v) else v for v in outputs
+            )
+
+        monkeypatch.setattr(preprocessing, "linear_fit", jittered_linear_fit)
+        assert CPID(contour).tolist() == expected
