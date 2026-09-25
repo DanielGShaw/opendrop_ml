@@ -12,7 +12,6 @@ version = "1.0.0"
 description = "opendrop_ml is an open-source, cross-platform tool for analyzing liquid droplets in surface science using contact angle and pendant drop methods, integrating classical geometric fitting with machine learning for flexible, automated, high-throughput image processing."
 authors = [
     { name = "Daniel G Shaw", email = "shaw.g.daniel@gmail.com" },
-    { name = "Joseph D Berry" },
     { name = "Sameer Sikka", email = "ssikka@student.unimelb.edu.au" },
     { name = "Ahmed AlMutairi", email = "ahmed.almutairi@student.unimelb.edu.au" },
     { name = "Yukun Cao", email = "yukun.cao1@student.unimelb.edu.au" },
@@ -22,7 +21,8 @@ authors = [
     { name = "Yifan Shi", email = "yifan.shi5@student.unimelb.edu.au" },
     { name = "Haitian WANG", email = "haitian.wang@student.unimelb.edu.au" },
     { name = "Aoxiang Xiao", email = "aoxiang.xiao@student.unimelb.edu.au" },
-    { name = "Mingda Zheng", email = "mingda.zheng1@student.unimelb.edu.au" }
+    { name = "Mingda Zheng", email = "mingda.zheng1@student.unimelb.edu.au" },
+    { name = "Joseph D Berry" }
 ]
 readme = "README.md"
 license = { file = "LICENSE" }
