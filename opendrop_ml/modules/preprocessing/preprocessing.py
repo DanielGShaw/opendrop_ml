@@ -18,6 +18,17 @@ from scipy import ndimage  # for tilt_correction
 from scipy import signal  # for CP ID
 from scipy.odr import Model, Data, ODR  # for linear fit
 
+# Diagnostic-only hook for isolate_contour(), used to trace intermediate
+# values during cross-platform debugging (set by
+# paper_results/evaluate/diagnose_contour_platform.py). None (the default) is
+# zero-overhead -- production code never sets this.
+_ISOLATE_CONTOUR_DEBUG_HOOK = None
+
+
+def _debug_emit(event, **kwargs):
+    if _ISOLATE_CONTOUR_DEBUG_HOOK is not None:
+        _ISOLATE_CONTOUR_DEBUG_HOOK(event, kwargs)
+
 
 def auto_crop(img, low=50, high=150, apertureSize=3, verbose=0):  # DS 08/06/23
     """
@@ -594,10 +605,13 @@ def line_circle_intersection(line_point1, line_point2, circle_center, circle_rad
     list: List of intersection points (can be empty, have one point, or two points)
     """
 
-    # Convert inputs to numpy arrays for easier calculation
-    p1 = np.array(line_point1)
-    p2 = np.array(line_point2)
-    c = np.array(circle_center)
+    # Convert inputs to float64: callers pass Hough output as integer arrays,
+    # and on Windows (numpy's default int is 32-bit) the integer arithmetic
+    # below overflows -- b**2 alone is ~1e12 for a full-width baseline.
+    p1 = np.asarray(line_point1, dtype=np.float64)
+    p2 = np.asarray(line_point2, dtype=np.float64)
+    c = np.asarray(circle_center, dtype=np.float64)
+    circle_radius = float(circle_radius)
 
     # Calculate the direction vector of the line
     direction = p2 - p1
@@ -701,7 +715,12 @@ def isolate_contour(img_orig, crop=True, DISPLAY=False, blur=True):
 
     groups = cluster_OPTICS(edges, xi=0.8)
     keys = sorted(groups.keys(), key=lambda k: len(groups[k]), reverse=True)
-    maxkey = keys[0]
+    # Rank (index into `keys`, largest-cluster-first) of the group judged to be
+    # the drop, not a raw dict key -- cluster_OPTICS() labels are internal to
+    # each independent OPTICS fit and aren't guaranteed to mean the same thing
+    # across two separate fits (see the re-fit after tilt correction below).
+    chosen_rank = 0
+    maxkey = keys[chosen_rank]
     longest_contour = np.array(groups[maxkey])
 
     if crop == False:
@@ -743,8 +762,16 @@ def isolate_contour(img_orig, crop=True, DISPLAY=False, blur=True):
             # if dist between these points is less than 15% of image width, it's probably the needle
             # 5< in case there is a lighting issue that isn't the needle
             if 5 < right_of_midpoint - left_of_midpoint < img_orig.shape[1] * 0.10:
-                maxkey = keys[1]
+                chosen_rank = 1
+                maxkey = keys[chosen_rank]
                 longest_contour = np.array(groups[maxkey])
+
+        _debug_emit(
+            "first_pick",
+            chosen_rank=chosen_rank,
+            key_sizes=[len(groups[k]) for k in keys],
+            longest_contour=longest_contour,
+        )
 
         if DISPLAY:
             plt.title("image with longest found contour that is not the needle")
@@ -779,10 +806,27 @@ def isolate_contour(img_orig, crop=True, DISPLAY=False, blur=True):
             else:
                 img = tilt_correction(img_orig, hough_line)
 
-            # Recompute edge image after tilt correction
+            # Recompute edge image after tilt correction. cluster_OPTICS() is
+            # an independent OPTICS fit over different edge points, so its
+            # cluster labels aren't guaranteed to line up with the labels
+            # from the fit above -- reusing the old `maxkey` here previously
+            # picked an unrelated (and platform-dependent, since OPTICS'
+            # internal label assignment isn't guaranteed stable) cluster, or
+            # raised a KeyError, discarding the needle-interference check's
+            # rank-1 correction above. Re-sort the new fit's groups and take
+            # the same *rank* the needle check chose, not the old label.
             edges = extract_edges_CV(img, blur=blur)
             groups = cluster_OPTICS(edges, xi=0.8)
+            keys = sorted(groups.keys(), key=lambda k: len(groups[k]), reverse=True)
+            maxkey = keys[min(chosen_rank, len(keys) - 1)]
             longest_contour = np.array(groups[maxkey])
+            _debug_emit(
+                "second_pick",
+                chosen_rank=chosen_rank,
+                key_sizes=[len(groups[k]) for k in keys],
+                longest_contour=longest_contour,
+                tilted=not np.array_equal(img, img_orig),
+            )
             canny_input = np.zeros(
                 (img_orig.shape[0], img_orig.shape[1]), dtype=np.uint8
             )
@@ -809,6 +853,8 @@ def isolate_contour(img_orig, crop=True, DISPLAY=False, blur=True):
         except:
             if DISPLAY:
                 print("Hough circle failed to identify a drop")
+
+        _debug_emit("shapes_found", CIRCLE=CIRCLE, BASELINE=BASELINE)
 
         if DISPLAY:
             plt.title("Identified shapes of interest")
@@ -860,6 +906,8 @@ def isolate_contour(img_orig, crop=True, DISPLAY=False, blur=True):
         if bottom > img.shape[0]:
             bottom = img.shape[0]
 
+        _debug_emit("coarse_bounds", top=top, bottom=bottom)
+
         img_processed = img.copy()
 
         ### determine an approximate 'drop only' contour
@@ -875,6 +923,8 @@ def isolate_contour(img_orig, crop=True, DISPLAY=False, blur=True):
                 if DISPLAY:
                     print("intersects not found")
                 BASELINE = np.array([[None, None], [None, None]])
+
+            _debug_emit("intersections", intersections=intersections)
 
         if BASELINE.any() != None:
             div_line = (
@@ -902,9 +952,16 @@ def isolate_contour(img_orig, crop=True, DISPLAY=False, blur=True):
             x1, y1 = intersections[0]
             x2, y2 = intersections[1]
             midpoint = np.array([(x1 + x2) / 2, (y1 + y2) / 2])
-            if (
-                center[1] < midpoint[1] - radius * 0.4
-            ):  # high angle system, slight bias for consistency
+            is_high_angle = center[1] < midpoint[1] - radius * 0.4
+            _debug_emit(
+                "branch_decision",
+                center=center,
+                radius=radius,
+                midpoint=midpoint.tolist(),
+                margin=float(midpoint[1] - radius * 0.4 - center[1]),
+                is_high_angle=bool(is_high_angle),
+            )
+            if is_high_angle:  # high angle system, slight bias for consistency
                 try:  # account for Hough circle inaccuracy
                     right_of_center = []
                     left_of_center = []
@@ -915,7 +972,9 @@ def isolate_contour(img_orig, crop=True, DISPLAY=False, blur=True):
                             left_of_center.append(coord)
                     right_of_center = np.array(right_of_center)
                     left_of_center = np.array(left_of_center)
-                    if len(right_of_center) >= 1 and len(left_of_center) >= 1:
+                    n_right_of_center = len(right_of_center)
+                    n_left_of_center = len(left_of_center)
+                    if n_right_of_center >= 1 and n_left_of_center >= 1:
                         right_of_center = right_of_center[
                             right_of_center[:, 0].argsort()
                         ][
@@ -927,8 +986,14 @@ def isolate_contour(img_orig, crop=True, DISPLAY=False, blur=True):
                         right_dist = abs(center[0] - right_of_center[0])
                         left_dist = abs(center[0] - left_of_center[0])
                         radius = max([left_dist, right_dist])
-                except:
-                    pass
+                    _debug_emit(
+                        "high_angle_radius_adjust",
+                        n_right_of_center=n_right_of_center,
+                        n_left_of_center=n_left_of_center,
+                        radius_after=radius,
+                    )
+                except Exception as e:
+                    _debug_emit("high_angle_radius_adjust_exception", error=str(e))
                 bounds_temp = [
                     int(center[1] - radius * 1.2),  # top, 20% padding
                     int(
@@ -981,6 +1046,18 @@ def isolate_contour(img_orig, crop=True, DISPLAY=False, blur=True):
             bounds_temp[2] = 0
         if bounds_temp[3] > img_processed.shape[1]:
             bounds_temp[3] = img_processed.shape[1]
+
+        _debug_emit(
+            "final_bounds",
+            bounds_temp=bounds_temp,
+            branch=(
+                "circle+baseline"
+                if (CIRCLE != None and BASELINE.any() != None)
+                else "circle_only" if CIRCLE != None
+                else "baseline_only" if BASELINE.any() != None
+                else "neither"
+            ),
+        )
 
         img_crop = img_processed[
             bounds_temp[0] : bounds_temp[1], bounds_temp[2] : bounds_temp[3]
@@ -1214,9 +1291,15 @@ def iterative_Lfit(
             if str(m) == "inf" or str(m) == "-inf":
                 gradients[i] = gradients[i - 1]
 
+        # A symmetric corner gives two adjacent windows mathematically equal
+        # RMSEs, which ODR's convergence tolerance leaves ~1e-10 apart in an
+        # order that differs by platform. Rounding makes such ties exact
+        # plateaus, which find_peaks and index() resolve deterministically.
+        RMSEs_for_peaks = np.round(RMSEs, 6).tolist()
+
         ### return the indices of each RMSE peak
         RMSE_peaks_indices = signal.find_peaks(
-            RMSEs, height=max(RMSEs) * 0.3, prominence=0.3, width=5
+            RMSEs_for_peaks, height=max(RMSEs_for_peaks) * 0.3, prominence=0.3, width=5
         )[0]
         RMSE_peaks_indices = sorted(RMSE_peaks_indices.tolist())
         if display == True:
@@ -1225,7 +1308,7 @@ def iterative_Lfit(
                 print("No peaks found in RMSE plot")
 
         # return the index of the max RMSE point, often this is missed by the signal package - so add it manually
-        max_RMSE_idx = RMSEs.index(np.nanmax(RMSEs))
+        max_RMSE_idx = RMSEs_for_peaks.index(np.nanmax(RMSEs_for_peaks))
         if max_RMSE_idx not in RMSE_peaks_indices:
             RMSE_peaks_indices.append(max_RMSE_idx)
         RMSE_peaks_indices = sorted(RMSE_peaks_indices)
@@ -1575,11 +1658,17 @@ def check_for_high_angle(contour, display=False):
             )
             right = right[start:]
     else:
-        if display:
-            print(
-                f"Number of contours is not correct for check_for_high_angle, contour.shape[0] == {contour.shape[0]}"
-            )
-            print("Taking first 2 contours")
+        # Too few points to apex-split (needs >110) and not already a
+        # pre-split [left, right] pair (==2). Raise rather than falling
+        # through with left/right unassigned (that used to raise
+        # UnboundLocalError at `for i, edge in enumerate([left, right])`
+        # below) -- same fix as iterative_Lfit's identical sparse-contour
+        # case.
+        raise ValueError(
+            f"check_for_high_angle: contour has {len(contour)} points, which is "
+            "neither >110 (full apex-split) nor exactly 2 (pre-split [left, right] "
+            "pair)."
+        )
     CP_guesses = []
     widest_points = []
 
@@ -1591,6 +1680,12 @@ def check_for_high_angle(contour, display=False):
         elif i == 1:
             edge = find_leftmost_coordinates(edge)
 
+        if len(edge) <= 10:
+            raise ValueError(
+                f"check_for_high_angle: {'left' if i == 0 else 'right'} edge has "
+                f"{len(edge)} points after filtering, need >10 to skip the apex "
+                "region and read the widest point at index 10."
+            )
         widest = edge[10]
         CP_guess = None
 

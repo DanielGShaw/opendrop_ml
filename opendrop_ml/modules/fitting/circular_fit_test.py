@@ -2,6 +2,7 @@ from opendrop_ml.modules.fitting.circular_fit import (
     circular_fit,
     circular_fit_img,
     circle_fit_errors,
+    intersection,
 )
 from opendrop_ml.modules.preprocessing.preprocessing import extract_edges_cv
 from unittest.mock import patch
@@ -119,3 +120,19 @@ def test_circular_fit_no_intersection():
     # Circle parameters should still be returned
     assert center_2 is not None
     assert R_2 is not None
+
+
+def test_intersection_int32_contact_points_match_float_result():
+    """Contact points come from the contour as numpy ints, which are int32 on
+    Windows; B**2 here (~3.6e9) used to overflow int32 there and corrupt the
+    angle. On 64-bit-int platforms this passes either way -- it guards the
+    Windows CI run."""
+    cps = [np.array([367, 335], dtype=np.int32), np.array([613, 336], dtype=np.int32)]
+    center, radius = [490, 386], 133
+
+    result = intersection(center, radius, cps[0], cps[1])
+    expected = intersection(
+        [490.0, 386.0], 133.0, [367.0, 335.0], [613.0, 336.0]
+    )
+
+    np.testing.assert_allclose(result, expected)

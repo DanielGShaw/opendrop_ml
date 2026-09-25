@@ -1,0 +1,113 @@
+name: Cross-platform smoke test
+
+# Manual only (workflow_dispatch), not a per-commit gate -- a cross-platform
+# build/test sanity check meant to be run by hand from the Actions tab (or
+# `gh workflow run windows-smoke-test.yml`) before a release, not on every commit.
+# (Runs Windows and/or Linux despite the filename: GitHub only dispatches
+# workflows whose file exists on the default branch, so rename after merge.)
+# Builds the Cython/C++ extensions, runs test_all.py, then regenerates
+# experimental_results.csv and diffs it against the committed macOS reference.
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to test"
+        required: false
+        default: "develop"
+      os:
+        description: "Platform(s) to test"
+        type: choice
+        options: [both, windows, linux]
+        default: both
+      diagnostics:
+        description: "Also run the contour/Hough/OPTICS diagnostic dump (slow)"
+        type: boolean
+        default: false
+
+jobs:
+  select-platforms:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.select.outputs.matrix }}
+    steps:
+      - id: select
+        run: |
+          # Python 3.8.10 has no ubuntu-22.04 build in actions/python-versions;
+          # the latest 3.8 patch release is close enough for a smoke test.
+          windows='{"plat":"windows","runner":"windows-latest","python":"3.8.10"}'
+          linux='{"plat":"linux","runner":"ubuntu-22.04","python":"3.8"}'
+          case "${{ inputs.os }}" in
+            windows) entries="$windows" ;;
+            linux) entries="$linux" ;;
+            *) entries="$windows,$linux" ;;
+          esac
+          echo "matrix={\"include\":[$entries]}" >> "$GITHUB_OUTPUT"
+
+  build-and-test:
+    needs: select-platforms
+    name: ${{ matrix.plat }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.select-platforms.outputs.matrix) }}
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install system packages (Linux)
+        if: matrix.plat == 'linux'
+        run: |
+          # libgl1 for opencv-python; xvfb so Tk-based tests have a display.
+          sudo apt-get update
+          sudo apt-get install -y libgl1 xvfb
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          # pandas is used throughout paper_results/ but isn't pinned in
+          # requirements.txt (it's present some other way in the dev conda
+          # env) -- installed explicitly here so a clean CI install works.
+          pip install pandas
+
+      - name: Build Cython/C++ extensions
+        run: python setup.py build_ext --inplace
+
+      - name: Run full test suite
+        run: |
+          if [ "${{ matrix.plat }}" = linux ]; then
+            xvfb-run -a python test_all.py
+          else
+            python test_all.py
+          fi
+
+      - name: Regenerate experimental results and diff against the macOS reference
+        run: |
+          cp paper_results/results/experimental_results.csv "$RUNNER_TEMP/macos_reference.csv"
+          python paper_results/evaluate/evaluate_experimental.py
+          python .github/workflows/diff_experimental_results.py --cross-platform \
+            "$RUNNER_TEMP/macos_reference.csv" paper_results/results/experimental_results.csv
+
+      - name: Diagnostic - contour/OPTICS call-level dump for cross-platform comparison
+        if: always() && inputs.diagnostics
+        run: python paper_results/evaluate/diagnose_contour_platform.py
+
+      - name: Upload regenerated results as an artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.plat }}-experimental-results
+          if-no-files-found: ignore
+          path: |
+            paper_results/results/experimental_results.csv
+            paper_results/results/*_diag_${{ matrix.plat }}.csv
+            paper_results/results/bounds_diag_${{ matrix.plat }}.jsonl

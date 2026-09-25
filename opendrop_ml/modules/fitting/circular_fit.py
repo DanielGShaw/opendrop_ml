@@ -26,8 +26,12 @@ import time
 
 def intersection(center, radius, p1, p2, display=False):
     """find the two points where a secant intersects a circle"""
-    x1, y1 = p1
-    x2, y2 = p2
+    # float64, not the contour's integer dtype: on Windows numpy's default int
+    # is 32-bit and B**2 below overflows for ordinary image coordinates.
+    x1, y1 = (float(v) for v in p1)
+    x2, y2 = (float(v) for v in p2)
+    center = [float(v) for v in center]
+    radius = float(radius)
 
     dx, dy = x2 - x1, y2 - y1
 

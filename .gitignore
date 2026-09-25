@@ -97,3 +97,7 @@ paper_results/conan_model_repo/
 # Video analysis data — excluded due to size (SC69_1.avi > GitHub 100MB limit).
 # Hosting decision pending.
 paper_results/data/video_analysis/
+
+# Output of paper_results/evaluate/diagnose_contour_platform.py (regenerable)
+paper_results/results/*_diag_*.csv
+paper_results/results/*_diag_*.jsonl
