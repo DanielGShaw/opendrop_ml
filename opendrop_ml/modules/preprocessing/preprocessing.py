@@ -19,9 +19,9 @@ from scipy import signal  # for CP ID
 from scipy.odr import Model, Data, ODR  # for linear fit
 
 # Diagnostic-only hook for isolate_contour(), used to trace intermediate
-# values during cross-platform debugging (see ML_MODEL_INTEGRATION_PLAN.md
-# Phase 7.3). None (the default) is zero-overhead -- production code never
-# sets this.
+# values during cross-platform debugging (set by
+# paper_results/evaluate/diagnose_contour_platform.py). None (the default) is
+# zero-overhead -- production code never sets this.
 _ISOLATE_CONTOUR_DEBUG_HOOK = None
 
 

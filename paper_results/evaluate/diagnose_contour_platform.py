@@ -1,25 +1,22 @@
 #!/usr/bin/env python
-"""Diagnostic-only: instrument every cv2.findContours() call made while running
-isolate_contour() over the experimental dataset, to pin down exactly where
-macOS/Windows results diverge (see ML_MODEL_INTEGRATION_PLAN.md Phase 7.3).
+"""Diagnostic-only: fingerprint isolate_contour()'s intermediate steps over the
+experimental dataset, so results from two platforms can be compared offline
+to find the first step at which they diverge.
 
-Disabling cv2's optimized/IPP code paths (OPENDROP_DISABLE_CV2_OPTIMIZATION=1
-in evaluate_experimental.py) made zero difference to any output column, so
-IPP is ruled out. This script instead monkeypatches cv2.findContours to
-record, for every call made during isolate_contour() (there are normally two:
-once on the raw image, once again after tilt-correction/cropping), the raw
-contour count, the arc lengths of the top 3 candidates, and the bounding box
-/ border-touch status of whichever one gets selected (sorted by arc length,
-descending -- see extract_edges_CV in modules/preprocessing/preprocessing.py).
+It monkeypatches cv2.findContours, cluster_OPTICS, cv2.HoughLines /
+HoughCircles, hough_baseline / hough_circle and cv2.threshold to record
+call-level counts and hashes, and sets preprocessing._ISOLATE_CONTOUR_DEBUG_HOOK
+to log each crop-boundary decision inside isolate_contour(). This is how the
+Windows int32 overflow in line_circle_intersection() was located.
 
-Run from OpenDrop_OP/:
+Run from OpenDrop_OP/ (the smoke-test workflow runs it with diagnostics=true):
     python paper_results/evaluate/diagnose_contour_platform.py
 
-Output: paper_results/results/contour_diag_<platform>.csv, one row per
-findContours() call (image_name, call_index, n_contours, top-3 arc lengths,
-chosen contour's point count / bbox / border-touch flag). Compare the macOS
-and Windows CSVs offline to see at which call, for which images, the raw
-contour set itself first differs.
+Output, all in paper_results/results/ (gitignored):
+    contour_diag_<platform>.csv, optics_diag_<platform>.csv,
+    hough_diag_<platform>.csv, hough_selected_diag_<platform>.csv,
+    threshold_diag_<platform>.csv  -- one row per instrumented call
+    bounds_diag_<platform>.jsonl   -- one line per isolate_contour() decision
 """
 
 import csv
