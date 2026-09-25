@@ -22,7 +22,7 @@ authors = [
     { name = "Haitian WANG", email = "haitian.wang@student.unimelb.edu.au" },
     { name = "Aoxiang Xiao", email = "aoxiang.xiao@student.unimelb.edu.au" },
     { name = "Mingda Zheng", email = "mingda.zheng1@student.unimelb.edu.au" },
-    { name = "Joseph D Berry" }
+    { name = "Joseph D Berry", email = "berryj@unimelb.edu.au" }
 ]
 readme = "README.md"
 license = { file = "LICENSE" }
