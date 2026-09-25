@@ -550,8 +550,11 @@ See [TESTING.md](./TESTING.md) for more details on how to run the built-in unit 
 
 The scripts under `paper_results/` regenerate every CSV and figure in the
 paper. See [`paper_results/README.md`](./paper_results/README.md) for the
-full workflow — it includes the clone command for the `jdber1/conan-ML`
-v03 baseline repo required by the sensitivity and inverse-phase evaluations.
+full workflow — it includes the clone command for
+[`jdber1/conan-ML`](https://github.com/jdber1/conan-ML), the first iteration
+of this work (Conan-ML, the paper's Model I). It is a separate project from
+OpenDrop, and the sensitivity and inverse-phase evaluations use it as their
+baseline.
 
 # Appropriate use of ML model in Contact Angle Analysis
 
@@ -596,5 +599,5 @@ Users should validate predictions manually in cases:
 
 opendrop_ml is an open-source project. Contributions are welcome!
 
--   GitHub: https://github.com/SamSike/OpenDrop_OP
+-   GitHub: https://github.com/DanielGShaw/opendrop_ml
 -   For issues, use GitHub issue tracker
