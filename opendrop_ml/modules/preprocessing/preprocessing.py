@@ -1053,9 +1053,11 @@ def isolate_contour(img_orig, crop=True, DISPLAY=False, blur=True):
             branch=(
                 "circle+baseline"
                 if (CIRCLE != None and BASELINE.any() != None)
-                else "circle_only" if CIRCLE != None
-                else "baseline_only" if BASELINE.any() != None
-                else "neither"
+                else (
+                    "circle_only"
+                    if CIRCLE != None
+                    else "baseline_only" if BASELINE.any() != None else "neither"
+                )
             ),
         )
 

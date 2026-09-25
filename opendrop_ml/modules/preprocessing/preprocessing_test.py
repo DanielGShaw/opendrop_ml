@@ -167,7 +167,13 @@ def test_line_circle_intersection_int32_products_do_not_overflow():
 
 PS3_PATH = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
-    "..", "..", "..", "paper_results", "data", "experimental", "PS3.BMP",
+    "..",
+    "..",
+    "..",
+    "paper_results",
+    "data",
+    "experimental",
+    "PS3.BMP",
 )
 
 

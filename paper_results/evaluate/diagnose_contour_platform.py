@@ -304,7 +304,7 @@ def main():
 
         img = cv2.imread(img_path)
         if img is None:
-            print(f"    Failed to load image, skipping")
+            print("    Failed to load image, skipping")
             continue
 
         try:
@@ -356,7 +356,9 @@ def main():
         for record in _optics_records:
             writer.writerow(record)
 
-    print(f"Wrote {len(_optics_records)} cluster_OPTICS() call records to {optics_out_path}")
+    print(
+        f"Wrote {len(_optics_records)} cluster_OPTICS() call records to {optics_out_path}"
+    )
 
     hough_out_path = os.path.join(RESULTS_DIR, f"hough_diag_{plat}.csv")
     hough_fieldnames = [
@@ -375,7 +377,9 @@ def main():
 
     print(f"Wrote {len(_hough_records)} Hough call records to {hough_out_path}")
 
-    hough_selected_out_path = os.path.join(RESULTS_DIR, f"hough_selected_diag_{plat}.csv")
+    hough_selected_out_path = os.path.join(
+        RESULTS_DIR, f"hough_selected_diag_{plat}.csv"
+    )
     hough_selected_fieldnames = ["image_name", "kind", "value"]
     with open(hough_selected_out_path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=hough_selected_fieldnames)
@@ -403,7 +407,9 @@ def main():
         for record in _threshold_records:
             writer.writerow(record)
 
-    print(f"Wrote {len(_threshold_records)} threshold() call records to {threshold_out_path}")
+    print(
+        f"Wrote {len(_threshold_records)} threshold() call records to {threshold_out_path}"
+    )
 
     bounds_out_path = os.path.join(RESULTS_DIR, f"bounds_diag_{plat}.jsonl")
     with open(bounds_out_path, "w") as f:
