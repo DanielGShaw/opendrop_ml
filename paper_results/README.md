@@ -14,13 +14,16 @@ python setup.py build_ext --inplace
 
 ### v03 baseline repo (required for sensitivity + inverse-phase evaluation)
 
-The v03 Conan-ML baseline isn't vendored here — clone it alongside this
-package. `evaluate_sensitivity.py` and `evaluate_inverse_phase.py` import
-from it directly, and the sensitivity dataset lives inside the clone.
+The v03 Conan-ML baseline (the first iteration of this work, the paper's
+Model I) isn't vendored here — clone it alongside this package.
+`evaluate_sensitivity.py` and `evaluate_inverse_phase.py` import from it
+directly, and the sensitivity dataset lives inside the clone. Check out the
+pinned commit the paper results were generated with:
 
 ```bash
 # From OpenDrop_OP/paper_results/
 git clone https://github.com/jdber1/conan-ML.git conan_model_repo
+git -C conan_model_repo checkout db056cbd2958087070d0623b0e46e183d70baa3c
 ```
 
 The expected path is `paper_results/conan_model_repo/` (matches
@@ -34,7 +37,7 @@ Paths are configured in `config.py`. All datasets live in-tree under `paper_resu
 - **Experimental images**: `paper_results/data/experimental/` (171 images)
 - **Synthetic images**: `paper_results/data/synthetic/` (324 images) — 36 (Bond, scaler, roughness) cells x 9 angles, placed off the training grid (24 cells between training-grid points, 12 beyond it) so accuracy is measured between and beyond the values the model was trained on, not at them. Built by `paper_results/synthetic_generation/` (see its README); `results/synthetic_matrix.csv` records each cell's design and its `in_domain`/`ood_axis` label.
 - **Sensitivity images**: `paper_results/conan_model_repo/sensitivity data set/` (120 images — in the v03 clone, see Prerequisites)
-- **Video analysis datasets** (Isaac, Kristina, inverse-phase): `paper_results/data/video_analysis/` (gitignored, see deferred data-hosting item in `ML_MODEL_INTEGRATION_PLAN.md` Phase 7.4)
+- **Video analysis datasets** (Isaac, Kristina, inverse-phase): `paper_results/data/video_analysis/` (gitignored because of size; a public archive link will be added here once the data is hosted)
 
 ## Usage
 
