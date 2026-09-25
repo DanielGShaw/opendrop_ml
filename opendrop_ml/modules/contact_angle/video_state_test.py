@@ -40,9 +40,7 @@ def _sample_result(include_rotated=True):
 def test_save_state_writes_json_and_png_sidecar(tmp_path):
     result = _sample_result(include_rotated=True)
     given_source_path = "/videos/input.mp4"
-    json_path = save_state(
-        result, str(tmp_path), "run1", source_path=given_source_path
-    )
+    json_path = save_state(result, str(tmp_path), "run1", source_path=given_source_path)
 
     assert os.path.isfile(json_path)
     assert os.path.isfile(str(tmp_path / "run1_state.png"))

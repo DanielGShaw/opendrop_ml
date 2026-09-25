@@ -33,13 +33,19 @@ def main():
     ref = pd.read_csv(ref_path)
     new = pd.read_csv(new_path)
     tolerances = CROSS_PLATFORM_TOLERANCES if cross_platform else {}
-    exempt = ref["image_name"].isin(KNOWN_PLATFORM_SENSITIVE) if cross_platform else False
+    exempt = (
+        ref["image_name"].isin(KNOWN_PLATFORM_SENSITIVE) if cross_platform else False
+    )
 
     if list(ref["image_name"]) != list(new["image_name"]):
-        sys.exit("Row set/order differs from the reference -- cannot compare column-wise")
+        sys.exit(
+            "Row set/order differs from the reference -- cannot compare column-wise"
+        )
 
     timing_cols = [c for c in ref.columns if c.endswith("_time")]
-    compare_cols = [c for c in ref.columns if c not in timing_cols and c != "image_name"]
+    compare_cols = [
+        c for c in ref.columns if c not in timing_cols and c != "image_name"
+    ]
 
     mismatches = {}
     exempt_hits = {}
@@ -66,8 +72,10 @@ def main():
             mismatches[col] = n_bad
 
     for name, cols in exempt_hits.items():
-        print(f"Known platform-sensitive image {name} differs in {len(cols)} column(s) "
-              f"(not counted): {KNOWN_PLATFORM_SENSITIVE[name]}")
+        print(
+            f"Known platform-sensitive image {name} differs in {len(cols)} column(s) "
+            f"(not counted): {KNOWN_PLATFORM_SENSITIVE[name]}"
+        )
 
     if mismatches:
         print("Non-timing columns differ from the reference:")

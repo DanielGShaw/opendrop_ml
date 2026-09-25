@@ -131,8 +131,6 @@ def test_intersection_int32_contact_points_match_float_result():
     center, radius = [490, 386], 133
 
     result = intersection(center, radius, cps[0], cps[1])
-    expected = intersection(
-        [490.0, 386.0], 133.0, [367.0, 335.0], [613.0, 336.0]
-    )
+    expected = intersection([490.0, 386.0], 133.0, [367.0, 335.0], [613.0, 336.0])
 
     np.testing.assert_allclose(result, expected)
