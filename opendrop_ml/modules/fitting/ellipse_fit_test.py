@@ -40,7 +40,10 @@ def _generate_ellipse_drop(a, b, center, angle_range=(0, np.pi), num_points=200)
     # and the apex the smallest y.
     x = cx + a * np.cos(t)
     y = cy - b * np.sin(t)  # minus so apex is above baseline
-    return np.column_stack((x, y))
+    # Round to integer pixels, as real contours are. Points exactly on a conic
+    # make fit_ellipse's scatter matrix singular to machine precision (cond
+    # ~1e16), so inv() passed or raised depending on the platform's BLAS.
+    return np.round(np.column_stack((x, y)))
 
 
 @pytest.fixture
