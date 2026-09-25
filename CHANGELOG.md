@@ -39,5 +39,7 @@ model and the pipelines that support it.
 
 ### Changed
 
+- Licensed under GPL-3.0, matching OpenDrop and the other GPL-3.0 code
+  opendrop_ml includes. The README credits the projects it builds on.
 - Removed unused dependencies (`numba`, `llvmlite`, `Keras-Preprocessing`,
   `tensorboard-plugin-wit`) and added `pandas`, which the video figures need.
