@@ -50,6 +50,7 @@ The ML implementation (Conan-ML) supports contact angles from 20° to 180° usin
 -   [High-Level Architecture Diagram](#high-level-architecture-diagram)
 -   [Unit tests](#unit-tests)
 -   [Appropriate use of ML model in Contact Angle Analysis](#appropriate-use-of-ml-model-in-contact-angle-analysis)
+-   [Licence](#licence)
 -   [Contact \& Contribution](#contact--contribution)
 
 # Features
@@ -591,6 +592,20 @@ Users should validate predictions manually in cases:
 -   With extreme Bond numbers (>2)
 -   With strong surface roughness/reflections
 -   Outside of the model's trained contact angle range (<20°)
+
+# Licence
+
+opendrop_ml is released under the [GNU General Public License v3.0](./LICENSE).
+It builds on code from these projects, each used under its own licence:
+
+-   [OpenDrop](https://github.com/jdber1/opendrop) (GPL-3.0): the interfacial
+    tension module and geometry utilities.
+-   [Conan-ML](https://github.com/jdber1/conan-ML), the first iteration of this
+    work: the fitting and core modules and the training scripts.
+-   [DropPy](https://github.com/michaelorella/droppy) (GPL-3.0): the
+    baseline-angle fit, by way of Conan-ML.
+-   [CTkXYFrame](https://github.com/Akascape/CTkXYFrame) (MIT): the scrollable
+    frame widget in `opendrop_ml/views/component/CTkXYFrame/`.
 
 # Contact & Contribution
 
