@@ -135,7 +135,7 @@ def all_files_recursive(directory):
 
 setup(
     name="opendrop_ml",
-    version="4.0.0",
+    version="1.0.0",
     packages=find_packages(),
     ext_modules=cythonize(
         ext_modules,
