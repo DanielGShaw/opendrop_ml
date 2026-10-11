@@ -1,0 +1,54 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata below."
+type: software
+title: opendrop_ml
+abstract: >-
+  An open-source, cross-platform tool for contact angle and pendant drop
+  analysis that combines classical drop-shape fitting with the Conan-MLII
+  machine learning model for contact angle measurement.
+version: 1.0.0
+license: GPL-3.0-only
+repository-code: "https://github.com/DanielGShaw/opendrop_ml"
+keywords:
+  - contact angle
+  - goniometry
+  - pendant drop
+  - interfacial tension
+  - machine learning
+authors:
+  - family-names: Shaw
+    given-names: Daniel G.
+    affiliation: University of Melbourne
+  - family-names: AlMutairi
+    given-names: Ahmed
+    affiliation: University of Melbourne
+  - family-names: Cao
+    given-names: Yukun
+    affiliation: University of Melbourne
+  - family-names: Li
+    given-names: Tori
+    affiliation: University of Melbourne
+  - family-names: Lyu
+    given-names: Qingying
+    affiliation: University of Melbourne
+  - family-names: Mao
+    given-names: Junzhou
+    affiliation: University of Melbourne
+  - family-names: Shi
+    given-names: Yifan
+    affiliation: University of Melbourne
+  - family-names: Sikka
+    given-names: Sameer
+    affiliation: University of Melbourne
+  - family-names: Wang
+    given-names: Haitian
+    affiliation: University of Melbourne
+  - family-names: Xiao
+    given-names: Aoxiang
+    affiliation: University of Melbourne
+  - family-names: Zheng
+    given-names: Mingda
+    affiliation: University of Melbourne
+  - family-names: Berry
+    given-names: Joseph D.
+    affiliation: University of Melbourne
