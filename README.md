@@ -52,6 +52,7 @@ The ML implementation (Conan-ML) supports contact angles from 20° to 180° usin
 -   [Appropriate use of ML model in Contact Angle Analysis](#appropriate-use-of-ml-model-in-contact-angle-analysis)
 -   [Licence](#licence)
 -   [Contact \& Contribution](#contact--contribution)
+-   [Acknowledgements](#acknowledgements)
 
 # Features
 
@@ -616,3 +617,24 @@ opendrop_ml is an open-source project. Contributions are welcome!
 
 -   GitHub: https://github.com/DanielGShaw/opendrop_ml
 -   For issues, use GitHub issue tracker
+
+# Acknowledgements
+
+The opendrop_ml application was built by a team of University of Melbourne
+students between September 2024 and June 2025. They built the CustomTkinter
+interface around Conan-ML for contact angle and interfacial tension analysis,
+and added the unit tests, packaging and installation guides that this release
+builds on. The team was:
+
+-   Ahmed AlMutairi
+-   Yukun Cao
+-   Tori Li
+-   Qingying Lyu
+-   Junzhou Mao
+-   Yifan Shi
+-   Sameer Sikka
+-   Haitian Wang
+-   Aoxiang Xiao
+-   Mingda Zheng
+
+Thank you all for your work.
